@@ -339,6 +339,7 @@ const openaiModels = [
   "SD-XL-Bash-CF",
   "SD-XL-Lightning-CF",
   "FLUX.1-Schnell-CF",
+  "tts-1-hd",
 ];
 
 const googleModels = [
