@@ -319,6 +319,7 @@ const openaiModels = [
   "mistral-large-latest",
   "gemini-exp-1121",
   "gemini-exp-1206",
+  "gemini-2.0-flash-exp",
   "gemini-2.0-flash-thinking-exp-1219",
   "claude-3-sonnet-20240229",
   "claude-3-opus-20240229",
@@ -342,7 +343,6 @@ const openaiModels = [
 
 const googleModels = [
   "gemini-1.5-pro-002",
-  "gemini-2.0-flash-exp",
 ];
 
 const anthropicModels = [
