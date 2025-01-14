@@ -314,6 +314,10 @@ const openaiModels = [
   "dall-e-3",
   "o1-mini",
   "o1-preview",
+  "gemini-exp-1121",
+  "gemini-exp-1206",
+  "gemini-2.0-flash-exp",
+  "gemini-2.0-flash-thinking-exp-1219",
   "llama-3.1-70b-versatile",
   "llama-3.1-405b-reasoning",
   "mistral-large-latest",
@@ -340,10 +344,6 @@ const openaiModels = [
 
 const googleModels = [
   "gemini-1.5-pro-002",
-  "gemini-exp-1121",
-  "gemini-exp-1206",
-  "gemini-2.0-flash-exp",
-  "gemini-2.0-flash-thinking-exp-1219",
 ];
 
 const anthropicModels = [
