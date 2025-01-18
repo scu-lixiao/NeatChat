@@ -174,7 +174,6 @@ const en: LocaleType = {
       Name: "Language", // ATTENTION: if you wanna add a new translation, please do not translate this value, leave it as `Language`
       All: "All Languages",
     },
-    Avatar: "Avatar",
     FontSize: {
       Title: "Font Size",
       SubTitle: "Adjust font size of chat content",
@@ -590,7 +589,8 @@ const en: LocaleType = {
       },
     },
     EnableModelSearch: "Enable Model Search",
-    EnableModelSearchSubTitle: "Enable to search and filter when selecting models",
+    EnableModelSearchSubTitle:
+      "Enable to search and filter when selecting models",
   },
   Store: {
     DefaultTopic: "New Conversation",

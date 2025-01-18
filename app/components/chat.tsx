@@ -492,18 +492,7 @@ export function ChatActions(props: {
     session.mask.modelConfig?.providerName || ServiceProvider.OpenAI;
   const allModels = useAllModels();
   const models = useMemo(() => {
-    const filteredModels = allModels.filter((m) => m.available);
-    const defaultModel = filteredModels.find((m) => m.isDefault);
-
-    if (defaultModel) {
-      const arr = [
-        defaultModel,
-        ...filteredModels.filter((m) => m !== defaultModel),
-      ];
-      return arr;
-    } else {
-      return filteredModels;
-    }
+    return allModels.filter((m) => m.available);
   }, [allModels]);
   const currentModelName = useMemo(() => {
     const model = models.find(
@@ -555,6 +544,8 @@ export function ChatActions(props: {
       );
     }
   }, [chatStore, currentModel, models, session]);
+
+  const showModelSearchOption = config.enableModelSearch ?? false;
 
   return (
     <div className={styles["chat-input-actions"]}>
@@ -672,7 +663,7 @@ export function ChatActions(props: {
                 showToast(model);
               }
             }}
-            showSearch={config.enableModelSearch}
+            showSearch={config.enableModelSearch ?? false}
           />
         )}
 
@@ -700,7 +691,7 @@ export function ChatActions(props: {
               });
               showToast(size);
             }}
-            showSearch={config.enableModelSearch}
+            showSearch={false}
           />
         )}
 
@@ -728,7 +719,7 @@ export function ChatActions(props: {
               });
               showToast(quality);
             }}
-            showSearch={config.enableModelSearch}
+            showSearch={false}
           />
         )}
 
@@ -756,7 +747,7 @@ export function ChatActions(props: {
               });
               showToast(style);
             }}
-            showSearch={config.enableModelSearch}
+            showSearch={false}
           />
         )}
 
@@ -786,7 +777,7 @@ export function ChatActions(props: {
                 session.mask.plugin = s;
               });
             }}
-            showSearch={config.enableModelSearch}
+            showSearch={false}
           />
         )}
 
@@ -1783,7 +1774,54 @@ function _Chat() {
                               ></IconButton>
                             </div>
                             {isUser ? (
-                              <Avatar avatar={config.avatar} />
+                              <div className={styles["chat-message-avatar"]}>
+                                <div className={styles["chat-message-edit"]}>
+                                  <IconButton
+                                    icon={<EditIcon />}
+                                    aria={Locale.Chat.Actions.Edit}
+                                    onClick={async () => {
+                                      const newMessage = await showPrompt(
+                                        Locale.Chat.Actions.Edit,
+                                        getMessageTextContent(message),
+                                        10,
+                                      );
+                                      let newContent:
+                                        | string
+                                        | MultimodalContent[] = newMessage;
+                                      const images = getMessageImages(message);
+                                      if (images.length > 0) {
+                                        newContent = [
+                                          { type: "text", text: newMessage },
+                                        ];
+                                        for (
+                                          let i = 0;
+                                          i < images.length;
+                                          i++
+                                        ) {
+                                          newContent.push({
+                                            type: "image_url",
+                                            image_url: {
+                                              url: images[i],
+                                            },
+                                          });
+                                        }
+                                      }
+                                      chatStore.updateTargetSession(
+                                        session,
+                                        (session) => {
+                                          const m = session.mask.context
+                                            .concat(session.messages)
+                                            .find((m) => m.id === message.id);
+                                          if (m) {
+                                            m.content = newContent;
+                                          }
+                                        },
+                                      );
+                                    }}
+                                  ></IconButton>
+                                </div>
+                                <div className={styles["empty-avatar"]}></div>
+                              </div>
                             ) : (
                               <>
                                 {["system"].includes(message.role) ? (

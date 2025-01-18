@@ -21,7 +21,7 @@ import Gpt35Icon from "../icons/openai-3.5.svg";
 import QwenIcon from "../icons/qwen-color.svg";
 import OpenAIIcon from "../icons/openai.svg";
 import WenXinIcon from "../icons/wenxin-color.svg";
-import IconImage from "../icons/icon.png";
+import NeatIcon from "../icons/neat.svg";
 
 import "../styles/model-avatar.scss";
 
@@ -142,13 +142,7 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
             return <QwenIcon className="user-avatar model-avatar" alt="Qwen" />;
           }
 
-          return (
-            <img
-              src={IconImage.src}
-              className="user-avatar model-avatar"
-              alt="Logo"
-            />
-          );
+          return <NeatIcon className="user-avatar model-avatar" alt="Logo" />;
         })()}
       </div>
     );

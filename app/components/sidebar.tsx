@@ -10,7 +10,7 @@ import DeleteIcon from "../icons/delete.svg";
 import MaskIcon from "../icons/mask.svg";
 import DragIcon from "../icons/drag.svg";
 import DiscoveryIcon from "../icons/discovery.svg";
-import IconImage from "../icons/icon.png";
+import NeatIcon from "../icons/neat.svg";
 
 import Locale from "../locales";
 
@@ -237,7 +237,7 @@ export function SideBar(props: { className?: string }) {
       <SideBarHeader
         title="NeatChat"
         subTitle="A Better AI assistant."
-        logo={<img src={IconImage.src} width={44} height={44} alt="Logo" />}
+        logo={<NeatIcon width={44} height={44} />}
         shouldNarrow={shouldNarrow}
       >
         <div className={styles["sidebar-header-bar"]}>

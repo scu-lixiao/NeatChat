@@ -1917,11 +1917,6 @@
     "@jridgewell/resolve-uri" "3.1.0"
     "@jridgewell/sourcemap-codec" "1.4.14"
 
-"@lobehub/icons@^1.58.1":
-  version "1.58.1"
-  resolved "https://registry.yarnpkg.com/@lobehub/icons/-/icons-1.58.1.tgz#83451498b85d68d412455976d80823cbcc529837"
-  integrity sha512-m0JDCkeS3bMiAxY7HXHshXod1OlygiGFu0LoQRvMaqHXcKomEYD7rMehLOpsysjOgqIe+j6xlANC30bHJLD6aA==
-
 "@next/env@14.1.1":
   version "14.1.1"
   resolved "https://registry.yarnpkg.com/@next/env/-/env-14.1.1.tgz#80150a8440eb0022a73ba353c6088d419b908bac"

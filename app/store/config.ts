@@ -139,7 +139,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     temperature: 0.9,
     voice: "alloy" as Voice,
   },
-  enableModelSearch: true,
+  enableModelSearch: false,
 };
 
 export type ChatConfig = typeof DEFAULT_CONFIG;

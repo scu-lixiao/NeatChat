@@ -317,8 +317,8 @@
     border-radius: 10px;
     box-shadow: var(--shadow);
     min-width: 300px;
-    min-height: 400px !important;
-    max-height: 600px !important;
+    min-height: auto;
+    max-height: 600px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -358,7 +358,7 @@
       margin-bottom: 0;
       overflow-y: auto;
       flex-grow: 1;
-      min-height: 350px;
+      min-height: auto;
       
       &:has(> :last-child:nth-child(-n+8)) {
         overflow-y: hidden;
