@@ -255,6 +255,7 @@ const cn = {
       },
       ImportFailed: "导入失败",
     },
+
     Mask: {
       Splash: {
         Title: "面具启动页",
@@ -583,6 +584,26 @@ const cn = {
     },
     EnableModelSearch: "启用模型搜索",
     EnableModelSearchSubTitle: "启用之后可以在选择模型时搜索过滤",
+    EnableThemeChange: {
+      Title: "启用主题切换",
+      SubTitle: "是否在对话框中显示主题切换按钮",
+    },
+    EnablePromptHints: {
+      Title: "启用快捷指令功能",
+      SubTitle: "开启后可通过 / 触发快捷指令功能，关闭后将完全禁用快捷指令",
+    },
+    EnableClearContext: {
+      Title: "启用清除聊天",
+      SubTitle: "是否在对话框中显示清除聊天按钮",
+    },
+    EnablePlugins: {
+      Title: "启用插件",
+      SubTitle: "是否在对话框中显示插件按钮",
+    },
+    EnableShortcuts: {
+      Title: "启用快捷键",
+      SubTitle: "是否在对话框中显示快捷键按钮",
+    },
   },
   Store: {
     DefaultTopic: "新的聊天",
@@ -634,6 +655,7 @@ const cn = {
   },
   Plugin: {
     Name: "插件",
+    EnableWeb: "开启联网",
     Page: {
       Title: "插件",
       SubTitle: (count: number) => `${count} 个插件`,

@@ -591,6 +591,27 @@ const en: LocaleType = {
     EnableModelSearch: "Enable Model Search",
     EnableModelSearchSubTitle:
       "Enable to search and filter when selecting models",
+    EnableThemeChange: {
+      Title: "Enable Theme Switch",
+      SubTitle: "Show theme switch button in chat",
+    },
+    EnablePromptHints: {
+      Title: "Enable Prompt Hints Feature",
+      SubTitle:
+        "When enabled, you can trigger prompts with /, when disabled, the prompt feature will be completely turned off",
+    },
+    EnableClearContext: {
+      Title: "Enable Clear Context",
+      SubTitle: "Show clear context button in chat",
+    },
+    EnablePlugins: {
+      Title: "Enable Plugins",
+      SubTitle: "Show plugins button in chat",
+    },
+    EnableShortcuts: {
+      Title: "Enable Shortcuts",
+      SubTitle: "Show shortcuts button in chat",
+    },
   },
   Store: {
     DefaultTopic: "New Conversation",
@@ -642,7 +663,8 @@ const en: LocaleType = {
     },
   },
   Plugin: {
-    Name: "Plugin",
+    Name: "Plugins",
+    EnableWeb: "Enable Web Access",
     Page: {
       Title: "Plugins",
       SubTitle: (count: number) => `${count} plugins`,
@@ -821,6 +843,6 @@ const en: LocaleType = {
     GenerateParams: "Generate Params",
     Detail: "Detail",
   },
-};
+} as const;
 
 export default en;
