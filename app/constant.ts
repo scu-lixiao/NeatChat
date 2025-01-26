@@ -556,6 +556,7 @@ export const MAX_RENDER_MSG_COUNT = 45;
 
 // some famous webdav endpoints
 export const internalAllowedWebDavEndpoints = [
+  "https://192.168.31.172:5006",
   "https://dav.jianguoyun.com/dav/",
   "https://dav.dropdav.com/",
   "https://dav.box.com/dav",
