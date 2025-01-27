@@ -328,6 +328,7 @@ const openaiModels = [
   "claude-3-5-haiku-20241022",
   "deepseek-chat",
   "deepseek-reasoner",
+  "deepseek-r1-distill-llama-70b",
   "grok-beta",
   "grok-2-latest",
   "grok-2-vision-1212",
