@@ -1,11 +1,11 @@
 .global-scrollbar {
   :global {
     ::-webkit-scrollbar {
-      width: 6px;
+      width: 4px;
     }
 
     ::-webkit-scrollbar-thumb {
-      background-color: #ddd;
+      background-color: var(--scrollbar-thumb-color);
       border-radius: 3px;
     }
 
@@ -188,17 +188,8 @@
   overflow: auto;
   overflow-x: hidden;
 
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
   &::-webkit-scrollbar-thumb {
-    background-color: #ddd;
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background-color: transparent;
+    background-color: var(--scrollbar-thumb-color);
   }
 }
 

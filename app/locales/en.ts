@@ -84,8 +84,9 @@ const en: LocaleType = {
       if (submitKey === String(SubmitKey.Enter)) {
         inputHints += ", Shift + Enter to wrap";
       }
-      return inputHints + ", / to search prompts, : to use commands";
+      return inputHints;
     },
+    MobileInput: "Type a message...",
     Send: "Send",
     StartSpeak: "Start Speak",
     StopSpeak: "Stop Speak",
