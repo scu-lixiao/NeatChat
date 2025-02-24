@@ -41,6 +41,7 @@ import {
   getMessageTextContent,
   isVisionModel,
   isDalle3 as _isDalle3,
+  getMessageTextContentWithoutThinking,
 } from "@/app/utils";
 import { fetch } from "@/app/utils/stream";
 
@@ -216,7 +217,9 @@ export class ChatGPTApi implements LLMApi {
       for (const v of options.messages) {
         const content = visionModel
           ? await preProcessImageContent(v.content)
-          : getMessageTextContent(v);
+          : v.role === "assistant" // 如果 role 是 assistant
+          ? getMessageTextContentWithoutThinking(v) // 调用 getMessageTextContentWithoutThinking
+          : getMessageTextContent(v); // 否则调用 getMessageTextContent
         if (!(isO1 && v.role === "system"))
           messages.push({ role: v.role, content });
       }
@@ -285,6 +288,7 @@ export class ChatGPTApi implements LLMApi {
       }
       if (shouldStream) {
         let index = -1;
+        let isInThinking = false;
         const session = useChatStore.getState().currentSession();
         const [_, funcs] = usePluginStore
           .getState()
@@ -326,8 +330,9 @@ export class ChatGPTApi implements LLMApi {
             const json = JSON.parse(text);
             const choices = json.choices as Array<{
               delta: {
-                content: string;
+                content: string | undefined;
                 tool_calls: ChatMessageTool[];
+                reasoning_content: string | undefined;
               };
             }>;
             const tool_calls = choices[0]?.delta?.tool_calls;
@@ -347,6 +352,26 @@ export class ChatGPTApi implements LLMApi {
               } else {
                 // @ts-ignore
                 runTools[index]["function"]["arguments"] += args;
+              }
+            }
+            const reasoning = choices[0]?.delta?.reasoning_content;
+            const content = choices[0]?.delta?.content;
+
+            if (reasoning && reasoning.length > 0) {
+              if (!isInThinking) {
+                isInThinking = true;
+                return "<think>\n" + reasoning;
+              } else {
+                return reasoning;
+              }
+            } 
+            
+            if (content && content.length > 0) {
+              if (isInThinking) {
+                isInThinking = false;
+                return "\n</think>\n\n" + content;
+              } else {
+                return content;
               }
             }
             return choices[0]?.delta?.content;
