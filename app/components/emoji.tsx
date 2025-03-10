@@ -102,8 +102,7 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
           }
 
           if (
-            model.startsWith("gpt-4") ||
-            model.startsWith("chatgpt-4o") ||
+            model.includes("gpt") ||
             model.startsWith("o1") ||
             model.startsWith("o3")
           ) {

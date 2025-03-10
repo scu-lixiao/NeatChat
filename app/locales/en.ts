@@ -484,6 +484,31 @@ const en: LocaleType = {
       CustomModel: {
         Title: "Custom Models",
         SubTitle: "Custom model options, seperated by comma",
+        ModelSelector: "Select Models",
+        FetchModels: "Fetch Models",
+        FetchSuccessFromClient: (count: number) =>
+          `Successfully fetched ${count} models from client configuration`,
+        FetchSuccessFromServer: (count: number) =>
+          `Successfully fetched ${count} models from server configuration`,
+        FetchFailedFromClient: (error: string) =>
+          `Failed to fetch models from client configuration: ${error}`,
+        FetchFailedFromServer: (error: string) =>
+          `Failed to fetch models from server configuration: ${error}`,
+        ApiKeyRequired: "Please set API key first",
+        InvalidResponse: "Invalid response format",
+        RequestFailed: (status: number) => `Request failed: ${status}`,
+        InputPlaceholder: "Enter custom model name and click to add",
+        SelectAll: "Select All",
+        SelectNone: "Select None",
+        ModelExists: "Model already exists",
+        EditCategories: "Edit Model Categories",
+        CategoryName: "Category Name",
+        MatchKeyword: "Match Keyword",
+        AddCategory: "Add",
+        CategoryTip:
+          'Match keyword will be used to identify model categories, e.g. "gpt" will match all models containing "gpt"',
+        ExistingCategories: "Existing Custom Categories",
+        NoCustomCategories: "No custom categories yet",
       },
       Google: {
         ApiKey: {
@@ -777,6 +802,8 @@ const en: LocaleType = {
     Import: "Import",
     Sync: "Sync",
     Config: "Config",
+    Search: "Search",
+    All: "All",
   },
   Exporter: {
     Description: {

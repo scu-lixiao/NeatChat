@@ -68,6 +68,7 @@ import {
   getMessageImages,
   isVisionModel,
   isDalle3,
+  showPlugins,
   safeLocalStorage,
 } from "../utils";
 
@@ -742,18 +743,24 @@ export function ChatActions(props: {
           />
         )}
 
-        <ChatAction
-          onClick={() => {
-            // 移除模型判断，直接显示插件选择器
-            setShowPluginSelector(true);
-          }}
-          text={Locale.Plugin.Name}
-          icon={<PluginIcon />}
-        />
+        {showPlugins(currentProviderName, currentModel) && (
+          <ChatAction
+            onClick={() => {
+              if (currentModel === "gemini-2.0-flash-exp") {
+                setShowPluginSelector(true);
+              } else if (pluginStore.getAll().length === 0) {
+                navigate(Path.Plugins);
+              } else {
+                setShowPluginSelector(true);
+              }
+            }}
+            text={Locale.Plugin.Name}
+            icon={<PluginIcon />}
+          />
+        )}
         {showPluginSelector && (
           <SimpleMultipleSelector
             items={[
-              // 只有在 gemini-2.0-flash-exp 模型下才显示 googleSearch 选项
               ...(currentModel === "gemini-2.0-flash-exp"
                 ? [
                     {
@@ -762,7 +769,6 @@ export function ChatActions(props: {
                     },
                   ]
                 : []),
-              // 显示所有已安装的插件
               ...pluginStore.getAll().map((item) => ({
                 title: `${item?.title}@${item?.version}`,
                 value: item?.id,
