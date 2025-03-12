@@ -1403,7 +1403,13 @@ export function Settings() {
         <IconButton
           icon={<ResetIcon />}
           text={Locale.Settings.Access.CustomModel.FetchModels}
-          onClick={() => setShowModelSelector(true)}
+          onClick={() => {
+            if (accessStore.isAuthorized()) {
+              setShowModelSelector(true);
+            } else {
+              showToast("请先在设置中输入访问密码");
+            }
+          }}
           style={{ flexShrink: 0 }} // 防止按钮被压缩
         />
       </div>

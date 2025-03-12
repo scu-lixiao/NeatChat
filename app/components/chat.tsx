@@ -637,7 +637,9 @@ export function ChatActions(props: {
                   : ""
               }`,
               value: `${m.name}@${m?.provider?.providerName}`,
-              icon: <Avatar model={m.name} />,
+              icon: (
+                <Avatar model={m.name} provider={m?.provider?.providerName} />
+              ),
             }))}
             onClose={() => setShowModelSelector(false)}
             onSelection={(m) => {
