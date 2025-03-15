@@ -320,6 +320,7 @@ const openaiModels = [
   "gemini-2.0-pro-exp-02-05",
   "gemini-2.0-flash-lite-preview-02-05",
   "gemini-2.0-flash-thinking-exp-01-21",
+  "gemini-2.0-flash-exp-image-generation",
   "llama-3.1-70b-versatile",
   "llama-3.1-405b-reasoning",
   "mistral-large-latest",
