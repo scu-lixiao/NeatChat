@@ -14,7 +14,7 @@ import LoadingIcon from "../icons/three-dots.svg";
 import ReloadButtonIcon from "../icons/reload.svg";
 import React from "react";
 import { useDebouncedCallback } from "use-debounce";
-import { showImageModal, FullScreen } from "./ui-lib";
+import { showImageModal, FullScreen, showToast } from "./ui-lib";
 import {
   ArtifactsShareButton,
   HTMLPreview,
@@ -24,6 +24,7 @@ import { useChatStore } from "../store";
 import { IconButton } from "./button";
 
 import { useAppConfig } from "../store/config";
+import { FileAttachment } from "./file-attachment";
 
 function Details(props: { children: React.ReactNode }) {
   return <details open>{props.children}</details>;
@@ -277,10 +278,58 @@ function tryWrapHtmlCode(text: string) {
 }
 
 function formatThinkText(text: string): string {
-  // 检查是否以 <think> 开头但没有结束标签
+  // 创建一个函数来处理思考时间
+  const handleThinkingTime = (thinkContent: string) => {
+    // 尝试从localStorage获取开始和结束时间
+    try {
+      const thinkStartKey = `think_start_${thinkContent
+        .substring(0, 50)
+        .trim()}`;
+      const thinkEndKey = `think_end_${thinkContent.substring(0, 50).trim()}`;
+
+      // 获取开始时间
+      const startTime = localStorage.getItem(thinkStartKey);
+
+      if (startTime) {
+        // 检查是否已经有结束时间
+        let endTime = localStorage.getItem(thinkEndKey);
+
+        // 如果没有结束时间，才设置当前时间为结束时间
+        if (!endTime) {
+          endTime = Date.now().toString();
+          localStorage.setItem(thinkEndKey, endTime);
+        }
+
+        // 使用结束时间计算持续时间
+        const duration = Math.round(
+          (parseInt(endTime) - parseInt(startTime)) / 1000,
+        );
+        return duration;
+      }
+    } catch (e) {
+      console.error("处理思考时间出错:", e);
+    }
+
+    return null;
+  };
+
+  // 处理正在思考的情况（只有开始标签）
   if (text.startsWith("<think>") && !text.includes("</think>")) {
     // 获取 <think> 后的所有内容
     const thinkContent = text.slice("<think>".length);
+
+    // 保存开始时间到localStorage
+    try {
+      const thinkStartKey = `think_start_${thinkContent
+        .substring(0, 50)
+        .trim()}`;
+      if (!localStorage.getItem(thinkStartKey)) {
+        localStorage.setItem(thinkStartKey, Date.now().toString());
+      }
+    } catch (e) {
+      console.error("保存思考开始时间出错:", e);
+    }
+
     // 给每一行添加引用符号
     const quotedContent = thinkContent
       .split("\n")
@@ -295,7 +344,7 @@ ${quotedContent}
 </details>`;
   }
 
-  // 处理完整的 think 标签
+  // 处理完整的思考过程（有结束标签）
   const pattern = /^<think>([\s\S]*?)<\/think>/;
   return text.replace(pattern, (match, thinkContent) => {
     // 给每一行添加引用符号
@@ -304,8 +353,12 @@ ${quotedContent}
       .map((line: string) => (line.trim() ? `> ${line}` : ">"))
       .join("\n");
 
+    // 获取思考用时
+    const duration = handleThinkingTime(thinkContent);
+    const durationText = duration ? ` (用时 ${duration} 秒)` : "";
+
     return `<details open>
-<summary>${Locale.NewChat.Think}</summary>
+<summary>${Locale.NewChat.Think}${durationText}</summary>
 
 ${quotedContent}
 
@@ -314,8 +367,66 @@ ${quotedContent}
 }
 
 function _MarkDownContent(props: { content: string }) {
+  // 检测文件附件格式
+  const detectFileAttachments = (content: string) => {
+    const fileRegex =
+      /文件名: (.+?)\n类型: (.+?)\n大小: (.+?) KB\n\n([\s\S]+?)(?=\n\n---|$)/g;
+    let match;
+    const files = [];
+
+    while ((match = fileRegex.exec(content)) !== null) {
+      files.push({
+        fileName: match[1],
+        fileType: match[2],
+        fileSize: parseFloat(match[3]) * 1024, // 转换为字节
+        content: match[4],
+      });
+    }
+
+    return files;
+  };
+
+  // 替换文件内容为文件附件组件
+  const replaceFileAttachments = (content: string) => {
+    const files = detectFileAttachments(content);
+
+    if (files.length === 0) {
+      return content;
+    }
+
+    let newContent = content;
+
+    // 使用更友好的链接文本
+    files.forEach((file, index) => {
+      // 创建一个安全的替换模式
+      const fileMarker = `文件名: ${file.fileName}\n类型: ${
+        file.fileType
+      }\n大小: ${(file.fileSize / 1024).toFixed(2)} KB\n\n`;
+      const replacement = `[📄 ${file.fileName}](file://${encodeURIComponent(
+        file.fileName,
+      )}?type=${encodeURIComponent(file.fileType)}&size=${file.fileSize})`;
+      const startIndex = newContent.indexOf(fileMarker);
+
+      if (startIndex >= 0) {
+        // 找到文件内容的结束位置
+        const contentStart = startIndex + fileMarker.length;
+        let contentEnd = newContent.indexOf("\n\n---\n\n", contentStart);
+        if (contentEnd < 0) contentEnd = newContent.length;
+
+        // 使用特殊格式的 Markdown 链接，可以被 ReactMarkdown 正确处理
+        newContent =
+          newContent.substring(0, startIndex) +
+          replacement +
+          newContent.substring(contentEnd);
+      }
+    });
+
+    return newContent;
+  };
+
   const escapedContent = useMemo(() => {
-    return tryWrapHtmlCode(formatThinkText(escapeBrackets(props.content)));
+    const processedContent = replaceFileAttachments(props.content);
+    return tryWrapHtmlCode(formatThinkText(escapeBrackets(processedContent)));
   }, [props.content]);
 
   return (
@@ -333,11 +444,80 @@ function _MarkDownContent(props: { content: string }) {
         ],
       ]}
       components={{
-        pre: PreCode,
-        code: CustomCode,
-        p: (pProps) => <p {...pProps} dir="auto" />,
+        // 添加自定义组件处理
         a: (aProps) => {
           const href = aProps.href || "";
+
+          // 检测并阻止javascript协议
+          if (href.toLowerCase().startsWith("javascript:")) {
+            // 返回没有href的链接或替换为安全的替代方案
+            return (
+              <a
+                {...aProps}
+                onClick={(e) => e.preventDefault()}
+                style={{ color: "gray", textDecoration: "line-through" }}
+                title="已阻止不安全链接"
+              >
+                {aProps.children}
+              </a>
+            );
+          }
+
+          // 处理文件附件链接
+          if (href.startsWith("file://")) {
+            try {
+              const url = new URL(href);
+              const fileName = decodeURIComponent(url.pathname.substring(2)); // 去掉 '//'
+              const fileType = url.searchParams.get("type") || "未知类型";
+              const fileSize = parseFloat(url.searchParams.get("size") || "0");
+
+              // 忽略链接文本，直接使用 FileAttachment 组件
+              return (
+                <FileAttachment
+                  fileName={fileName}
+                  fileType={fileType}
+                  fileSize={fileSize}
+                  onClick={() => {
+                    try {
+                      // 点击时显示文件内容
+                      showToast("文件内容已复制到剪贴板");
+                      // 使用更安全的方式查找文件内容
+                      const fileMarker = `文件名: ${fileName}\n类型: ${fileType}\n大小: ${(
+                        fileSize / 1024
+                      ).toFixed(2)} KB\n\n`;
+                      const startIndex = props.content.indexOf(fileMarker);
+
+                      if (startIndex >= 0) {
+                        const contentStart =
+                          props.content.indexOf("\n\n", startIndex) + 2;
+                        let contentEnd = props.content.indexOf(
+                          "\n\n---\n\n",
+                          contentStart,
+                        );
+                        if (contentEnd < 0) contentEnd = props.content.length;
+
+                        const fileContent = props.content.substring(
+                          contentStart,
+                          contentEnd,
+                        );
+                        copyToClipboard(fileContent);
+                      } else {
+                        copyToClipboard("无法找到文件内容");
+                      }
+                    } catch (error) {
+                      console.error("复制文件内容时出错:", error);
+                      showToast("复制文件内容失败");
+                    }
+                  }}
+                />
+              );
+            } catch (error) {
+              console.error("解析文件附件链接出错:", error);
+              return <span>文件附件加载失败</span>;
+            }
+          }
+
+          // 处理音频链接
           if (/\.(aac|mp3|opus|wav)$/.test(href)) {
             return (
               <figure>
@@ -345,6 +525,8 @@ function _MarkDownContent(props: { content: string }) {
               </figure>
             );
           }
+
+          // 处理视频链接
           if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
             return (
               <video controls width="99.9%">
@@ -352,10 +534,17 @@ function _MarkDownContent(props: { content: string }) {
               </video>
             );
           }
+
+          // 处理其他安全链接
           const isInternal = /^\/#/i.test(href);
           const target = isInternal ? "_self" : aProps.target ?? "_blank";
-          return <a {...aProps} target={target} />;
+          const rel = !isInternal ? "noopener noreferrer" : undefined;
+
+          return <a {...aProps} href={href} target={target} rel={rel} />;
         },
+        pre: PreCode,
+        code: CustomCode,
+        p: (pProps) => <p {...pProps} dir="auto" />,
         details: Details,
         summary: Summary,
       }}
