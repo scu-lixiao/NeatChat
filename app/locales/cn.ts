@@ -695,6 +695,55 @@ const cn = {
   Discovery: {
     Name: "发现",
   },
+  Mcp: {
+    Name: "MCP",
+    Market: {
+      Title: "MCP 市场",
+      SubTitle: (count: number) => `${count} 个服务器已配置`,
+      Loading: "加载预设服务器列表...",
+      NoServers: "没有可用的服务器",
+      SearchPlaceholder: "搜索 MCP 服务器",
+      Status: {
+        Active: "运行中",
+        Paused: "已停止",
+        Error: "错误",
+        Initializing: "初始化中",
+        Undefined: "未配置",
+      },
+      Actions: {
+        Add: "添加",
+        Configure: "配置",
+        Start: "启动",
+        Stop: "停止",
+        Tools: "工具",
+        RestartAll: "重启所有",
+      },
+      Operations: {
+        Starting: "正在启动...",
+        Stopping: "正在停止...",
+        Updating: "正在更新配置...",
+        Creating: "正在创建 MCP 客户端...",
+      },
+      ConfigModal: {
+        Title: "配置服务器 - ",
+        Save: "保存",
+        Cancel: "取消",
+      },
+      ToolsModal: {
+        Title: "服务器详情 - ",
+        Close: "关闭",
+        NoTools: "没有可用的工具",
+        Loading: "加载中...",
+      },
+      Errors: {
+        LoadFailed: "加载预设服务器失败",
+        InitFailed: "加载初始状态失败",
+        SaveFailed: "保存配置失败",
+        StartFailed: "启动服务器失败，请检查日志",
+        StopFailed: "停止服务器失败",
+      },
+    },
+  },
   FineTuned: {
     Sysmessage: "你是一个助手",
   },

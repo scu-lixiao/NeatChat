@@ -705,6 +705,55 @@ const en: LocaleType = {
   Discovery: {
     Name: "Discovery",
   },
+  Mcp: {
+    Name: "MCP",
+    Market: {
+      Title: "MCP Market",
+      SubTitle: (count: number) => `${count} servers configured`,
+      Loading: "Loading preset server list...",
+      NoServers: "No servers available",
+      SearchPlaceholder: "Search MCP Server",
+      Status: {
+        Active: "Running",
+        Paused: "Stopped",
+        Error: "Error",
+        Initializing: "Initializing",
+        Undefined: "Undefined",
+      },
+      Actions: {
+        Add: "Add",
+        Configure: "Configure",
+        Start: "Start",
+        Stop: "Stop",
+        Tools: "Tools",
+        RestartAll: "Restart All",
+      },
+      Operations: {
+        Starting: "Starting server...",
+        Stopping: "Stopping server...",
+        Updating: "Updating configuration...",
+        Creating: "Creating MCP client...",
+      },
+      ConfigModal: {
+        Title: "Configure Server - ",
+        Save: "Save",
+        Cancel: "Cancel",
+      },
+      ToolsModal: {
+        Title: "Server Details - ",
+        Close: "Close",
+        NoTools: "No tools available",
+        Loading: "Loading...",
+      },
+      Errors: {
+        LoadFailed: "Failed to load preset servers",
+        InitFailed: "Failed to load initial state",
+        SaveFailed: "Failed to save configuration",
+        StartFailed: "Failed to start server, please check logs",
+        StopFailed: "Failed to stop server",
+      },
+    },
+  },
   FineTuned: {
     Sysmessage: "You are an assistant that",
   },
