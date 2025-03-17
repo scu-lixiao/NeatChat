@@ -102,6 +102,10 @@ const cn = {
       copyLastCode: "复制最后一个代码块",
       showShortcutKey: "显示快捷方式",
     },
+    TokenInfo: {
+      TokenCount: (count: number) => `${count} Tokens`,
+      FirstDelay: (delay: number) => `首字延迟: ${delay}ms`,
+    },
   },
   Export: {
     Title: "分享聊天记录",

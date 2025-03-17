@@ -1314,7 +1314,10 @@ function _Chat() {
     const textContent = getMessageTextContent(userMessage);
     const images = getMessageImages(userMessage);
     chatStore.onUserInput(textContent, images).then(() => setIsLoading(false));
-    inputRef.current?.focus();
+    // 只在非移动设备上聚焦输入框
+    if (!isMobileScreen) {
+      inputRef.current?.focus();
+    }
   };
 
   const onPinMessage = (message: ChatMessage) => {
@@ -2058,17 +2061,6 @@ function _Chat() {
                                         });
                                       }
                                     }
-                                    chatStore.updateTargetSession(
-                                      session,
-                                      (session) => {
-                                        const m = session.mask.context
-                                          .concat(session.messages)
-                                          .find((m) => m.id === message.id);
-                                        if (m) {
-                                          m.content = newContent;
-                                        }
-                                      },
-                                    );
                                   }}
                                 ></IconButton>
                               </div>
@@ -2110,6 +2102,8 @@ function _Chat() {
                           fontFamily={fontFamily}
                           parentRef={scrollRef}
                           defaultShow={i >= messages.length - 6}
+                          isUser={isUser}
+                          messageId={message.id}
                         />
                         {getMessageImages(message).length == 1 && (
                           <img

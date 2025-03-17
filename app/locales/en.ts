@@ -103,6 +103,10 @@ const en: LocaleType = {
       copyLastCode: "Copy Last Code Block",
       showShortcutKey: "Show Shortcuts",
     },
+    TokenInfo: {
+      TokenCount: (count: number) => `${count} Tokens`,
+      FirstDelay: (delay: number) => `First Response: ${delay}ms`,
+    },
   },
   Export: {
     Title: "Export Messages",
