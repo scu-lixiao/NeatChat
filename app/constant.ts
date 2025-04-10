@@ -332,7 +332,10 @@ const openaiModels = [
   "deepseek-chat",
   "deepseek-reasoner",
   "DeepSeek-R1",
-  "grok-2-latest",
+  "grok-3-mini-fast-beta",
+  "grok-3-mini-beta",
+  "grok-3-fast-beta",
+  "grok-3-beta",
   "flux",
   "tts-1-hd",
 ];
