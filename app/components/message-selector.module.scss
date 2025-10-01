@@ -1,0 +1,94 @@
+@import "../styles/premium-mixins.scss";
+
+.message-selector {
+  background: rgb(8, 8, 8);
+  color: rgb(240, 240, 240);
+  
+  .message-filter {
+    display: flex;
+
+    .search-bar {
+      max-width: unset;
+      flex-grow: 1;
+      margin-right: 10px;
+    }
+
+    .actions {
+      display: flex;
+
+      button:not(:last-child) {
+        margin-right: 10px;
+      }
+    }
+
+    @media screen and (max-width: 600px) {
+      flex-direction: column;
+
+      .search-bar {
+        margin-right: 0;
+      }
+
+      .actions {
+        margin-top: 20px;
+
+        button {
+          flex-grow: 1;
+        }
+      }
+    }
+  }
+
+  .messages {
+    margin-top: 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    background: rgb(4, 4, 4);
+    overflow: hidden;
+
+    .message {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+
+      &-selected {
+        background: rgba(100, 150, 255, 0.15);
+        border-left: 3px solid rgba(100, 150, 255, 0.8);
+      }
+      
+      &:hover {
+        background: rgba(100, 150, 255, 0.05);
+      }
+
+      &:not(:last-child) {
+        border-bottom: 1px solid rgba(100, 150, 255, 0.1);
+      }
+
+      .avatar {
+        margin-right: 10px;
+      }
+
+      .body {
+        flex: 1;
+        max-width: calc(100% - 80px);
+
+        .date {
+          font-size: 12px;
+          line-height: 1.2;
+          opacity: 0.5;
+        }
+
+        .content {
+          font-size: 12px;
+        }
+      }
+
+      .checkbox {
+        display: flex;
+        justify-content: flex-end;
+        flex: 1;
+      }
+    }
+  }
+}

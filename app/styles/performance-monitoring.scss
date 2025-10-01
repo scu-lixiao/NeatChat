@@ -1,0 +1,496 @@
+// {{CHENGQI:
+// Action: Created
+// Timestamp: 2025-06-10 18:40:49 +08:00
+// Reason: P2-TE-012 创建性能监控专用样式，支持不同质量级别的动画和视觉效果
+// Principle_Applied: KISS(简洁样式结构)、DRY(复用premium-theme变量)、可维护性
+// Optimization: CSS变量动态控制、GPU加速、性能友好的选择器
+// Architectural_Note (AR): 与现有premium-theme体系完全集成，遵循统一设计语言
+// Documentation_Note (DW): 完整的性能级别样式定义，清晰的变量命名和用途说明
+// }}
+
+@import "./premium-theme.scss";
+
+// ================================
+// 性能监控系统动态变量
+// ================================
+
+:root {
+  // 量子动画质量控制变量 (由性能监控系统动态更新)
+  --quantum-duration-multiplier: 1.0;     // 动画时长倍数 (0.3-1.0)
+  --quantum-effects-opacity: 0.8;         // 特效透明度 (0.2-1.0)
+  --quantum-blur-intensity: 20px;         // 模糊强度 (2px-30px)
+  --quantum-particle-density: 1.0;        // 粒子密度 (0.1-1.0)
+  --quantum-glow-intensity: 1.0;          // 发光强度 (0.2-1.0)
+  --quantum-transform-precision: 1.0;     // 变换精度 (0.1-1.0)
+}
+
+// ================================
+// 动画质量级别主题类
+// ================================
+
+// 最小化动画模式 (低端设备/用户偏好)
+.animation-quality-minimal {
+  --quantum-duration-multiplier: 0.3;
+  --quantum-effects-opacity: 0.2;
+  --quantum-blur-intensity: 2px;
+  --quantum-particle-density: 0.0;
+  --quantum-glow-intensity: 0.3;
+  --quantum-transform-precision: 0.1;
+  
+  // 禁用复杂动画
+  * {
+    animation-duration: calc(var(--quantum-duration-xs) * var(--quantum-duration-multiplier)) !important;
+    transition-duration: calc(var(--quantum-duration-xs) * var(--quantum-duration-multiplier)) !important;
+  }
+  
+  // 简化变换
+  .starlight-border,
+  .focus-glow,
+  .energy-border {
+    opacity: var(--quantum-effects-opacity);
+    backdrop-filter: blur(calc(var(--quantum-blur-intensity) * 0.5));
+  }
+  
+  // 禁用粒子效果
+  .quantum-particles,
+  .chain-reaction-layer,
+  .page-transition-particles {
+    display: none;
+  }
+}
+
+// 简化动画模式 (中低端设备)
+.animation-quality-reduced {
+  --quantum-duration-multiplier: 0.6;
+  --quantum-effects-opacity: 0.4;
+  --quantum-blur-intensity: 5px;
+  --quantum-particle-density: 0.3;
+  --quantum-glow-intensity: 0.5;
+  --quantum-transform-precision: 0.5;
+  
+  // 减少动画复杂度
+  .energy-border[data-type="flow"],
+  .chain-reaction-magnetic,
+  .quantum-particles {
+    opacity: var(--quantum-effects-opacity);
+  }
+  
+  // 简化转场效果
+  .page-transition-quantum,
+  .page-transition-molecular {
+    --transition-complexity: 0.5;
+  }
+}
+
+// 标准动画模式 (中端设备)
+.animation-quality-standard {
+  --quantum-duration-multiplier: 1.0;
+  --quantum-effects-opacity: 0.6;
+  --quantum-blur-intensity: 10px;
+  --quantum-particle-density: 0.6;
+  --quantum-glow-intensity: 0.7;
+  --quantum-transform-precision: 0.8;
+}
+
+// 高端动画模式 (高端设备)
+.animation-quality-premium {
+  --quantum-duration-multiplier: 1.0;
+  --quantum-effects-opacity: 0.8;
+  --quantum-blur-intensity: 20px;
+  --quantum-particle-density: 0.8;
+  --quantum-glow-intensity: 0.9;
+  --quantum-transform-precision: 1.0;
+  
+  // 启用高级效果
+  .starlight-border {
+    box-shadow: 
+      0 0 20px rgba(100, 150, 255, calc(0.3 * var(--quantum-glow-intensity))),
+      inset 0 0 20px rgba(100, 150, 255, calc(0.1 * var(--quantum-glow-intensity)));
+  }
+}
+
+// 极致动画模式 (旗舰设备)
+.animation-quality-ultra {
+  --quantum-duration-multiplier: 1.0;
+  --quantum-effects-opacity: 1.0;
+  --quantum-blur-intensity: 30px;
+  --quantum-particle-density: 1.0;
+  --quantum-glow-intensity: 1.0;
+  --quantum-transform-precision: 1.0;
+  
+  // 启用所有高级效果
+  .quantum-particles {
+    display: block;
+    opacity: var(--quantum-effects-opacity);
+  }
+  
+  .energy-border[data-type="flow"] {
+    animation: energy-flow-enhanced calc(var(--quantum-duration-xl) * var(--quantum-duration-multiplier)) infinite;
+  }
+  
+  // 增强发光效果
+  .starlight-border,
+  .focus-glow {
+    box-shadow: 
+      0 0 30px rgba(100, 150, 255, calc(0.4 * var(--quantum-glow-intensity))),
+      0 0 60px rgba(100, 150, 255, calc(0.2 * var(--quantum-glow-intensity))),
+      inset 0 0 30px rgba(100, 150, 255, calc(0.15 * var(--quantum-glow-intensity)));
+  }
+}
+
+// ================================
+// 性能监控仪表板样式
+// ================================
+
+.performance-monitor-dashboard {
+  @include starlight-border(subtle);
+  
+  background: var(--premium-bg-void);
+  backdrop-filter: blur(calc(var(--quantum-blur-intensity) * 1.5)) saturate(1.2);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 280px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: var(--premium-text-primary);
+  user-select: none;
+  
+  // 动画性能优化
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  
+  &.minimized {
+    padding: 8px;
+    min-width: 120px;
+    
+    .dashboard-content {
+      display: none;
+    }
+  }
+  
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--premium-border-starlight);
+    padding-bottom: 8px;
+    
+    .dashboard-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #00ffff;
+      text-shadow: 0 0 10px rgba(0, 255, 255, calc(0.5 * var(--quantum-glow-intensity)));
+    }
+    
+    .dashboard-controls {
+      display: flex;
+      gap: 8px;
+      
+      .control-button {
+        @include starlight-border(subtle);
+        
+        background: transparent;
+        border-radius: 4px;
+        padding: 4px 8px;
+        color: var(--premium-text-primary);
+        cursor: pointer;
+        font-size: 10px;
+        transition: all calc(var(--quantum-duration-sm) * var(--quantum-duration-multiplier)) var(--quantum-ease-out);
+        
+        &:hover {
+          @include starlight-border(normal);
+          @include focus-glow(sm);
+          
+          background: var(--premium-bg-nebula);
+          transform: translateY(-1px);
+        }
+        
+        &:active {
+          transform: translateY(0);
+        }
+      }
+    }
+  }
+  
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    padding: 4px 0;
+    
+    .metric-label {
+      color: var(--premium-text-secondary);
+      min-width: 80px;
+      font-size: 11px;
+    }
+    
+    .metric-value {
+      font-weight: bold;
+      font-size: 12px;
+      
+      &.fps-excellent { 
+        color: #00ff88; 
+        text-shadow: 0 0 8px rgba(0, 255, 136, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.fps-good { 
+        color: #ffff00; 
+        text-shadow: 0 0 8px rgba(255, 255, 0, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.fps-poor { 
+        color: #ff8800; 
+        text-shadow: 0 0 8px rgba(255, 136, 0, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.fps-critical { 
+        color: #ff4444; 
+        text-shadow: 0 0 8px rgba(255, 68, 68, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      
+      &.performance-ultra { 
+        color: #00ffff; 
+        text-shadow: 0 0 8px rgba(0, 255, 255, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.performance-high { 
+        color: #00ff88; 
+        text-shadow: 0 0 8px rgba(0, 255, 136, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.performance-medium { 
+        color: #ffff00; 
+        text-shadow: 0 0 8px rgba(255, 255, 0, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+      &.performance-low { 
+        color: #ff4444; 
+        text-shadow: 0 0 8px rgba(255, 68, 68, calc(0.6 * var(--quantum-glow-intensity)));
+      }
+    }
+  }
+  
+  .advanced-section {
+    border-top: 1px solid var(--premium-border-starlight);
+    padding-top: 12px;
+    margin-top: 12px;
+    
+    .section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #00ffff;
+      margin-bottom: 8px;
+      text-shadow: 0 0 6px rgba(0, 255, 255, calc(0.4 * var(--quantum-glow-intensity)));
+    }
+    
+    .quality-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      margin-top: 8px;
+      
+      .quality-button {
+        @include starlight-border(subtle);
+        
+        background: transparent;
+        border-radius: 4px;
+        padding: 2px 4px;
+        color: var(--premium-text-primary);
+        cursor: pointer;
+        font-size: 9px;
+        transition: all calc(var(--quantum-duration-sm) * var(--quantum-duration-multiplier)) var(--quantum-ease-out);
+        
+        &.active {
+          @include energy-border(pulse);
+          
+          background: var(--premium-bg-stellar);
+          color: #00ffff;
+        }
+        
+        &:hover:not(.active) {
+          @include starlight-border(normal);
+          background: var(--premium-bg-nebula);
+        }
+      }
+    }
+    
+    .settings-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+      
+      .setting-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 10px;
+        
+        input[type="checkbox"] {
+          margin: 0;
+          accent-color: #00ffff;
+        }
+      }
+      
+      .export-button {
+        @include starlight-border(subtle);
+        
+        background: transparent;
+        border-radius: 4px;
+        padding: 4px;
+        color: var(--premium-text-primary);
+        cursor: pointer;
+        font-size: 9px;
+        margin-top: 4px;
+        transition: all calc(var(--quantum-duration-sm) * var(--quantum-duration-multiplier)) var(--quantum-ease-out);
+        
+        &:hover {
+          @include focus-glow(sm);
+          background: var(--premium-bg-stellar);
+          color: #00ffff;
+        }
+      }
+    }
+  }
+}
+
+// ================================
+// 性能指示器样式
+// ================================
+
+.performance-indicator {
+  position: fixed;
+  z-index: 9998;
+  background: rgba(0, 0, 0, calc(0.8 * var(--quantum-effects-opacity)));
+  border: 1px solid var(--premium-border-starlight);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+  font-size: 10px;
+  color: var(--premium-text-primary);
+  backdrop-filter: blur(calc(var(--quantum-blur-intensity) * 0.5));
+  pointer-events: none;
+  
+  // 位置变体
+  &.position-top-left { top: 10px; left: 10px; }
+  &.position-top-right { top: 10px; right: 10px; }
+  &.position-bottom-left { bottom: 10px; left: 10px; }
+  &.position-bottom-right { bottom: 10px; right: 10px; }
+  
+  .indicator-separator {
+    color: #666;
+    margin: 0 4px;
+  }
+}
+
+// ================================
+// 动画质量特定的keyframes增强
+// ================================
+
+// 超高质量模式的增强动画
+@keyframes energy-flow-enhanced {
+  0% {
+    background-position: 0% 0%;
+    box-shadow: 
+      0 0 20px rgba(100, 150, 255, calc(0.3 * var(--quantum-glow-intensity))),
+      inset 0 0 20px rgba(100, 150, 255, calc(0.1 * var(--quantum-glow-intensity)));
+  }
+  50% {
+    background-position: 100% 100%;
+    box-shadow: 
+      0 0 40px rgba(100, 150, 255, calc(0.5 * var(--quantum-glow-intensity))),
+      inset 0 0 30px rgba(100, 150, 255, calc(0.2 * var(--quantum-glow-intensity)));
+  }
+  100% {
+    background-position: 0% 0%;
+    box-shadow: 
+      0 0 20px rgba(100, 150, 255, calc(0.3 * var(--quantum-glow-intensity))),
+      inset 0 0 20px rgba(100, 150, 255, calc(0.1 * var(--quantum-glow-intensity)));
+  }
+}
+
+// ================================
+// 性能优化媒体查询
+// ================================
+
+// 低端设备自动降级
+@media (max-width: 768px), (pointer: coarse) {
+  :root {
+    --quantum-duration-multiplier: 0.6;
+    --quantum-effects-opacity: 0.4;
+    --quantum-blur-intensity: 5px;
+  }
+  
+  .performance-monitor-dashboard {
+    font-size: 11px;
+    min-width: 240px;
+    
+    &.minimized {
+      min-width: 100px;
+    }
+  }
+}
+
+// 尊重用户的动画偏好
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --quantum-duration-multiplier: 0.1;
+    --quantum-effects-opacity: 0.2;
+    --quantum-particle-density: 0.0;
+  }
+  
+  * {
+    animation-duration: 0.1s !important;
+    transition-duration: 0.1s !important;
+  }
+  
+  .quantum-particles,
+  .chain-reaction-layer {
+    display: none !important;
+  }
+}
+
+// 高对比度模式支持
+@media (prefers-contrast: high) {
+  .performance-monitor-dashboard {
+    border-width: 2px;
+    
+    .metric-value {
+      text-shadow: none;
+      font-weight: 900;
+    }
+  }
+}
+
+// ================================
+// 调试模式样式
+// ================================
+
+.debug-mode {
+  .performance-monitor-dashboard {
+    border: 2px solid #ff00ff;
+    
+    &::before {
+      content: "DEBUG";
+      position: absolute;
+      top: -10px;
+      right: 10px;
+      background: #ff00ff;
+      color: #000;
+      padding: 2px 6px;
+      font-size: 8px;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+  }
+  
+  .metric-value {
+    position: relative;
+    
+    &::after {
+      content: attr(data-debug-value);
+      position: absolute;
+      right: -40px;
+      top: 0;
+      color: #ff00ff;
+      font-size: 8px;
+      opacity: 0.7;
+    }
+  }
+} 

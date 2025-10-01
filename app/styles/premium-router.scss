@@ -1,0 +1,375 @@
+/**
+ * 高级路由管理器样式 - Premium UI Enhancement v2
+ * 
+ * 功能特性:
+ * - 性能监控面板样式
+ * - 路由转场状态指示
+ * - 开发调试界面
+ * - 响应式设计支持
+ */
+
+// 导入premium主题变量
+@import './premium-theme.scss';
+
+/* ===== 高级路由管理器基础样式 ===== */
+
+.premium-router {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  
+  // 确保转场容器的正确层叠
+  .premium-router-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+}
+
+/* ===== 性能监控面板 ===== */
+
+.performance-monitor {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  min-width: 200px;
+  padding: 12px;
+  background: var(--premium-bg-space);
+  border: 1px solid var(--premium-border-starlight);
+  border-radius: 8px;
+  box-shadow: var(--premium-shadow-lg);
+  backdrop-filter: blur(20px);
+  z-index: 9999;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 12px;
+  color: var(--premium-text-secondary);
+  opacity: 0.9;
+  transition: opacity var(--premium-duration-normal);
+  
+  &:hover {
+    opacity: 1;
+  }
+  
+  .monitor-header {
+    font-weight: 600;
+    color: var(--premium-text-primary);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--premium-border-subtle);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .monitor-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    
+    > div {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 0;
+      
+      &:not(.status) {
+        &::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: repeating-linear-gradient(
+            to right,
+            transparent,
+            transparent 2px,
+            var(--premium-border-subtle) 2px,
+            var(--premium-border-subtle) 4px
+          );
+          margin: 0 8px;
+        }
+      }
+    }
+    
+    .status {
+      margin-top: 6px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 500;
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      
+      &.good {
+        background: var(--premium-success-bg);
+        color: var(--premium-success-text);
+        border: 1px solid var(--premium-success-border);
+      }
+      
+      &.warning {
+        background: var(--premium-warning-bg);
+        color: var(--premium-warning-text);
+        border: 1px solid var(--premium-warning-border);
+      }
+      
+      &.error {
+        background: var(--premium-error-bg);
+        color: var(--premium-error-text);
+        border: 1px solid var(--premium-error-border);
+      }
+    }
+  }
+  
+  // 响应式设计
+  @media (max-width: 768px) {
+    top: 10px;
+    right: 10px;
+    min-width: 160px;
+    font-size: 11px;
+    padding: 8px;
+  }
+}
+
+/* ===== 路由转场状态指示器 ===== */
+
+.premium-router[data-is-transitioning="true"] {
+  // 转场进行中的状态指示
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--premium-glow-primary),
+      transparent
+    );
+    animation: transitionProgress 400ms ease-out;
+    z-index: 10000;
+  }
+}
+
+@keyframes transitionProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ===== 转场类型指示器 ===== */
+
+.premium-router {
+  // 为不同转场类型添加视觉指示
+  &[data-current-transition="slide-3d"] {
+    .premium-router-content {
+      --transition-indicator-color: var(--premium-glow-primary);
+    }
+  }
+  
+  &[data-current-transition="depth-stack"] {
+    .premium-router-content {
+      --transition-indicator-color: var(--premium-glow-secondary);
+    }
+  }
+  
+  &[data-current-transition="quantum-teleport"] {
+    .premium-router-content {
+      --transition-indicator-color: var(--premium-glow-accent);
+    }
+  }
+  
+  &[data-current-transition="dimension-shift"] {
+    .premium-router-content {
+      --transition-indicator-color: var(--premium-glow-warning);
+    }
+  }
+  
+  &[data-current-transition="energy-field"] {
+    .premium-router-content {
+      --transition-indicator-color: var(--premium-glow-success);
+    }
+  }
+}
+
+/* ===== 开发调试模式 ===== */
+
+.premium-router[data-debug-mode="true"] {
+  // 调试模式下的视觉辅助
+  .premium-router-content {
+    outline: 2px dashed var(--premium-border-focus);
+    outline-offset: -2px;
+    
+    &::before {
+      content: 'ROUTER DEBUG: ' attr(data-current-transition);
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: var(--premium-bg-space);
+      color: var(--premium-text-accent);
+      padding: 4px 8px;
+      font-size: 10px;
+      font-family: monospace;
+      border: 1px solid var(--premium-border-focus);
+      border-radius: 0 0 4px 0;
+      z-index: 10000;
+    }
+  }
+  
+  // 转场边界可视化
+  &[data-is-transitioning="true"] .premium-router-content {
+    background: 
+      linear-gradient(45deg, 
+        rgba(var(--premium-glow-primary-rgb), 0.05) 25%, 
+        transparent 25%),
+      linear-gradient(-45deg, 
+        rgba(var(--premium-glow-primary-rgb), 0.05) 25%, 
+        transparent 25%);
+    background-size: 20px 20px;
+    animation: debugPattern 1s linear infinite;
+  }
+}
+
+@keyframes debugPattern {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 20px 20px, -20px 20px; }
+}
+
+/* ===== 预加载状态指示 ===== */
+
+.premium-router[data-preload-enabled="true"] {
+  // 预加载状态的微妙指示
+  &::after {
+    content: '';
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 8px;
+    height: 8px;
+    background: var(--premium-glow-secondary);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: preloadPulse 2s ease-in-out infinite;
+    z-index: 9998;
+  }
+}
+
+@keyframes preloadPulse {
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: scale(1.2); 
+  }
+}
+
+/* ===== 缓存状态指示 ===== */
+
+.premium-router[data-cache-enabled="true"] {
+  // 缓存启用的指示器
+  &::before {
+    content: '';
+    position: fixed;
+    bottom: 20px;
+    right: 34px;
+    width: 6px;
+    height: 6px;
+    background: var(--premium-glow-accent);
+    border-radius: 2px;
+    opacity: 0.5;
+    z-index: 9998;
+  }
+}
+
+/* ===== 响应式优化 ===== */
+
+@media (max-width: 768px) {
+  .premium-router {
+    // 移动端转场优化
+    &[data-is-transitioning="true"] {
+      // 移动设备上减少复杂动画
+      .premium-router-content {
+        animation-duration: 200ms !important;
+        transition-duration: 200ms !important;
+      }
+    }
+  }
+  
+  .performance-monitor {
+    display: none; // 移动端隐藏性能监控面板
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-router {
+    // 减少动画偏好用户的优化
+    &::before,
+    &::after {
+      animation: none !important;
+    }
+    
+    .premium-router-content {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+  
+  .performance-monitor {
+    .status::before {
+      content: '(REDUCED MOTION) ';
+      opacity: 0.7;
+    }
+  }
+}
+
+/* ===== 高对比度支持 ===== */
+
+@media (prefers-contrast: high) {
+  .performance-monitor {
+    background: var(--black);
+    border: 2px solid var(--white);
+    backdrop-filter: none;
+    
+    .status {
+      &.good {
+        background: #004400;
+        color: #00ff00;
+        border-color: #00ff00;
+      }
+      
+      &.warning {
+        background: #444400;
+        color: #ffff00;
+        border-color: #ffff00;
+      }
+      
+      &.error {
+        background: #440000;
+        color: #ff0000;
+        border-color: #ff0000;
+      }
+    }
+  }
+}
+
+/* ===== 打印样式优化 ===== */
+
+@media print {
+  .premium-router {
+    &::before,
+    &::after {
+      display: none !important;
+    }
+  }
+  
+  .performance-monitor {
+    display: none !important;
+  }
+} 

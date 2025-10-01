@@ -1,0 +1,818 @@
+// HoloCard.module.scss - 全息卡片高端样式系统
+// {{CHENGQI:
+// Action: Created  
+// Timestamp: 2025-06-10 20:51:02 +08:00
+// Reason: P3-LD-015任务 - 创建HoloCard样式系统，实现磨砂玻璃、3D悬浮感、维度切换和光折射效果
+// Principle_Applied: DRY(复用premium-theme变量), KISS(模块化样式结构), 性能优化(GPU加速)
+// Optimization: 硬件加速动画 + 磨砂玻璃优化 + 3D变换优化 + 可访问性支持
+// Architectural_Note (AR): 基于premium-theme变量系统，集成全息材质效果和维度切换动画
+// Documentation_Note (DW): 完整的全息卡片效果实现，支持多种尺寸、效果强度和可访问性
+// }}
+
+@import "../../styles/premium-mixins.scss";
+
+/* =================================================================
+   HoloCard - 全息高端卡片组件样式系统
+   实现磨砂玻璃背景、3D悬浮感、维度切换动画、光折射效果等高端视觉体验
+   ================================================================= */
+
+/* 基础卡片容器 */
+.holoCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--premium-bg-void);
+  color: var(--premium-text-primary);
+  overflow: hidden;
+  outline: none;
+  transition: all var(--premium-duration-normal) var(--premium-ease-out);
+  
+  /* GPU加速优化 */
+  will-change: transform, box-shadow, opacity, backdrop-filter;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* 基础光感边框 */
+  
+  
+  /* 深邃空间背景 */
+  box-shadow: var(--premium-shadow-md);
+  
+  /* 防止文本选择 */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  
+  /* 可访问性焦点样式 */
+  &:focus-visible {
+    
+    outline: 2px solid var(--premium-border-aurora);
+    outline-offset: 2px;
+  }
+}
+
+/* =================================================================
+   卡片尺寸变体
+   ================================================================= */
+.size-sm {
+  min-height: 120px;
+  min-width: 180px;
+  border-radius: 12px;
+  
+  .cardContent {
+    padding: 12px;
+    font-size: 13px;
+  }
+}
+
+.size-md {
+  min-height: 160px;
+  min-width: 240px;
+  border-radius: 16px;
+  
+  .cardContent {
+    padding: 16px;
+    font-size: 14px;
+  }
+}
+
+.size-lg {
+  min-height: 200px;
+  min-width: 320px;
+  border-radius: 20px;
+  
+  .cardContent {
+    padding: 20px;
+    font-size: 15px;
+  }
+}
+
+.size-xl {
+  min-height: 280px;
+  min-width: 400px;
+  border-radius: 24px;
+  
+  .cardContent {
+    padding: 24px;
+    font-size: 16px;
+  }
+}
+
+.size-full {
+  width: 100%;
+  min-height: 200px;
+  border-radius: 16px;
+  
+  .cardContent {
+    padding: 20px;
+    font-size: 14px;
+  }
+}
+
+/* =================================================================
+   全息背景层系统 - 3层深度背景
+   ================================================================= */
+.holoBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+.holoLayer1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    var(--premium-bg-space) 0%,
+    var(--premium-bg-void) 50%,
+    var(--premium-bg-nebula) 100%
+  );
+  opacity: 0.9;
+  border-radius: inherit;
+}
+
+.holoLayer2 {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    rgba(100, 150, 255, 0.08) 0%,
+    transparent 50%
+  ),
+  radial-gradient(
+    ellipse at 70% 80%,
+    rgba(150, 100, 255, 0.06) 0%,
+    transparent 50%
+  );
+  border-radius: inherit;
+}
+
+.holoLayer3 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: conic-gradient(
+    from 45deg,
+    transparent 0deg,
+    rgba(100, 150, 255, 0.05) 90deg,
+    transparent 180deg,
+    rgba(150, 100, 255, 0.05) 270deg,
+    transparent 360deg
+  );
+  opacity: 0;
+  transition: opacity var(--premium-duration-fast) var(--premium-ease-out);
+  border-radius: inherit;
+  animation: slow-rotation 20s linear infinite;
+}
+
+/* =================================================================
+   磨砂玻璃效果系统
+   ================================================================= */
+.glassMorphism {
+  background: rgba(255, 255, 255, var(--glass-opacity, 0.05));
+  backdrop-filter: blur(var(--glass-blur, 20px)) saturate(1.8);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 20px)) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  /* 磨砂玻璃增强效果 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
+/* =================================================================
+   3D悬浮感效果系统
+   ================================================================= */
+.floatingEffect {
+  transition: transform var(--premium-duration-normal) var(--premium-ease-spring);
+  
+  &.floating {
+    transform: translateY(calc(-1 * var(--floating-height, 4px))) scale(1.02);
+    box-shadow: 
+      var(--premium-shadow-lg),
+      0 var(--floating-height, 4px) calc(var(--floating-height, 4px) * 4) rgba(0, 0, 0, 0.4);
+  }
+}
+
+.tiltEffect {
+  transform-style: preserve-3d;
+  transition: transform var(--premium-duration-fast) var(--premium-ease-out);
+}
+
+/* =================================================================
+   维度切换效果系统
+   ================================================================= */
+.dimensionalShift {
+  transition: 
+    transform var(--dimension-transition, 400ms) var(--premium-ease-spring),
+    box-shadow var(--dimension-transition, 400ms) var(--premium-ease-out),
+    backdrop-filter var(--dimension-transition, 400ms) var(--premium-ease-out);
+}
+
+.dimension-normal {
+  transform: translateZ(0) scale(1);
+  z-index: auto;
+}
+
+.dimension-elevated {
+  transform: translateZ(20px) scale(1.02);
+  z-index: 10;
+  box-shadow: 
+    var(--premium-shadow-xl),
+    0 20px 40px rgba(0, 0, 0, 0.3);
+    
+  .holoLayer3 {
+    opacity: 0.6;
+  }
+}
+
+.dimension-transcendent {
+  transform: translateZ(40px) scale(1.05);
+  z-index: 100;
+  box-shadow: 
+    var(--premium-shadow-xl),
+    0 40px 80px rgba(0, 0, 0, 0.4),
+    var(--premium-glow-primary);
+    
+  .holoLayer3 {
+    opacity: 0.8;
+    animation-duration: 10s;
+  }
+}
+
+.dimension-void {
+  transform: translateZ(-10px) scale(0.95);
+  opacity: 0.6;
+  filter: blur(1px);
+}
+
+/* =================================================================
+   光折射效果系统
+   ================================================================= */
+.lightRefraction {
+  .refractionLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 3;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+}
+
+.refractionBeam1 {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    var(--refraction-color, rgba(100, 150, 255, 0.1)) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  transition: all var(--premium-duration-slow) var(--premium-ease-out);
+}
+
+.refractionBeam2 {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(150, 100, 255, 0.08) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transform: translateX(-100%) translateY(-100%) rotate(135deg);
+  transition: all var(--premium-duration-slow) var(--premium-ease-out);
+  animation-delay: 0.1s;
+}
+
+.refractionBeam3 {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    225deg,
+    transparent 40%,
+    rgba(255, 150, 100, 0.06) 50%,
+    transparent 60%
+  );
+  opacity: 0;
+  transform: translateX(-100%) translateY(-100%) rotate(225deg);
+  transition: all var(--premium-duration-slow) var(--premium-ease-out);
+  animation-delay: 0.2s;
+}
+
+/* 光折射强度变体 */
+.refraction-subtle {
+  .refractionBeam1,
+  .refractionBeam2,
+  .refractionBeam3 {
+    opacity: 0.3;
+  }
+}
+
+.refraction-normal {
+  .refractionBeam1,
+  .refractionBeam2,
+  .refractionBeam3 {
+    opacity: 0.6;
+  }
+}
+
+.refraction-intense {
+  .refractionBeam1,
+  .refractionBeam2,
+  .refractionBeam3 {
+    opacity: 0.8;
+  }
+}
+
+/* =================================================================
+   全息效果类型变体
+   ================================================================= */
+
+/* 玻璃全息效果 */
+.holo-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  
+  &.hovered,
+  &.holoActive {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(25px) saturate(2.0);
+    -webkit-backdrop-filter: blur(25px) saturate(2.0);
+    
+    .refractionBeam1,
+    .refractionBeam2,
+    .refractionBeam3 {
+      opacity: 1;
+      transform: translateX(100%) translateY(100%) rotate(45deg);
+    }
+  }
+}
+
+/* 水晶全息效果 */
+.holo-crystal {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(100, 150, 255, 0.05) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: conic-gradient(
+      from 0deg,
+      rgba(100, 150, 255, 0.3) 0deg,
+      rgba(150, 100, 255, 0.3) 120deg,
+      rgba(255, 100, 150, 0.3) 240deg,
+      rgba(100, 150, 255, 0.3) 360deg
+    );
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+  }
+  
+  &.hovered::after,
+  &.holoActive::after {
+    opacity: 0.6;
+    animation: crystal-rotation 4s linear infinite;
+  }
+}
+
+/* 等离子全息效果 */
+.holo-plasma {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(100, 150, 255, 0.1) 0%,
+    rgba(150, 100, 255, 0.08) 50%,
+    transparent 100%
+  );
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      45deg,
+      rgba(100, 150, 255, 0.1) 0%,
+      rgba(255, 100, 150, 0.1) 25%,
+      rgba(150, 255, 100, 0.1) 50%,
+      rgba(150, 100, 255, 0.1) 75%,
+      rgba(100, 150, 255, 0.1) 100%
+    );
+    background-size: 400% 400%;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 0.7;
+    animation: plasma-flow 3s ease-in-out infinite;
+  }
+}
+
+/* 量子全息效果 */
+.holo-quantum {
+  background: rgba(0, 0, 0, 0.2);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(100, 150, 255, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(150, 100, 255, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(255, 100, 150, 0.2) 0%, transparent 50%);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 1;
+    animation: quantum-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* 维度全息效果 */
+.holo-dimension {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(100, 150, 255, 0.1) 50%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      45deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.1) 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.1) 75%,
+      transparent 100%
+    );
+    background-size: 20px 20px;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+  }
+  
+  &.hovered::after,
+  &.holoActive::after {
+    opacity: 0.3;
+    animation: dimension-shift 1.5s ease-in-out infinite;
+  }
+}
+
+/* =================================================================
+   能量场边界效果
+   ================================================================= */
+.energyField {
+  .energyFieldBoundary {
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 4;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border: 1px solid rgba(100, 150, 255, 0.4);
+      border-radius: inherit;
+      opacity: 0;
+      transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+    }
+  }
+  
+  &.hovered .energyFieldBoundary::before,
+  &.holoActive .energyFieldBoundary::before {
+    opacity: 1;
+    animation: energy-flow 2s linear infinite;
+  }
+}
+
+/* =================================================================
+   粒子效果系统
+   ================================================================= */
+.particleEffect {
+  .particleContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 5;
+    border-radius: inherit;
+    overflow: hidden;
+  }
+  
+  [class^="particle"] {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(100, 150, 255, 0.8);
+    border-radius: 50%;
+    opacity: 0;
+  }
+  
+  .particle1 {
+    top: 20%;
+    left: 10%;
+    animation: particle-float-1 3s ease-in-out infinite;
+  }
+  
+  .particle2 {
+    top: 60%;
+    left: 80%;
+    animation: particle-float-2 4s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+  
+  .particle3 {
+    top: 80%;
+    left: 30%;
+    animation: particle-float-3 3.5s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+  
+  .particle4 {
+    top: 40%;
+    left: 70%;
+    animation: particle-float-4 4.5s ease-in-out infinite;
+    animation-delay: 1.5s;
+  }
+  
+  &.hovered [class^="particle"],
+  &.holoActive [class^="particle"] {
+    opacity: 1;
+  }
+}
+
+/* =================================================================
+   加载状态指示器
+   ================================================================= */
+.loading {
+  .loadingIndicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+  }
+  
+  .loadingSpinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(100, 150, 255, 0.2);
+    border-top: 2px solid rgba(100, 150, 255, 0.8);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  
+  .cardContent {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+}
+
+/* =================================================================
+   卡片内容区域
+   ================================================================= */
+.cardContent {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  transition: opacity var(--premium-duration-normal) var(--premium-ease-out);
+}
+
+.padding .cardContent {
+  padding: 16px;
+}
+
+/* =================================================================
+   交互状态
+   ================================================================= */
+.interactive {
+  cursor: pointer;
+  
+  &:hover {
+    transform: translateY(-2px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    transition-duration: var(--premium-duration-fast);
+  }
+}
+
+.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  
+  * {
+    pointer-events: none;
+  }
+}
+
+/* =================================================================
+   可访问性支持
+   ================================================================= */
+.reducedMotion {
+  animation: none !important;
+  transition: opacity var(--premium-duration-fast) ease !important;
+  
+  * {
+    animation: none !important;
+    transition: opacity var(--premium-duration-fast) ease !important;
+  }
+  
+  &.floating {
+    transform: none !important;
+  }
+}
+
+.highContrast {
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.8);
+  
+  .cardContent {
+    color: rgba(255, 255, 255, 0.95);
+  }
+}
+
+/* =================================================================
+   性能模式变体
+   ================================================================= */
+.performance-eco {
+  .holoLayer3,
+  .refractionBeam1,
+  .refractionBeam2,
+  .refractionBeam3,
+  [class^="particle"] {
+    display: none;
+  }
+  
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.performance-balanced {
+  .holoLayer3 {
+    animation-duration: 40s;
+  }
+}
+
+.performance-high {
+  .holoLayer3 {
+    animation-duration: 10s;
+  }
+}
+
+/* =================================================================
+   动画关键帧定义
+   ================================================================= */
+
+@keyframes slow-rotation {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes crystal-rotation {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes plasma-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes quantum-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes dimension-shift {
+  0%, 100% { background-position: 0px 0px; }
+  50% { background-position: 20px 20px; }
+}
+
+@keyframes energy-flow {
+  0% { box-shadow: 0 0 5px rgba(100, 150, 255, 0.4); }
+  50% { box-shadow: 0 0 20px rgba(100, 150, 255, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(100, 150, 255, 0.4); }
+}
+
+@keyframes particle-float-1 {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(10px, -15px); opacity: 0.8; }
+  90% { opacity: 1; }
+}
+
+@keyframes particle-float-2 {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(-15px, -10px); opacity: 0.8; }
+  90% { opacity: 1; }
+}
+
+@keyframes particle-float-3 {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(5px, -20px); opacity: 0.8; }
+  90% { opacity: 1; }
+}
+
+@keyframes particle-float-4 {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 1; }
+  50% { transform: translate(-10px, -5px); opacity: 0.8; }
+  90% { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

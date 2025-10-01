@@ -1,0 +1,541 @@
+/**
+ * {{CHENGQI:
+ * Action: Created
+ * Timestamp: 2025-06-10 18:44:40 +08:00
+ * Reason: P3-AR-018任务执行 - 创建性能级别样式系统和监控组件样式
+ * Principle_Applied: KISS(简洁样式结构)、DRY(复用premium-theme变量)、响应式设计
+ * Optimization: CSS变量动态控制、GPU硬件加速、移动端适配、可访问性支持
+ * Architectural_Note (AR): 基于现有premium-theme变量系统，保持样式架构一致性
+ * Documentation_Note (DW): 清晰的样式分组，性能级别对应的视觉变化，便于维护
+ * }}
+ */
+
+// ==================== 性能级别变量系统 ====================
+
+:root {
+  // 性能级别控制变量 (由PerformanceAdapter动态设置)
+  --performance-animation-scale: 1.0;      // 动画强度倍数
+  --performance-glass-opacity: 1.0;        // 磨砂玻璃透明度
+  --performance-shadow-intensity: 1.0;     // 阴影强度倍数
+  --performance-particle-density: 1.0;     // 粒子密度倍数
+  --performance-blur-intensity: 1.0;       // 模糊强度倍数
+  --performance-gradient-complexity: 1.0;  // 渐变复杂度倍数
+  --performance-duration-scale: 1.0;       // 动画持续时间倍数
+  --performance-target-fps: 60;            // 目标帧率
+  
+  // 性能级别映射颜色
+  --performance-eco-color: #4ade80;        // 绿色 - 节能模式
+  --performance-balanced-color: #3b82f6;   // 蓝色 - 平衡模式
+  --performance-high-color: #f59e0b;       // 橙色 - 高性能
+  --performance-extreme-color: #ef4444;    // 红色 - 极致模式
+}
+
+// ==================== 性能感知动画系统 ====================
+
+// 基础动画类 - 自动适配性能级别
+.performance-aware-animation {
+  transition-duration: calc(var(--premium-duration-md) * var(--performance-duration-scale));
+  animation-duration: calc(var(--premium-duration-md) * var(--performance-duration-scale));
+  will-change: transform, opacity;
+  
+  // 低性能设备降级
+  @media (prefers-reduced-motion: reduce) {
+    --performance-animation-scale: 0.2;
+    --performance-duration-scale: 0.5;
+    transition-duration: 0.1s;
+    animation: none;
+  }
+}
+
+// 性能感知的磨砂玻璃效果
+.performance-aware-glass {
+  backdrop-filter: 
+    blur(20px)
+    saturate(1.2);
+  background: rgba(
+    var(--premium-bg-void-rgb), 
+    0.8
+  );
+  
+  // 低性能设备降级为简单半透明
+  @supports not (backdrop-filter: blur(1px)) {
+    background: var(--premium-bg-void);
+    opacity: 0.95;
+  }
+}
+
+// 性能感知的阴影效果
+.performance-aware-shadow {
+  box-shadow: 
+    0 1px 3px rgba(0, 0, 0, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.24);
+    
+  &.shadow-lg {
+    box-shadow: 
+      0 4px 6px rgba(0, 0, 0, 0.07),
+      0 2px 4px rgba(0, 0, 0, 0.06),
+      var(--premium-shadow-lg);
+  }
+}
+
+// 性能感知的粒子效果
+.performance-aware-particles {
+  &::before {
+    opacity: var(--performance-particle-density);
+    animation-duration: calc(20s * var(--performance-duration-scale));
+  }
+  
+  // 低性能设备禁用粒子
+  @media (max-width: 768px), (prefers-reduced-motion: reduce) {
+    &::before {
+      display: none;
+    }
+  }
+}
+
+// ==================== 性能监控组件样式 ====================
+
+.performance-monitor {
+  position: fixed;
+  z-index: 9999;
+  background: var(--premium-bg-void);
+  border: 1px solid var(--premium-border-starlight);
+  border-radius: var(--premium-radius-lg);
+  box-shadow: var(--premium-shadow-xl);
+  backdrop-filter: blur(20px) saturate(1.2);
+  font-family: var(--font-mono, 'SF Mono', monospace);
+  font-size: 12px;
+  line-height: 1.4;
+  min-width: 240px;
+  max-width: 320px;
+  user-select: none;
+  
+  // 位置变体
+  &.performance-monitor--top-left {
+    top: 16px;
+    left: 16px;
+  }
+  
+  &.performance-monitor--top-right {
+    top: 16px;
+    right: 16px;
+  }
+  
+  &.performance-monitor--bottom-left {
+    bottom: 16px;
+    left: 16px;
+  }
+  
+  &.performance-monitor--bottom-right {
+    bottom: 16px;
+    right: 16px;
+  }
+  
+  // 紧凑模式
+  &.compact {
+    min-width: 180px;
+    font-size: 11px;
+    
+    .performance-monitor-header {
+      padding: 8px 12px;
+    }
+    
+    .performance-monitor-content {
+      padding: 8px 12px;
+    }
+  }
+  
+  // 折叠状态
+  &[data-collapsed="true"] {
+    .performance-monitor-content {
+      display: none;
+    }
+  }
+}
+
+// 监控组件标题栏
+.performance-monitor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--premium-border-subtle);
+  background: linear-gradient(135deg, 
+    var(--premium-bg-cosmos) 0%, 
+    var(--premium-bg-space) 100%);
+  border-radius: var(--premium-radius-lg) var(--premium-radius-lg) 0 0;
+}
+
+.monitor-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--premium-text-primary);
+  
+  .title-icon {
+    font-size: 14px;
+    animation: pulse 2s infinite;
+  }
+  
+  .title-text {
+    font-size: 13px;
+  }
+}
+
+.performance-badge {
+  padding: 2px 6px;
+  border-radius: var(--premium-radius-sm);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  &.performance-badge--eco {
+    background: var(--performance-eco-color);
+    color: var(--premium-bg-cosmos);
+  }
+  
+  &.performance-badge--balanced {
+    background: var(--performance-balanced-color);
+    color: white;
+  }
+  
+  &.performance-badge--high {
+    background: var(--performance-high-color);
+    color: var(--premium-bg-cosmos);
+  }
+  
+  &.performance-badge--extreme {
+    background: var(--performance-extreme-color);
+    color: white;
+  }
+}
+
+.collapse-button {
+  background: transparent;
+  border: 1px solid var(--premium-border-subtle);
+  border-radius: var(--premium-radius-sm);
+  color: var(--premium-text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 10px;
+  transition: all var(--premium-duration-sm);
+  
+  &:hover {
+    background: var(--premium-bg-nebula);
+    border-color: var(--premium-border-starlight);
+    color: var(--premium-text-primary);
+  }
+}
+
+// 监控组件内容区域
+.performance-monitor-content {
+  padding: 12px 16px;
+}
+
+// 标签页导航
+.monitor-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--premium-bg-cosmos);
+  border-radius: var(--premium-radius-md);
+  padding: 4px;
+}
+
+.tab-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--premium-radius-sm);
+  color: var(--premium-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all var(--premium-duration-sm);
+  
+  &:hover {
+    background: var(--premium-bg-space);
+    color: var(--premium-text-primary);
+  }
+  
+  &.active {
+    background: var(--premium-bg-stellar);
+    color: var(--premium-text-primary);
+    box-shadow: var(--premium-shadow-sm);
+  }
+  
+  .tab-icon {
+    font-size: 12px;
+  }
+  
+  .tab-label {
+    font-size: 10px;
+    font-weight: 500;
+  }
+}
+
+// ==================== 性能指标显示样式 ====================
+
+.performance-metrics {
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  &.compact .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--premium-bg-space);
+  border: 1px solid var(--premium-border-subtle);
+  border-radius: var(--premium-radius-sm);
+  
+  label {
+    color: var(--premium-text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  
+  .metric-value {
+    font-weight: 600;
+    font-family: var(--font-mono, monospace);
+    
+    &.good {
+      color: var(--performance-eco-color);
+    }
+    
+    &.caution {
+      color: var(--performance-high-color);
+    }
+    
+    &.warning {
+      color: var(--performance-extreme-color);
+    }
+  }
+}
+
+.performance-metrics-disabled,
+.performance-metrics-loading {
+  padding: 16px;
+  text-align: center;
+  color: var(--premium-text-secondary);
+  font-style: italic;
+}
+
+// ==================== 性能设置样式 ====================
+
+.performance-settings {
+  .settings-section {
+    margin-bottom: 12px;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+  
+  &.compact .settings-section {
+    margin-bottom: 8px;
+  }
+}
+
+.settings-label {
+  display: block;
+  color: var(--premium-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.performance-level-select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--premium-bg-space);
+  border: 1px solid var(--premium-border-subtle);
+  border-radius: var(--premium-radius-sm);
+  color: var(--premium-text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: var(--premium-border-starlight);
+    box-shadow: 0 0 0 2px rgba(100, 150, 255, 0.2);
+  }
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--premium-text-primary);
+  font-size: 11px;
+  
+  input[type="checkbox"] {
+    accent-color: var(--performance-balanced-color);
+  }
+}
+
+.setting-description {
+  display: block;
+  color: var(--premium-text-secondary);
+  font-size: 9px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+// ==================== 设备信息样式 ====================
+
+.device-info {
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  &.compact .info-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--premium-bg-space);
+  border: 1px solid var(--premium-border-subtle);
+  border-radius: var(--premium-radius-sm);
+  
+  label {
+    color: var(--premium-text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  
+  .info-value {
+    color: var(--premium-text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+  }
+}
+
+// ==================== 加载和错误状态 ====================
+
+.loading-state {
+  padding: 20px;
+  text-align: center;
+  color: var(--premium-text-secondary);
+  
+  &::before {
+    content: "⚡";
+    display: block;
+    font-size: 24px;
+    margin-bottom: 8px;
+    animation: pulse 1.5s infinite;
+  }
+}
+
+// ==================== 响应式适配 ====================
+
+@media (max-width: 768px) {
+  .performance-monitor {
+    font-size: 11px;
+    min-width: 200px;
+    max-width: 280px;
+    
+    &.performance-monitor--top-left,
+    &.performance-monitor--top-right {
+      top: 8px;
+    }
+    
+    &.performance-monitor--top-left,
+    &.performance-monitor--bottom-left {
+      left: 8px;
+    }
+    
+    &.performance-monitor--top-right,
+    &.performance-monitor--bottom-right {
+      right: 8px;
+    }
+    
+    &.performance-monitor--bottom-left,
+    &.performance-monitor--bottom-right {
+      bottom: 8px;
+    }
+  }
+  
+  .metrics-grid,
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .monitor-tabs {
+    flex-direction: column;
+    
+    .tab-button {
+      justify-content: flex-start;
+      padding: 8px 12px;
+    }
+  }
+}
+
+// ==================== 动画定义 ====================
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+// ==================== 性能优化CSS变量 ====================
+
+// 根据性能级别动态调整的样式
+.performance-optimized {
+  // 动画强度调整
+  transform: scale(var(--performance-animation-scale));
+  animation-duration: calc(1s * var(--performance-duration-scale));
+  
+  // 阴影强度调整
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  
+  // 磨砂玻璃调整
+  backdrop-filter: 
+    blur(10px)
+    saturate(1.1);
+}
+
+// 低性能设备专用样式
+@media (max-width: 480px), (prefers-reduced-motion: reduce) {
+  .performance-optimized {
+    transform: none;
+    animation: none;
+    box-shadow: var(--premium-shadow-sm);
+    backdrop-filter: none;
+    background: var(--premium-bg-void);
+  }
+} 

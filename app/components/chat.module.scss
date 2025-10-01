@@ -1,0 +1,1020 @@
+@import "../styles/animation.scss";
+@import "../styles/premium-mixins.scss";
+
+// {{CHENGQI:
+// Action: Added
+// Timestamp: 2025-06-10 16:56:03 +08:00
+// Reason: P1-LD-004任务 - 导入premium-theme.scss以使用深邃空间主题变量和光感边框mixin
+// Principle_Applied: DRY (复用现有主题系统) + KISS (简洁的导入方式)
+// Optimization: 为聊天界面提供完整的高端主题支持
+// Architectural_Note (AR): 遵循现有样式导入架构，保持一致性
+// Documentation_Note (DW): 明确标记premium主题升级起始点
+// }}
+
+.attach-images {
+  position: absolute;
+  left: 30px;
+  bottom: 32px;
+  display: flex;
+}
+
+.attach-image {
+  cursor: default;
+  width: 64px;
+  height: 64px;
+  border: rgba($color: #888, $alpha: 0.2) 1px solid;
+  border-radius: 5px;
+  margin-right: 10px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--white);
+
+  .attach-image-mask {
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: all ease 0.2s;
+  }
+
+  .attach-image-mask:hover {
+    opacity: 1;
+  }
+
+  .delete-image {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    float: right;
+    background-color: var(--white);
+  }
+}
+
+.chat-input-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px;
+
+  &-end {
+    display: flex;
+    margin-left: auto;
+    gap: 5px;
+  }
+
+  .chat-input-action {
+    display: inline-flex;
+    border-radius: 20px;
+    font-size: 12px;
+    padding: 4px 10px;
+    animation: slide-in ease 0.3s;
+    align-items: center;
+    height: 16px;
+    width: var(--icon-width);
+    overflow: hidden;
+    
+    // {{CHENGQI:
+    // Action: Modified
+    // Timestamp: 2025-06-10 16:56:03 +08:00
+    // Reason: 聊天输入操作按钮升级为深邃主题和光感边框
+    // Principle_Applied: 使用hover-enhanced-border mixin和premium变量
+    // Optimization: 输入操作按钮的高端视觉效果
+    // }}
+    background: var(--premium-bg-stellar);
+    color: var(--premium-text-primary);
+    @include hover-enhanced-border(subtle);
+    box-shadow: var(--premium-shadow-xs);
+    transition: 
+      width var(--premium-duration-normal) var(--premium-ease-out),
+      all var(--premium-duration-fast) var(--premium-ease-out);
+
+    .text {
+      white-space: nowrap;
+      padding-left: 5px;
+      opacity: 0;
+      transform: translateX(-5px);
+      transition: all ease 0.3s;
+      pointer-events: none;
+    }
+
+    &:hover {
+      --delay: 0.5s;
+      width: var(--full-width);
+      transition-delay: var(--delay);
+      
+      // {{CHENGQI:
+      // Action: Modified
+      // Timestamp: 2025-06-10 16:56:03 +08:00
+      // Reason: 悬停时增强光感效果和交互反馈
+      // Principle_Applied: 与其他组件保持一致的悬停效果
+      // Optimization: 悬停状态的视觉提升和动画优化
+      // }}
+      @include hover-enhanced-border(normal);
+      background: var(--premium-bg-aurora);
+      box-shadow: var(--premium-shadow-sm);
+      transform: translateY(-1px);
+
+      .text {
+        transition-delay: var(--delay);
+        opacity: 1;
+        transform: translate(0);
+      }
+    }
+
+    .text,
+    .icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}
+
+.prompt-toast {
+  position: absolute;
+  bottom: -50px;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  width: calc(100% - 40px);
+
+  .prompt-toast-inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    background-color: var(--white);
+    color: var(--black);
+
+    border: var(--border-in-light);
+    box-shadow: var(--card-shadow);
+    padding: 10px 20px;
+    border-radius: 100px;
+
+    animation: slide-in-from-top ease 0.3s;
+
+    .prompt-toast-content {
+      margin-left: 10px;
+    }
+  }
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .section-title-action {
+    display: flex;
+    align-items: center;
+  }
+}
+
+.context-prompt {
+  .context-prompt-insert {
+    display: flex;
+    justify-content: center;
+    padding: 4px;
+    opacity: 0.2;
+    transition: all ease 0.3s;
+    background-color: rgba(0, 0, 0, 0);
+    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+
+    &:hover {
+      opacity: 1;
+      background-color: rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  .context-prompt-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+
+    &:hover {
+      .context-drag {
+        opacity: 1;
+      }
+    }
+
+    .context-drag {
+      display: flex;
+      align-items: center;
+      opacity: 0.5;
+      transition: all ease 0.3s;
+    }
+
+    .context-role {
+      margin-right: 10px;
+    }
+
+    .context-content {
+      flex: 1;
+      max-width: 100%;
+      text-align: left;
+    }
+
+    .context-delete-button {
+      margin-left: 10px;
+    }
+  }
+
+  .context-prompt-button {
+    flex: 1;
+  }
+}
+
+.memory-prompt {
+  margin: 20px 0;
+
+  .memory-prompt-content {
+    background-color: var(--white);
+    color: var(--black);
+    border: var(--border-in-light);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 12px;
+    user-select: text;
+  }
+}
+
+.clear-context {
+  margin: 20px 0 0 0;
+  padding: 4px 0;
+
+  border-top: var(--border-in-light);
+  border-bottom: var(--border-in-light);
+  box-shadow: var(--card-shadow) inset;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  color: var(--black);
+  transition: all ease 0.3s;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+  font-size: 12px;
+
+  animation: slide-in ease 0.3s;
+
+  $linear: linear-gradient(
+    to right,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 1),
+    rgba(0, 0, 0, 0)
+  );
+  mask-image: $linear;
+
+  @mixin show {
+    transform: translateY(0);
+    position: relative;
+    transition: all ease 0.3s;
+    opacity: 1;
+  }
+
+  @mixin hide {
+    transform: translateY(-50%);
+    position: absolute;
+    transition: all ease 0.1s;
+    opacity: 0;
+  }
+
+  &-tips {
+    @include show;
+    opacity: 0.5;
+  }
+
+  &-revert-btn {
+    color: var(--primary);
+    @include hide;
+  }
+
+  &:hover {
+    opacity: 1;
+    border-color: var(--primary);
+
+    .clear-context-tips {
+      @include hide;
+    }
+
+    .clear-context-revert-btn {
+      @include show;
+    }
+  }
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  height: 100%;
+  
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 应用深邃空间主题背景，营造宇宙深空感
+  // Principle_Applied: 使用现有premium变量系统，保持代码一致性
+  // Optimization: 深邃背景提升视觉层次感
+  // }}
+  background: var(--premium-bg-cosmos);
+}
+
+.chat-body {
+  flex: 1;
+  overflow: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  padding-bottom: 40px;
+  position: relative;
+  overscroll-behavior: none;
+  
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 应用深邃空间背景层次，与chat容器形成层次感
+  // Principle_Applied: 使用premium背景变量系统的层次设计
+  // Optimization: 空间层次感增强，滚动性能保持
+  // }}
+  background: var(--premium-bg-space);
+}
+
+.chat-body-main-title {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .chat-body-title {
+    text-align: center;
+  }
+}
+
+.chat-message {
+  display: flex;
+  flex-direction: row;
+
+  &:last-child {
+    animation: slide-in ease 0.3s;
+  }
+}
+
+.chat-message-user {
+  display: flex;
+  flex-direction: row-reverse;
+
+  .chat-message-header {
+    flex-direction: row-reverse;
+  }
+}
+
+.chat-message-header {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+
+  .chat-message-actions {
+    display: flex;
+    box-sizing: border-box;
+    font-size: 12px;
+    align-items: flex-end;
+    justify-content: space-between;
+    transition: all ease 0.3s;
+    transform: scale(0.9) translateY(5px);
+    margin: 0 10px;
+    opacity: 0;
+    pointer-events: none;
+
+    .chat-input-actions {
+      display: flex;
+      flex-wrap: nowrap;
+    }
+  }
+
+  .chat-model-name {
+    font-size: 12px;
+    color: var(--black);
+    margin-left: 6px;
+  }
+}
+
+.chat-message-container {
+  max-width: var(--message-max-width);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  &:hover {
+    .chat-message-edit {
+      opacity: 0.9;
+    }
+
+    .chat-message-actions {
+      opacity: 1;
+      pointer-events: all;
+      transform: scale(1) translateY(0);
+    }
+  }
+}
+
+.chat-message-user > .chat-message-container {
+  align-items: flex-end;
+}
+
+.chat-message-avatar {
+  position: relative;
+
+  .chat-message-edit {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all ease 0.3s;
+
+    button {
+      padding: 7px;
+    }
+  }
+
+  /* Specific styles for iOS devices */
+  @media screen and (max-device-width: 812px) and (-webkit-min-device-pixel-ratio: 2) {
+    @supports (-webkit-touch-callout: none) {
+      .chat-message-edit {
+        top: -8%;
+      }
+    }
+  }
+}
+
+.chat-message-status {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.5;
+  margin-top: 5px;
+}
+
+.chat-message-tools {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.5;
+  margin-top: 5px;
+  .chat-message-tool {
+    display: flex;
+    align-items: flex-end;
+    svg {
+      margin-left: 5px;
+      margin-right: 5px;
+    }
+  }
+}
+
+// {{CHENGQI:
+// Action: Added - 思考窗口容器样式
+// Timestamp: 2025-06-12 08:49:57 +08:00
+// Reason: P1-LD-005任务 - 为思考窗口在聊天界面中添加容器样式
+// Principle_Applied: SOLID - 单一职责的样式容器，保持与消息系统一致的设计
+// Optimization: 与现有消息样式系统融合，保持视觉一致性
+// Architectural_Note (AR): 思考窗口容器与现有深邃主题系统集成
+// Documentation_Note (DW): 思考窗口容器的间距和布局样式，与消息内容清晰分离
+// }}
+// {{CHENGQI:
+// Action: Modified - 思考窗口样式重构为消息内部组件
+// Timestamp: 2025-01-02 17:00:00 +08:00
+// Reason: 将思考窗口从独立窗口变为消息的内部窗口
+// Principle_Applied: SOLID - 内聚的消息内部思考显示样式
+// Optimization: 思考内容在消息卡片内部显示，与消息内容一体化
+// Architectural_Note (AR): 思考窗口现在属于消息卡片的内部组件
+// Documentation_Note (DW): 思考窗口作为消息内部的第一个子组件显示
+// }}
+.chat-message-thinking {
+  margin-bottom: 16px;
+  padding: 0;
+  
+  // 思考窗口在消息内部的分隔效果
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+  
+  // 轻微的视觉区分，但保持整体性
+  opacity: 0.95;
+  transition: opacity var(--premium-duration-fast) var(--premium-ease-out);
+  
+  &:hover {
+    opacity: 1;
+  }
+  
+  // 思考窗口后面有正常消息内容时的间距
+  & + * {
+    margin-top: 8px;
+  }
+}
+
+// 保留原容器样式以防其他地方使用
+.thinking-window-container {
+  margin-bottom: 12px;
+  
+  // 确保思考窗口在消息流中有合适的间距
+  &:first-child {
+    margin-top: 8px;
+  }
+  
+  // 与深邃主题保持一致
+  opacity: 0.95;
+  transition: opacity var(--premium-duration-fast) var(--premium-ease-out);
+  
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.chat-message-item {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 14px;
+  user-select: text;
+  word-break: break-word;
+  position: relative;
+  
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 升级消息卡片为深邃主题，添加悬浮感和光感边框
+  // Principle_Applied: 使用starlight-border mixin + premium背景变量 (DRY原则)
+  // Optimization: 星光边框 + 悬浮阴影 + 深邃背景营造高端卡片效果
+  // }}
+  background: var(--premium-bg-void);
+  @include starlight-border(subtle);
+  box-shadow: var(--premium-shadow-sm);
+  transition: all var(--premium-duration-normal) var(--premium-ease-out);
+  
+  &:hover {
+    // {{CHENGQI: 悬停时增强光感效果，提供交互反馈}}
+    @include starlight-border(normal);
+    box-shadow: var(--premium-shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+.chat-message-audio {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 10px;
+  position: relative;
+  margin-top: 10px;
+  font-size: 14px;
+  user-select: text;
+  word-break: break-word;
+  box-sizing: border-box;
+  
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 音频消息卡片应用深邃主题和光感边框
+  // Principle_Applied: 与普通消息卡片保持一致的设计系统
+  // Optimization: 音频卡片的深邃感和悬浮效果
+  // }}
+  background: var(--premium-bg-void);
+  @include starlight-border(subtle);
+  box-shadow: var(--premium-shadow-sm);
+  transition: all var(--premium-duration-normal) var(--premium-ease-out);
+  
+  &:hover {
+    @include starlight-border(normal);
+    box-shadow: var(--premium-shadow-md);
+    transform: translateY(-1px);
+  }
+  
+  audio {
+    height: 30px; /* 调整高度 */
+    // {{CHENGQI: 音频控件的主题适配}}
+    filter: hue-rotate(200deg) saturate(1.2);
+  }
+}
+
+.chat-message-item-image {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.chat-message-item-images {
+  width: 100%;
+  display: grid;
+  justify-content: left;
+  grid-gap: 10px;
+  grid-template-columns: repeat(var(--image-count), auto);
+  margin-top: 10px;
+}
+
+.chat-message-item-image-multi {
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.chat-message-item-image,
+.chat-message-item-image-multi {
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: rgba($color: #888, $alpha: 0.2) 1px solid;
+}
+
+@media only screen and (max-width: 600px) {
+  $calc-image-width: calc(100vw / 3 * 2 / var(--image-count));
+
+  .chat-message-item-image-multi {
+    width: $calc-image-width;
+    height: $calc-image-width;
+  }
+
+  .chat-message-item-image {
+    max-width: calc(100vw / 3 * 2);
+  }
+}
+
+@media screen and (min-width: 600px) {
+  $max-image-width: calc(
+    calc(1200px - var(--sidebar-width)) / 3 * 2 / var(--image-count)
+  );
+  $image-width: calc(
+    calc(var(--window-width) - var(--sidebar-width)) / 3 * 2 /
+      var(--image-count)
+  );
+
+  .chat-message-item-image-multi {
+    width: $image-width;
+    height: $image-width;
+    max-width: $max-image-width;
+    max-height: $max-image-width;
+  }
+
+  .chat-message-item-image {
+    max-width: calc(calc(1200px - var(--sidebar-width)) / 3 * 2);
+  }
+}
+
+.chat-message-action-date {
+  font-size: 12px;
+  opacity: 0.2;
+  white-space: nowrap;
+  transition: all ease 0.6s;
+  color: var(--black);
+  text-align: right;
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 10px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.chat-message-user > .chat-message-container > .chat-message-item {
+  // {{CHENGQI:
+  // Action: Modified  
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 用户消息使用特殊的深邃主题背景，区分AI和用户消息
+  // Principle_Applied: 用户消息使用nebula背景层级，保持视觉层次
+  // Optimization: 更强的光感边框突出用户消息
+  // }}
+  background: var(--premium-bg-nebula);
+  @include starlight-border(normal);
+  box-shadow: var(--premium-shadow-md);
+
+  &:hover {
+    min-width: 0;
+    // {{CHENGQI: 用户消息悬停时使用更强的光感效果}}
+    @include starlight-border(strong);
+    box-shadow: var(--premium-shadow-lg);
+    transform: translateY(-2px);
+  }
+}
+
+.chat-input-panel {
+  position: relative;
+  width: 100%;
+  padding: 20px;
+  padding-top: 10px;
+  box-sizing: border-box;
+  flex-direction: column;
+  
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 输入面板应用深邃主题背景和光感边框
+  // Principle_Applied: 使用premium变量系统和starlight-border mixin
+  // Optimization: 输入区域的深邃感和光感边框提升
+  // }}
+  background: var(--premium-bg-void);
+  border-top: 1px solid var(--premium-border-starlight);
+  box-shadow: var(--premium-shadow-lg);
+
+  .chat-input-actions {
+    .chat-input-action {
+      margin-bottom: 10px;
+      
+      // {{CHENGQI: 输入操作按钮升级为光感边框}}
+      @include hover-enhanced-border(subtle);
+      background: var(--premium-bg-stellar);
+    }
+  }
+}
+
+@mixin single-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prompt-hints {
+  min-height: 20px;
+  width: 100%;
+  max-height: 50vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column-reverse;
+  border-radius: 10px;
+  margin-bottom: 10px;
+
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 提示面板应用深邃主题背景和光感边框
+  // Principle_Applied: 使用premium变量和starlight-border mixin
+  // Optimization: 提示面板的深邃感和悬浮效果
+  // }}
+  background: var(--premium-bg-void);
+  @include starlight-border(subtle);
+  box-shadow: var(--premium-shadow-md);
+
+  .prompt-hint {
+    padding: 6px 10px;
+    animation: slide-in ease 0.3s;
+    cursor: pointer;
+    margin: 4px;
+    border-radius: 8px;
+    border: transparent 1px solid;
+    
+    // {{CHENGQI: 提示项应用深邃主题文字颜色}}
+    color: var(--premium-text-primary);
+    background: var(--premium-bg-space);
+    transition: all var(--premium-duration-normal) var(--premium-ease-out);
+
+    &:not(:last-child) {
+      margin-top: 0;
+    }
+
+    .hint-title {
+      font-size: 12px;
+      font-weight: bolder;
+
+      @include single-line();
+    }
+
+    .hint-content {
+      font-size: 12px;
+
+      @include single-line();
+    }
+
+    &-selected,
+    &:hover {
+      // {{CHENGQI: 选中和悬停状态使用光感边框}}
+      @include starlight-border(normal);
+      background: var(--premium-bg-stellar);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.chat-input-panel-inner {
+  cursor: text;
+  display: flex;
+  flex: 1;
+  border-radius: 10px;
+  position: relative;
+  
+  // {{CHENGQI:
+  // Action: Modified - Added position relative for proper send button positioning
+  // Timestamp: 2025-06-11 20:13:45 +08:00
+  // Reason: 输入框容器需要position: relative以便发送按钮正确定位
+  // Principle_Applied: KISS - 简单添加position属性解决定位问题
+  // Optimization: 输入容器的光感边框基础效果，正确的定位上下文
+  // Architectural_Note (AR): 确保绝对定位元素有正确的定位上下文
+  // Documentation_Note (DW): 容器现在提供正确的定位上下文给发送按钮
+  // }}
+  @include starlight-border(subtle);
+  background: var(--premium-bg-stellar);
+}
+
+.chat-input-panel-inner-attach {
+  padding-bottom: 80px;
+}
+
+.chat-input-panel-inner:has(.chat-input:focus) {
+  // {{CHENGQI:
+  // Action: Modified
+  // Timestamp: 2025-06-10 16:56:03 +08:00
+  // Reason: 输入框聚焦时应用focus-glow效果，提供强烈的光感反馈
+  // Principle_Applied: 使用focus-glow mixin，统一的焦点处理
+  // Optimization: 焦点状态的光感边框动画效果
+  // }}
+  @include focus-glow(var(--premium-border-focus), normal);
+}
+
+.chat-input {
+  // {{CHENGQI:
+  // Action: Modified - 修复输入框高度计算冲突
+  // Timestamp: 2025-06-14 06:10:00 +08:00
+  // Reason: 移除height: 100%，避免与rows属性冲突，让textarea完全依赖rows来确定高度
+  // Principle_Applied: KISS - 简化高度计算，移除冲突属性
+  // Optimization: 稳定的高度计算，确保发送按钮定位准确
+  // Architectural_Note (AR): textarea现在完全依赖rows属性控制高度
+  // Documentation_Note (DW): 移除height冲突，textarea高度由inputRows动态控制
+  // }}
+  width: 100%;
+  border-radius: 10px;
+  border: none;
+  font-family: inherit;
+  padding: 10px 90px 10px 14px;
+  resize: none;
+  box-sizing: border-box;
+  min-height: 68px;
+  
+  // 简化版流体交互效果
+  position: relative;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  background-color: rgb(12, 12, 12);
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(100, 150, 255, 0.6);
+    background-color: rgb(16, 16, 16);
+  }
+  
+  // 重写边框为无边框样式（由容器提供）
+  border: none !important;
+  
+  // 保持聊天特定的内边距
+  padding: 10px 90px 10px 14px;
+}
+
+.chat-input-send {
+  // {{CHENGQI:
+  // Action: Modified - 移除定位和尺寸样式，改用内联样式统一管理
+  // Timestamp: 2025-06-20 15:00:00 +08:00
+  // Reason: 解决CSS模块在静态构建中的样式应用问题，改用内联样式确保一致性
+  // Principle_Applied: 内联样式优先级最高，避免构建环境差异
+  // Optimization: 移除!important冲突，让内联样式完全控制定位和尺寸
+  // Architectural_Note (AR): 定位和尺寸由内联样式管理，CSS只负责装饰性样式
+  // Documentation_Note (DW): 发送按钮的定位和尺寸现在完全由内联样式控制
+  // }}
+  // 移除所有定位和尺寸相关的CSS属性，改用内联样式
+  
+  background: linear-gradient(135deg, 
+    var(--premium-bg-stellar), 
+    var(--premium-bg-aurora)
+  );
+  color: var(--premium-text-primary);
+  @include energy-border(pulse);
+  
+  // 确保图标尺寸适应按钮
+  svg, .icon {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  
+  &:hover {
+    // {{CHENGQI: 悬停时增强能量场效果，transform由内联样式处理}}
+    @include energy-border(flow);
+    // transform由内联样式和JavaScript处理
+  }
+
+  &:active {
+    // transform由内联样式和JavaScript处理
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .chat-input {
+    font-size: 16px;
+  }
+
+  .chat-input-send {
+    // {{CHENGQI:
+    // Action: Modified - 移动端样式也改用内联样式管理
+    // Timestamp: 2025-06-20 15:00:00 +08:00
+    // Reason: 统一使用内联样式管理所有定位和尺寸，避免媒体查询在静态构建中的问题
+    // Principle_Applied: 内联样式统一管理，JavaScript处理响应式逻辑
+    // Optimization: 移除CSS媒体查询冲突，确保静态构建一致性
+    // }}
+    // 移动端的定位和尺寸也由内联样式管理
+
+    // 移动端图标尺寸由内联样式处理
+    svg, .icon {
+      // 图标尺寸由内联样式动态设置
+    }
+
+    &:hover {
+      // transform由内联样式和JavaScript处理
+    }
+
+    &:active {
+      // transform由内联样式和JavaScript处理
+    }
+  }
+}
+
+.shortcut-key-container {
+  padding: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.shortcut-key-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 16px;
+}
+
+.shortcut-key-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+  padding: 10px;
+  background-color: var(--white);
+}
+
+.shortcut-key-title {
+  font-size: 14px;
+  color: var(--black);
+}
+
+.shortcut-key-keys {
+  display: flex;
+  gap: 8px;
+}
+
+.shortcut-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-in-light);
+  border-radius: 8px;
+  padding: 4px;
+  background-color: var(--gray);
+  min-width: 32px;
+}
+
+.shortcut-key span {
+  font-size: 12px;
+  color: var(--black);
+}
+
+.chat-main {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  .chat-body-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+  }
+  .chat-side-panel {
+    position: absolute;
+    inset: 0;
+    background: var(--white);
+    overflow: hidden;
+    z-index: 10;
+    transform: translateX(100%);
+    transition: all ease 0.3s;
+    &-show {
+      transform: translateX(0);
+    }
+  }
+}

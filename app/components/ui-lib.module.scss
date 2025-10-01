@@ -1,0 +1,555 @@
+// {{CHENGQI:
+// Action: Added premium-theme import and enhanced card component with deep space styling
+// Timestamp: 2025-06-10 17:16:39 +08:00
+// Reason: Import premium theme system for UI component library deep space enhancement
+// Principle_Applied: DRY - Reuse established premium-theme variable system
+// Optimization: Import at top for CSS cascade efficiency, enhanced card with starlight borders
+// Architectural_Note (AR): Maintains component API while enabling deep space theme integration
+// Documentation_Note (DW): Added premium theme support and starlight card effects
+// }}
+@import "../styles/animation.scss";
+@import "../styles/premium-mixins.scss";
+
+.card {
+  // {{CHENGQI:
+  // Action: Enhanced card component with deep space background and starlight border
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Apply premium theme to card component for consistency with main interface
+  // Principle_Applied: KISS - Simple starlight border application, DRY - Reuse premium variables
+  // Optimization: Enhanced floating shadow, GPU-accelerated hover transform
+  // Architectural_Note (AR): Consistent with chat interface and sidebar styling
+  // Documentation_Note (DW): Cards now have cosmic floating sensation with light sensing
+  // }}
+  background-color: var(--premium-bg-void, var(--white)); // Deep void background
+  border-radius: 10px;
+  @include starlight-border(subtle); // Starlight border effect
+  box-shadow: var(--premium-shadow-lg), var(--card-shadow); // Enhanced floating shadow
+  padding: 10px;
+  transition: 
+    transform var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+    box-shadow var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  will-change: transform, box-shadow; // GPU acceleration hint
+  
+  &:hover {
+    @include starlight-border(normal); // Enhanced starlight on hover
+    transform: translateY(-1px); // Floating sensation
+    box-shadow: 
+      var(--premium-shadow-xl),
+      0 8px 25px rgba(100, 150, 255, 0.1); // Enhanced floating shadow with blue glow
+  }
+}
+
+.popover {
+  position: relative;
+  z-index: 2;
+}
+
+.popover-content {
+  position: absolute;
+  width: 350px;
+  animation: slide-in 0.3s ease;
+  right: 0;
+  top: calc(100% + 10px);
+}
+@media screen and (max-width: 600px) {
+  .popover-content {
+    width: auto;
+  }
+}
+.popover-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  // {{CHENGQI:
+  // Action: Enhanced popover mask with premium deep space backdrop
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Premium backdrop filter for better deep space immersion
+  // Principle_Applied: Single Responsibility - Focus on backdrop enhancement
+  // Optimization: Enhanced blur and cosmic background tint
+  // Architectural_Note (AR): Consistent with premium theme's space aesthetics
+  // Documentation_Note (DW): Popover backdrop now has cosmic depth with premium blur
+  // }}
+  background-color: var(--premium-bg-cosmos, rgba(0, 0, 0, 0.5)); // Deep cosmos backdrop
+  backdrop-filter: blur(12px) saturate(1.2); // Enhanced premium blur
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+  // {{CHENGQI:
+  // Action: Enhanced list item with premium styling and subtle light sensing
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Apply premium theme to list items for enhanced interactivity
+  // Principle_Applied: Single Responsibility - Focus on list item enhancement
+  // Optimization: Premium animation timing, subtle hover effects
+  // Architectural_Note (AR): Consistent with sidebar chat-item styling
+  // Documentation_Note (DW): List items now have subtle light sensing for better interaction feedback
+  // }}
+  border-bottom: 1px solid var(--premium-border-starlight, var(--border-in-light)); // Starlight border bottom
+  padding: 10px 20px;
+  animation: slide-in var(--premium-duration-slow, 0.6s) var(--premium-ease-out, ease);
+  transition: 
+    background-color var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+    padding-left var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease);
+  border-radius: 4px;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: var(--premium-bg-nebula, var(--hover-color)); // Subtle nebula background
+    padding-left: 24px; // Subtle indent animation
+    border-bottom-color: var(--premium-border-starlight);
+  }
+  
+  &:last-child {
+    border-bottom: none; // Remove border for last item
+  }
+
+  .list-header {
+    display: flex;
+    align-items: center;
+
+    .list-icon {
+      margin-right: 10px;
+    }
+
+    .list-item-title {
+      font-size: 14px;
+      font-weight: bolder;
+    }
+
+    .list-item-sub-title {
+      font-size: 12px;
+      font-weight: normal;
+    }
+  }
+
+  &.vertical {
+    flex-direction: column;
+    align-items: start;
+    .list-header {
+      .list-item-title {
+        margin-bottom: 5px;
+      }
+      .list-item-sub-title {
+        margin-bottom: 2px;
+      }
+    }
+  }
+}
+
+.list {
+  // {{CHENGQI:
+  // Action: Enhanced list component with deep space styling and starlight borders
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Apply premium theme to list component for UI consistency
+  // Principle_Applied: DRY - Reuse starlight-border mixin, KISS - Simple enhancement
+  // Optimization: Premium animation duration, enhanced shadow depth
+  // Architectural_Note (AR): Consistent with card component styling approach
+  // Documentation_Note (DW): Lists now have cosmic appearance with light sensing
+  // }}
+  @include starlight-border(subtle); // Starlight border instead of standard border
+  border-radius: 10px;
+  box-shadow: var(--premium-shadow-lg), var(--card-shadow); // Enhanced floating shadow
+  margin-bottom: 20px;
+  animation: slide-in var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  background: var(--premium-bg-void, var(--white)); // Deep void background
+  transition: 
+    transform var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+    box-shadow var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  will-change: transform, box-shadow;
+  
+  &:hover {
+    @include starlight-border(normal); // Enhanced starlight on hover
+    transform: translateY(-1px); // Subtle floating effect
+    box-shadow: 
+      var(--premium-shadow-xl),
+      0 8px 25px rgba(100, 150, 255, 0.08); // Enhanced floating shadow with blue glow
+  }
+}
+
+.list .list-item:last-child {
+  border: 0;
+}
+
+.modal-container {
+  // {{CHENGQI:
+  // Action: Enhanced modal container with premium deep space styling and backdrop filter
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Apply premium theme to modal - major UI component requiring premium treatment
+  // Principle_Applied: KISS - Enhanced backdrop + borders, DRY - Reuse premium variables
+  // Optimization: Premium backdrop-filter for glass morphism, enhanced shadow depth
+  // Architectural_Note (AR): Modal becomes premium dialog with cosmic glass appearance
+  // Documentation_Note (DW): Modal now has premium glass morphism with starlight borders
+  // }}
+  box-shadow: 
+    var(--premium-shadow-xl),
+    0 25px 50px rgba(100, 150, 255, 0.1),
+    var(--card-shadow); // Enhanced multi-layer shadow
+  background-color: var(--premium-bg-void, var(--white)); // Deep void background
+  backdrop-filter: blur(20px) saturate(1.2); // Premium glass morphism effect
+  @include starlight-border(normal); // Enhanced starlight border
+  border-radius: 12px;
+  width: 80vw;
+  max-width: 900px;
+  min-width: 300px;
+  animation: slide-in var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  will-change: transform, opacity; // GPU acceleration
+
+  --modal-padding: 20px;
+
+  &-max {
+    width: 95vw;
+    max-width: unset;
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+
+    .modal-content {
+      max-height: unset !important;
+      flex-grow: 1;
+    }
+  }
+
+  .modal-header {
+    padding: var(--modal-padding);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--premium-border-starlight, var(--border-in-light)); // Starlight border
+
+    .modal-title {
+      font-weight: bolder;
+      font-size: 16px;
+    }
+
+    .modal-header-actions {
+      display: flex;
+
+      .modal-header-action {
+        cursor: pointer;
+
+        &:not(:last-child) {
+          margin-right: 20px;
+        }
+
+        &:hover {
+          filter: brightness(1.2);
+        }
+      }
+    }
+  }
+
+  .modal-content {
+    max-height: 40vh;
+    padding: var(--modal-padding);
+    overflow: auto;
+  }
+
+  .modal-footer {
+    padding: var(--modal-padding);
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--premium-border-starlight, var(--border-in-light)); // Starlight border
+    box-shadow: var(--shadow);
+
+    .modal-actions {
+      display: flex;
+      align-items: center;
+
+      .modal-action {
+        &:not(:last-child) {
+          margin-right: 20px;
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .modal-container {
+    width: 100vw;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+
+    .modal-content {
+      max-height: 50vh;
+    }
+  }
+}
+
+.show {
+  opacity: 1;
+  transition: all ease 0.3s;
+  transform: translateY(0);
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  animation: slide-in ease 0.6s;
+  z-index: 99999;
+}
+
+.hide {
+  opacity: 0;
+  transition: all ease 0.3s;
+  transform: translateY(20px);
+}
+
+.toast-container {
+  position: fixed;
+  bottom: 5vh;
+  left: 0;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+
+  .toast-content {
+    max-width: 80vw;
+    word-break: break-all;
+    font-size: 14px;
+    // {{CHENGQI:
+    // Action: Enhanced toast content with premium styling and starlight borders
+    // Timestamp: 2025-06-10 17:16:39 +08:00
+    // Reason: Apply premium theme to toast notifications for consistency
+    // Principle_Applied: Single Responsibility - Focus on toast enhancement
+    // Optimization: Enhanced shadow, starlight border, premium backdrop
+    // Architectural_Note (AR): Consistent with other UI components styling
+    // Documentation_Note (DW): Toast notifications now have cosmic appearance
+    // }}
+    background-color: var(--premium-bg-void, var(--white)); // Deep void background
+    backdrop-filter: blur(10px) saturate(1.1); // Subtle glass effect
+    box-shadow: 
+      var(--premium-shadow-lg),
+      0 8px 25px rgba(100, 150, 255, 0.1),
+      var(--card-shadow); // Enhanced floating shadow
+    @include starlight-border(subtle); // Starlight border
+    color: var(--premium-text-primary, var(--black)); // Premium text color
+    padding: 10px 20px;
+    border-radius: 50px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    pointer-events: all;
+    transition: 
+      transform var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+      box-shadow var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+    will-change: transform, box-shadow;
+    
+    &:hover {
+      transform: translateY(-2px); // Enhanced floating on hover
+      @include starlight-border(normal); // Enhanced starlight on hover
+      box-shadow: 
+        var(--premium-shadow-xl),
+        0 12px 35px rgba(100, 150, 255, 0.15); // Enhanced glow
+    }
+
+    .toast-action {
+      padding-left: 20px;
+      color: var(--primary);
+      opacity: 0.8;
+      border: 0;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.input {
+  // {{CHENGQI:
+  // Action: Modified - 升级为量子流体交互系统
+  // Timestamp: 2025-06-10 18:07:52 +08:00
+  // Reason: 实现P2-LD-010任务 - 应用量子流体交互效果到基础输入组件
+  // Principle_Applied: DRY - 复用量子动画系统，SOLID - 单一职责的样式组合
+  // Optimization: 完整的流体交互体验，GPU加速，性能优化
+  // Architectural_Note (AR): 基于量子动画系统的统一输入体验
+  // Documentation_Note (DW): 输入框现在具有完整的流体交互效果
+  // }}
+  // 简化版输入交互效果
+  position: relative;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  background-color: rgb(12, 12, 12);
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(100, 150, 255, 0.6);
+    background-color: rgb(16, 16, 16);
+  }
+  
+  &.error, &:invalid {
+    border-color: rgba(255, 99, 99, 0.6);
+  }
+  
+  // 性能优化：GPU加速
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  
+  border-radius: 10px;
+  padding: 10px;
+  font-family: inherit;
+  resize: none;
+  min-width: 50px;
+}
+
+.select-with-icon {
+  position: relative;
+  max-width: fit-content;
+
+  &.left-align-option {
+    option {
+      text-align: left;
+    }
+  }
+
+  .select-with-icon-select {
+    height: 100%;
+    // {{CHENGQI:
+    // Action: Enhanced select component with premium styling and starlight borders
+    // Timestamp: 2025-06-10 17:16:39 +08:00
+    // Reason: Apply premium theme to select components for consistency
+    // Principle_Applied: DRY - Reuse starlight-border mixin
+    // Optimization: Premium hover and focus states
+    // Architectural_Note (AR): Consistent with other input components
+    // Documentation_Note (DW): Select dropdowns now have cosmic appearance
+    // }}
+    @include starlight-border(subtle); // Starlight border
+    padding: 10px 35px 10px 10px;
+    border-radius: 10px;
+    appearance: none;
+    cursor: pointer;
+    background-color: var(--premium-bg-void, var(--white)); // Deep void background
+    color: var(--premium-text-primary, var(--black)); // Premium text color
+    text-align: center;
+    transition: all var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease);
+    outline: none;
+    
+    &:hover {
+      @include starlight-border(normal); // Enhanced starlight on hover
+    }
+    
+    &:focus {
+      @include focus-glow(medium); // Premium focus glow
+      @include starlight-border(normal); // Enhanced starlight on focus
+    }
+  }
+
+  .select-with-icon-icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+}
+
+.modal-input {
+  height: 100%;
+  width: 100%;
+  border-radius: 10px;
+  // {{CHENGQI:
+  // Action: Modified - 升级为高级文本输入流体效果
+  // Timestamp: 2025-06-10 18:07:52 +08:00
+  // Reason: 实现P2-LD-010任务 - 为模态框输入应用高级流体交互
+  // Principle_Applied: DRY - 复用量子文本输入系统，单一职责原则
+  // Optimization: 高级文本流体效果，内容变化动画，性能优化
+  // Architectural_Note (AR): 与quantum-textarea-advanced-fluid集成
+  // Documentation_Note (DW): 模态框输入现在支持高级流体交互和内容变化动画
+  // }}
+  // 简化版textarea交互效果
+  position: relative;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  background-color: rgb(12, 12, 12);
+  transition: all 0.3s ease;
+  
+  &:focus {
+    outline: none;
+    border-color: rgba(100, 150, 255, 0.6);
+    background-color: rgb(16, 16, 16);
+  }
+  
+  &.error, &:invalid {
+    border-color: rgba(255, 99, 99, 0.6);
+  }
+  
+  // 性能优化：GPU加速
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  
+  font-family: inherit;
+  padding: 10px;
+  resize: none;
+  box-sizing: border-box;
+}
+
+.selector {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  // {{CHENGQI:
+  // Action: Enhanced selector backdrop with premium deep space styling
+  // Timestamp: 2025-06-10 17:16:39 +08:00
+  // Reason: Apply premium theme to selector overlay for enhanced modal experience
+  // Principle_Applied: Single Responsibility - Focus on backdrop enhancement
+  // Optimization: Enhanced backdrop filter for premium glass effect
+  // Architectural_Note (AR): Consistent with modal and popover backdrop styling
+  // Documentation_Note (DW): Selector backdrop now has premium cosmic depth
+  // }}
+  background-color: var(--premium-bg-cosmos, rgba(0, 0, 0, 0.6)); // Deep cosmos backdrop
+  backdrop-filter: blur(15px) saturate(1.2); // Premium backdrop filter
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+
+  .selector-item-disabled {
+    opacity: 0.6;
+  }
+
+  &-content {
+    min-width: 300px;
+    .list {
+      max-height: 90vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+
+      .list-item {
+        cursor: pointer;
+        // {{CHENGQI:
+        // Action: Enhanced selector list items with premium styling and light sensing
+        // Timestamp: 2025-06-10 17:16:39 +08:00
+        // Reason: Apply premium theme to selector list items for enhanced interactivity
+        // Principle_Applied: DRY - Reuse premium background variables
+        // Optimization: Premium hover and active states with light sensing
+        // Architectural_Note (AR): Consistent with list-item styling throughout the app
+        // Documentation_Note (DW): Selector items now have cosmic light sensing effects
+        // }}
+        background-color: var(--premium-bg-void, var(--white)); // Deep void background
+        transition: 
+          background-color var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+          transform var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease);
+
+        &:hover {
+          background-color: var(--premium-bg-nebula, var(--hover-color)); // Nebula background on hover
+          transform: translateX(2px); // Subtle slide animation
+        }
+
+        &:active {
+          background-color: var(--premium-bg-stellar, var(--hover-color)); // Stellar background on active
+          transform: translateX(4px); // Enhanced slide on active
+        }
+      }
+    }
+  }
+}
+

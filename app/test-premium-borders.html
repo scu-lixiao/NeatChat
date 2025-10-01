@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="premium-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium UI - 光感边框测试</title>
+    <style>
+        @import './styles/premium-theme.scss';
+        
+        body {
+            background: var(--premium-bg-cosmos);
+            color: var(--premium-text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 2rem;
+            margin: 0;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .test-card {
+            background: var(--premium-bg-void);
+            padding: 1.5rem;
+            border-radius: 8px;
+            @include starlight-border();
+        }
+        
+        .test-element {
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 6px;
+            background: var(--premium-bg-space);
+            color: var(--premium-text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+        }
+        
+        // 测试各种边框效果
+        .starlight-subtle {
+            @include starlight-border(subtle);
+        }
+        
+        .starlight-normal {
+            @include starlight-border();
+        }
+        
+        .starlight-strong {
+            @include starlight-border(strong);
+        }
+        
+        .focus-test {
+            @include starlight-border();
+            
+            &:focus {
+                @include focus-glow();
+            }
+        }
+        
+        .hover-enhanced {
+            @include hover-enhanced-border();
+        }
+        
+        .energy-default {
+            @include energy-border();
+        }
+        
+        .energy-pulse {
+            @include energy-border(pulse);
+        }
+        
+        .energy-flow {
+            @include energy-border(flow);
+        }
+        
+        .status-success {
+            @include status-border(success);
+        }
+        
+        .status-warning {
+            @include status-border(warning);
+        }
+        
+        .status-error {
+            @include status-border(error);
+        }
+        
+        .status-info {
+            @include status-border(info);
+        }
+        
+        .composite-primary {
+            @include composite-glow-border(true, false, false);
+        }
+        
+        .composite-multi {
+            @include composite-glow-border(true, true, true);
+        }
+        
+        .title {
+            color: var(--premium-text-primary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .demo-input {
+            @include starlight-border();
+            background: var(--premium-bg-space);
+            color: var(--premium-text-primary);
+            border-radius: 4px;
+            padding: 0.75rem;
+            width: 100%;
+            margin: 0.5rem 0;
+            
+            &:focus {
+                @include focus-glow();
+            }
+        }
+        
+        .demo-button {
+            @include hover-enhanced-border();
+            background: var(--premium-bg-stellar);
+            color: var(--premium-text-primary);
+            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            margin: 0.5rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">Premium UI - 光感边框系统测试</h1>
+    
+    <div class="test-grid">
+        <!-- 基础星光边框测试 -->
+        <div class="test-card">
+            <h3>基础星光边框</h3>
+            <div class="test-element starlight-subtle">微妙星光边框</div>
+            <div class="test-element starlight-normal">普通星光边框</div>
+            <div class="test-element starlight-strong">强烈星光边框</div>
+        </div>
+        
+        <!-- 焦点光晕测试 -->
+        <div class="test-card">
+            <h3>焦点光晕效果</h3>
+            <input class="demo-input" placeholder="点击获取焦点" />
+            <input class="demo-input" placeholder="第二个输入框" />
+            <div class="test-element focus-test" tabindex="0">可聚焦元素</div>
+        </div>
+        
+        <!-- 悬停增强边框测试 -->
+        <div class="test-card">
+            <h3>悬停增强边框</h3>
+            <div class="test-element hover-enhanced">悬停查看效果</div>
+            <button class="demo-button">悬停按钮</button>
+        </div>
+        
+        <!-- 能量边框测试 -->
+        <div class="test-card">
+            <h3>能量边框效果</h3>
+            <div class="test-element energy-default">默认能量边框</div>
+            <div class="test-element energy-pulse">脉冲能量边框</div>
+            <div class="test-element energy-flow">流动能量边框</div>
+        </div>
+        
+        <!-- 状态指示边框测试 -->
+        <div class="test-card">
+            <h3>状态指示边框</h3>
+            <div class="test-element status-success">成功状态</div>
+            <div class="test-element status-warning">警告状态</div>
+            <div class="test-element status-error">错误状态</div>
+            <div class="test-element status-info">信息状态</div>
+        </div>
+        
+        <!-- 组合光感边框测试 -->
+        <div class="test-card">
+            <h3>组合光感边框</h3>
+            <div class="test-element composite-primary">单色组合效果</div>
+            <div class="test-element composite-multi">多色组合效果</div>
+        </div>
+    </div>
+    
+    <script>
+        // 添加一些交互性
+        document.querySelectorAll('.test-element').forEach(element => {
+            element.addEventListener('click', function() {
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+        
+        // 测试主题切换
+        const themeToggle = document.createElement('button');
+        themeToggle.textContent = '切换主题';
+        themeToggle.className = 'demo-button';
+        themeToggle.style.position = 'fixed';
+        themeToggle.style.top = '1rem';
+        themeToggle.style.right = '1rem';
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('premium-dark');
+        });
+        document.body.appendChild(themeToggle);
+    </script>
+</body>
+</html> 

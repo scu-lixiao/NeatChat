@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeatChat Apple HIG Typography Test</title>
+    <style>
+        /* 导入NeatChat的字体设置 */
+        @import url('./styles/globals.scss');
+        @import url('./styles/premium-theme.scss');
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", 
+                system-ui, "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", 
+                "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: clamp(15px, 17px, 22px);
+            line-height: 1.4;
+            margin: 0;
+            padding: 2rem;
+            background: #0c0c0c;
+            color: #f0f0f0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #181818;
+            padding: 2rem;
+            border-radius: 12px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #333;
+        }
+        
+        .title {
+            font-size: 34px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #f0f0f0;
+        }
+        
+        .subtitle {
+            font-size: 17px;
+            color: #c8c8c8;
+        }
+        
+        .section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: #1c1c1c;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #444;
+            color: #f0f0f0;
+        }
+        
+        .font-test {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #242424;
+            border-radius: 6px;
+        }
+        
+        .large-title { font-size: 34px; font-weight: 700; }
+        .title-1 { font-size: 28px; font-weight: 700; }
+        .title-2 { font-size: 22px; font-weight: 600; }
+        .title-3 { font-size: 20px; font-weight: 600; }
+        .headline { font-size: 17px; font-weight: 600; }
+        .body { font-size: 17px; font-weight: 400; }
+        .callout { font-size: 16px; font-weight: 400; }
+        .subheadline { font-size: 15px; font-weight: 400; color: #c8c8c8; }
+        .footnote { font-size: 13px; font-weight: 400; color: #a0a0a0; }
+        .caption-1 { font-size: 12px; font-weight: 400; color: #a0a0a0; }
+        .caption-2 { font-size: 11px; font-weight: 400; color: #787878; }
+        
+        .mono-font {
+            font-family: "SF Mono", Monaco, "Cascadia Code", ui-monospace, 
+                SFMono-Regular, "Roboto Mono", Consolas, "Courier New", monospace;
+            font-size: 13px;
+            background: #2a2a2a;
+            padding: 0.5rem;
+            border-radius: 4px;
+            color: #4ade80;
+        }
+        
+        .check-item {
+            display: flex;
+            align-items: center;
+            margin: 1rem 0;
+        }
+        
+        .check-mark {
+            margin-right: 0.75rem;
+            font-size: 1.2em;
+            color: #4ade80;
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .container { padding: 1rem; }
+            .section { padding: 1rem; }
+            .large-title { font-size: 28px; }
+            .title-1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🍎 NeatChat Apple HIG Typography Test</h1>
+            <p class="subtitle">验证字体设置是否符合Apple Human Interface Guidelines</p>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">字体层级测试 (Typography Hierarchy)</h2>
+            
+            <div class="font-test large-title">Large Title (34px) - 大标题</div>
+            <div class="font-test title-1">Title 1 (28px) - 一级标题</div>
+            <div class="font-test title-2">Title 2 (22px) - 二级标题</div>
+            <div class="font-test title-3">Title 3 (20px) - 三级标题</div>
+            <div class="font-test headline">Headline (17px) - 标题文字</div>
+            <div class="font-test body">Body (17px) - 正文内容，这是Apple推荐的标准正文字体大小</div>
+            <div class="font-test callout">Callout (16px) - 重要信息提示文字</div>
+            <div class="font-test subheadline">Subheadline (15px) - 副标题文字</div>
+            <div class="font-test footnote">Footnote (13px) - 脚注和辅助信息</div>
+            <div class="font-test caption-1">Caption 1 (12px) - 图片说明文字</div>
+            <div class="font-test caption-2">Caption 2 (11px) - 最小字体，符合Apple 11pt标准</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">系统字体测试 (System Fonts)</h2>
+            
+            <div class="font-test">
+                <p>System Font: 这段文字使用Apple系统字体栈 (-apple-system)</p>
+            </div>
+            
+            <div class="font-test mono-font">
+                Mono Font: console.log("这是等宽字体 SF Mono");
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">多语言支持测试 (Multi-language)</h2>
+            
+            <div class="font-test">English: The quick brown fox jumps over the lazy dog</div>
+            <div class="font-test">中文：苹果人机界面指南字体设计规范测试</div>
+            <div class="font-test">日本語：アップルヒューマンインターフェースガイドライン</div>
+            <div class="font-test">한국어: 애플 휴먼 인터페이스 가이드라인</div>
+            <div class="font-test">Emoji: 🍎📱💻⌚️🎨✨</div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">修复验证结果</h2>
+            
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>移除Google Fonts冲突 - 完全使用Apple系统字体</span>
+            </div>
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>最小字体大小修正为11px - 符合Apple 11pt标准</span>
+            </div>
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>添加Dynamic Type支持 - 响应式字体缩放</span>
+            </div>
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>统一字体权重变量 - 使用premium-theme系统</span>
+            </div>
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>优化代码字体设置 - SF Mono优先</span>
+            </div>
+            <div class="check-item">
+                <span class="check-mark">✅</span>
+                <span>可访问性增强 - 支持高对比度和减少动画</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检测字体加载状态
+        document.fonts.ready.then(() => {
+            console.log('✅ 所有字体已加载完成');
+            console.log('🍎 当前使用的字体栈:', getComputedStyle(document.body).fontFamily);
+        });
+
+        // 检测Dynamic Type支持
+        if (CSS.supports('font', '-apple-system-body')) {
+            console.log('✅ 支持Apple Dynamic Type');
+        } else {
+            console.log('⚠️ 不支持Apple Dynamic Type，使用fallback');
+        }
+
+        // 检测系统偏好
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            console.log('✅ 检测到用户偏好减少动画');
+        }
+
+        if (window.matchMedia('(prefers-contrast: high)').matches) {
+            console.log('✅ 检测到用户偏好高对比度');
+        }
+    </script>
+</body>
+</html>

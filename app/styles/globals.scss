@@ -1,0 +1,542 @@
+@import "./animation.scss";
+@import "./window.scss";
+@import "./premium-theme.scss";
+@import "./performance-levels.scss";
+@import "./premium-animations.scss";
+@import "./holographic-materials.scss";
+@import "./page-transitions.scss";
+@import "./premium-router.scss";
+
+@mixin light {
+  --theme: light;
+
+  /* color */
+  --white: white;
+  --black: rgb(48, 48, 48);
+  --gray: rgb(250, 250, 250);
+  --primary: rgb(29, 147, 171);
+  --second: rgb(231, 248, 255);
+  --hover-color: #f3f3f3;
+  --bar-color: rgba(0, 0, 0, 0.1);
+  --theme-color: var(--gray);
+
+  /* shadow */
+  --shadow: 50px 50px 100px 10px rgb(0, 0, 0, 0.1);
+  --card-shadow: 0px 2px 4px 0px rgb(0, 0, 0, 0.05);
+
+  /* stroke */
+  --border-in-light: 1px solid rgb(222, 222, 222);
+}
+
+@mixin dark {
+  --theme: dark;
+
+  /* color */
+  --white: rgb(30, 30, 30);
+  --black: rgb(187, 187, 187);
+  --gray: rgb(21, 21, 21);
+  --primary: rgb(29, 147, 171);
+  --second: rgb(27 38 42);
+  --hover-color: #323232;
+
+  --bar-color: rgba(255, 255, 255, 0.1);
+
+  --border-in-light: 1px solid rgba(255, 255, 255, 0.192);
+
+  --theme-color: var(--gray);
+
+  div:not(.no-dark) > svg {
+    filter: invert(0.5);
+  }
+}
+
+@mixin premium-dark {
+  --theme: premium-dark;
+  
+  /* Premium Deep Space Theme Colors */
+  --white: var(--premium-bg-void);
+  --black: var(--premium-text-primary);
+  --gray: var(--premium-bg-cosmos);
+  --primary: rgb(100, 150, 255);
+  --second: var(--premium-bg-space);
+  --hover-color: var(--premium-bg-stellar);
+  --bar-color: rgba(100, 150, 255, 0.1);
+  --theme-color: var(--premium-bg-cosmos);
+  
+  /* Premium Enhanced Shadows & Borders */
+  --shadow: var(--premium-shadow-lg);
+  --card-shadow: var(--premium-shadow-md);
+  --border-in-light: var(--premium-border-starlight);
+  
+  /* Premium SVG Icon Styling */
+  div:not(.no-dark) > svg {
+    filter: invert(0.8) hue-rotate(200deg) saturate(1.2);
+  }
+}
+
+.light {
+  @include light;
+}
+
+.dark {
+  @include dark;
+}
+
+.premium-dark {
+  @include premium-dark;
+}
+
+.mask {
+  filter: invert(0.8);
+}
+
+:root {
+  @include light;
+
+  --window-width: 90vw;
+  --window-height: 90vh;
+  --sidebar-width: 300px;
+  --window-content-width: calc(100% - var(--sidebar-width));
+  --message-max-width: 80%;
+  --full-height: 100%;
+}
+
+@media only screen and (max-width: 600px) {
+  :root {
+    --window-width: 100vw;
+    --window-height: var(--full-height);
+    --sidebar-width: 100vw;
+    --window-content-width: var(--window-width);
+    --message-max-width: 100%;
+  }
+
+  .no-mobile {
+    display: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    @include dark;
+  }
+}
+
+// Apple HIG可访问性支持
+// 支持用户的字体大小偏好设置
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+// 大字体模式支持 (iOS辅助功能)
+@media (prefers-contrast: high) {
+  :root {
+    --premium-text-primary: rgb(255, 255, 255);
+    --premium-text-secondary: rgb(220, 220, 220);
+  }
+}
+
+// 响应式字体大小 - 支持Dynamic Type
+@media (max-width: 768px) {
+  html {
+    font-size: clamp(14px, 16px, 20px); // 移动设备稍小的基础字体
+  }
+}
+
+html {
+  height: var(--full-height);
+
+  // Apple UI设计规范的系统字体栈
+  // 优先使用系统原生字体，确保最佳渲染效果和可访问性
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  // Apple标准字体大小 (17px为iOS/macOS正文标准)
+  // 支持Dynamic Type - 响应式字体缩放
+  font-size: clamp(15px, 17px, 22px); // 基础17px，可缩放范围15-22px
+  line-height: 1.4;
+
+  // 改善字体渲染质量
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeLegibility;
+
+  // Apple Dynamic Type支持
+  // 响应系统字体大小设置变化
+  @supports (font: -apple-system-body) {
+    font: -apple-system-body;
+  }
+}
+
+body {
+  background-color: var(--gray);
+  color: var(--black);
+  margin: 0;
+  padding: 0;
+  height: var(--full-height);
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  touch-action: pan-x pan-y;
+  overflow: hidden;
+
+  @media only screen and (max-width: 600px) {
+    background-color: var(--second);
+  }
+
+  *:focus-visible {
+    outline: none;
+  }
+}
+
+::-webkit-scrollbar {
+  --bar-width: 10px;
+  width: var(--bar-width);
+  height: var(--bar-width);
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bar-color);
+  border-radius: 20px;
+  background-clip: content-box;
+  border: 1px solid transparent;
+}
+
+select {
+  border: var(--border-in-light);
+  padding: 10px;
+  border-radius: 10px;
+  appearance: none;
+  cursor: pointer;
+  background-color: var(--white);
+  color: var(--black);
+  text-align: center;
+}
+
+label {
+  cursor: pointer;
+}
+
+input {
+  text-align: center;
+  font-family: inherit;
+}
+
+input[type="checkbox"] {
+  cursor: pointer;
+  background-color: var(--white);
+  color: var(--black);
+  appearance: none;
+  border: var(--border-in-light);
+  border-radius: 5px;
+  height: 16px;
+  width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+input[type="checkbox"]:checked::after {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: var(--primary);
+  content: " ";
+  border-radius: 2px;
+}
+
+input[type="range"] {
+  appearance: none;
+  background-color: var(--white);
+  color: var(--black);
+}
+
+@mixin thumb() {
+  appearance: none;
+  height: 8px;
+  width: 20px;
+  background-color: var(--primary);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all ease 0.3s;
+  margin-left: 5px;
+  border: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  @include thumb();
+}
+
+input[type="range"]::-moz-range-thumb {
+  @include thumb();
+}
+
+input[type="range"]::-ms-thumb {
+  @include thumb();
+}
+
+@mixin thumbHover() {
+  transform: scaleY(1.2);
+  width: 24px;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  @include thumbHover();
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+  @include thumbHover();
+}
+
+input[type="range"]::-ms-thumb:hover {
+  @include thumbHover();
+}
+
+input[type="number"],
+input[type="text"] {
+  // {{CHENGQI:
+  // Action: Modified - 升级通用输入为量子流体交互
+  // Timestamp: 2025-06-10 18:07:52 +08:00
+  // Reason: 实现P2-LD-010任务 - 为全局输入元素添加流体交互
+  // Principle_Applied: DRY - 复用量子输入系统，全局一致性
+  // Optimization: 统一的量子流体交互体验
+  // Architectural_Note (AR): 全局输入组件的统一升级
+  // Documentation_Note (DW): 所有标准输入现在具有量子流体交互
+  // }}
+  @include quantum-input-fluid-interaction(); // 量子流体交互核心效果
+  @include quantum-input-error-feedback(); // 错误状态反馈
+  @include quantum-input-success-feedback(); // 成功状态反馈
+  @include quantum-input-performance-optimized(); // 性能优化
+  
+  appearance: none;
+  border-radius: 10px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  max-width: 50%;
+  font-family: inherit;
+}
+
+input[type="password"] {
+  // {{CHENGQI:
+  // Action: Modified - 升级密码输入为量子安全流体交互
+  // Timestamp: 2025-06-10 18:07:52 +08:00
+  // Reason: 实现P2-LD-010任务 - 为密码输入添加专门的安全感效果
+  // Principle_Applied: DRY - 复用量子密码系统，安全性优先
+  // Optimization: 金色安全边框，专门的密码安全交互
+  // Architectural_Note (AR): 密码输入的差异化安全体验
+  // Documentation_Note (DW): 密码输入具有专门的安全感量子流体交互
+  // }}
+  @include quantum-password-secure-effect(); // 密码安全流体效果
+  @include quantum-input-error-feedback(); // 错误状态反馈
+  @include quantum-input-success-feedback(); // 成功状态反馈
+  @include quantum-input-performance-optimized(); // 性能优化
+  
+  appearance: none;
+  border-radius: 10px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  max-width: 50%;
+  font-family: inherit;
+}
+
+div.math {
+  overflow-x: auto;
+}
+
+.modal-mask {
+  z-index: 9999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: var(--full-height);
+  width: 100vw;
+  background-color: rgba($color: #000000, $alpha: 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media screen and (max-width: 600px) {
+    align-items: flex-end;
+  }
+}
+
+.link {
+  font-size: 12px;
+  color: var(--primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+pre {
+  position: relative;
+  
+  &:hover .copy-code-button {
+    pointer-events: all;
+    transform: translateX(0px);
+    opacity: 0.5;
+  }
+
+  .copy-code-button {
+    position: absolute;
+    right: 10px;
+    top: 1em;
+    cursor: pointer;
+    padding: 0px 5px;
+    background-color: var(--black);
+    color: var(--white);
+    border: var(--border-in-light);
+    border-radius: 10px;
+    transform: translateX(10px);
+    pointer-events: none;
+    opacity: 0;
+    transition: all ease 0.3s;
+
+    &:after {
+      content: "copy";
+    }
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+pre {
+  .show-hide-button {
+    border-radius: 10px;
+    position: absolute;
+    inset: 0 0 auto 0;
+    width: 100%;
+    margin: auto;
+    height: fit-content;
+    display: inline-flex;
+    justify-content: center;
+    pointer-events: none;
+    button{
+      pointer-events: auto;
+      margin-top: 3em;
+      margin-bottom: 4em;
+      padding: 5px 16px;
+      border: 0;
+      cursor: pointer;
+      border-radius: 14px;
+      text-align: center;
+      color: white;
+      background: #464e4e;
+    } 
+  }
+  
+  .expanded {
+    background-image: none;
+  }
+  .collapsed {
+    background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.06));
+  }
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.9);
+  }
+  &:focus {
+    filter: brightness(0.95);
+  }
+}
+
+.error {
+  width: 80%;
+  border-radius: 20px;
+  border: var(--border-in-light);
+  box-shadow: var(--card-shadow);
+  padding: 20px;
+  overflow: auto;
+  background-color: var(--white);
+  color: var(--black);
+
+  pre {
+    overflow: auto;
+  }
+}
+
+.password-input-container {
+  max-width: 50%;
+  display: flex;
+  justify-content: flex-end;
+  position: relative; // 为眼睛图标定位做准备
+
+  .password-eye {
+    // {{CHENGQI:
+    // Action: Modified - 升级密码可见性切换按钮
+    // Timestamp: 2025-06-10 18:07:52 +08:00
+    // Reason: 实现P2-LD-010任务 - 为密码眼睛图标添加流体交互
+    // Principle_Applied: KISS - 简洁的交互效果，用户体验优先
+    // Optimization: 悬停和点击的流体反馈动画
+    // Architectural_Note (AR): 与密码输入的整体流体体验集成
+    // Documentation_Note (DW): 密码可见性切换具有流体交互反馈
+    // }}
+    margin-right: 4px;
+    transition: all var(--quantum-duration-molecule) var(--quantum-spring-medium);
+    cursor: pointer;
+    
+    &:hover {
+      transform: scale(1.1) translateZ(0);
+      filter: brightness(1.2);
+    }
+    
+    &:active {
+      transform: scale(0.95) translateZ(0);
+      transition: all var(--quantum-duration-photon) var(--quantum-damped-critical);
+    }
+  }
+
+  .password-input {
+    min-width: 80%;
+    
+    // 密码可见性切换时的动画
+    &.visibility-toggle {
+      transition: all var(--quantum-duration-photon) var(--quantum-damped-critical);
+      transform: scale(0.98) translateZ(0);
+    }
+  }
+}
+
+.user-avatar {
+  height: 30px;
+  min-height: 30px;
+  width: 30px;
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-in-light);
+  box-shadow: var(--card-shadow);
+  border-radius: 11px;
+}
+
+.one-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copyable {
+  user-select: text;
+}

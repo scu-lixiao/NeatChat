@@ -1,0 +1,708 @@
+/**
+ * Premium Theme Variables System v2.0
+ * 高端主题变量系统 - 深邃空间主题 (Deep Space Theme)
+ * 
+ * 基于全息设计语言系统架构，实现"月付费100美元级别"的视觉体验
+ * 参考: /project_document/architecture/premium_ui_design_system_v1.0.md
+ */
+
+// =============================================================================
+// 深邃空间背景层次系统 (Deep Space Background Hierarchy)
+// 从极深宇宙空间到激活交互状态的5层渐进系统
+// =============================================================================
+
+:root {
+  // 背景深度层次 - 营造无限深空感
+  --premium-bg-cosmos: rgb(4, 4, 4);        // 极深主背景 - 接近纯黑的宇宙深空
+  --premium-bg-space: rgb(8, 8, 8);         // 深空背景 - 组件容器背景
+  --premium-bg-void: rgb(12, 12, 12);       // 虚空背景 - 卡片组件背景
+  --premium-bg-nebula: rgb(18, 18, 18);     // 星云背景 - 悬浮元素(模态框等)
+  --premium-bg-stellar: rgb(24, 24, 24);    // 恒星背景 - 交互激活状态
+  --premium-bg-aurora: rgb(28, 28, 28);     // 极光背景 - 最高层级元素
+
+  // 文字层次系统 - 确保优秀的可读性和对比度
+  --premium-text-primary: rgb(240, 240, 240);    // 主要文字 - 高对比度
+  --premium-text-secondary: rgb(200, 200, 200);  // 次要文字 - 中等对比度  
+  --premium-text-tertiary: rgb(160, 160, 160);   // 辅助文字 - 较低对比度
+  --premium-text-quaternary: rgb(120, 120, 120); // 占位文字 - 最低对比度
+  --premium-text-disabled: rgb(80, 80, 80);      // 禁用文字 - 不可交互状态
+
+  // =============================================================================
+  // 星光边框与光感系统 (Starlight Border & Glow System)
+  // 模拟宇宙中的星光、能量场等光感效果
+  // =============================================================================
+
+  // 基础边框系统
+  --premium-border-cosmos: rgba(255, 255, 255, 0.06);  // 极微妙边框 - 几乎不可见
+  --premium-border-space: rgba(255, 255, 255, 0.08);   // 微妙边框 - 轻微可见
+  --premium-border-void: rgba(255, 255, 255, 0.12);    // 默认边框 - 清晰可见
+  --premium-border-nebula: rgba(255, 255, 255, 0.16);  // 强化边框 - 明显可见
+
+  // 星光边框系统 - 蓝色科技感光效
+  --premium-border-starlight: rgba(100, 150, 255, 0.3);  // 星光边框 - 微妙蓝光
+  --premium-border-stellar: rgba(100, 150, 255, 0.5);    // 恒星边框 - 中等蓝光
+  --premium-border-aurora: rgba(100, 150, 255, 0.7);     // 极光边框 - 强烈蓝光
+
+  // 焦点与激活状态光感
+  --premium-border-focus: rgba(100, 150, 255, 0.6);      // 焦点光晕
+  --premium-border-active: rgba(100, 150, 255, 0.8);     // 激活光晕
+  --premium-border-energy: rgba(150, 100, 255, 0.5);     // 能量边框 - 紫色能量场
+
+  // =============================================================================
+  // 多维度阴影系统 (Multi-Dimensional Shadow System)  
+  // 营造深度空间感和悬浮效果
+  // =============================================================================
+
+  // 基础阴影层次 - 从微妙到强烈的5级深度
+  --premium-shadow-xs: 
+    0 1px 2px rgba(0, 0, 0, 0.8),
+    0 0 4px rgba(0, 0, 0, 0.4);
+    
+  --premium-shadow-sm: 
+    0 2px 4px rgba(0, 0, 0, 0.8),
+    0 1px 6px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+  --premium-shadow-md: 
+    0 4px 8px rgba(0, 0, 0, 0.8),
+    0 2px 12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+  --premium-shadow-lg: 
+    0 8px 16px rgba(0, 0, 0, 0.8),
+    0 4px 24px rgba(0, 0, 0, 0.6),
+    0 0 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+  --premium-shadow-xl: 
+    0 16px 32px rgba(0, 0, 0, 0.8),
+    0 8px 48px rgba(0, 0, 0, 0.6),
+    0 0 64px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+
+  // 光感发光效果系统
+  --premium-glow-primary: 
+    0 0 20px rgba(100, 150, 255, 0.3),
+    0 0 40px rgba(100, 150, 255, 0.1);
+    
+  --premium-glow-secondary: 
+    0 0 16px rgba(100, 255, 150, 0.25),
+    0 0 32px rgba(100, 255, 150, 0.1);
+    
+  --premium-glow-accent: 
+    0 0 16px rgba(255, 100, 150, 0.25),
+    0 0 32px rgba(255, 100, 150, 0.1);
+    
+  --premium-glow-warning: 
+    0 0 16px rgba(255, 200, 100, 0.3),
+    0 0 32px rgba(255, 200, 100, 0.1);
+    
+  --premium-glow-error: 
+    0 0 16px rgba(255, 100, 100, 0.3),
+    0 0 32px rgba(255, 100, 100, 0.1);
+
+  // 能量场效果 - 动态光环
+  --premium-energy-field: 
+    0 0 8px rgba(100, 150, 255, 0.4),
+    0 0 16px rgba(100, 150, 255, 0.2),
+    0 0 32px rgba(100, 150, 255, 0.1),
+    inset 0 0 8px rgba(100, 150, 255, 0.1);
+
+  // =============================================================================
+  // 材质与纹理效果变量 (Material & Texture Effects)
+  // 为后续阶段的全息材质做准备
+  // =============================================================================
+
+  // 磨砂玻璃效果参数
+  --premium-glass-opacity: 0.1;
+  --premium-glass-blur: 20px;
+  --premium-glass-saturation: 1.8;
+  --premium-glass-border: rgba(255, 255, 255, 0.1);
+
+  // 渐变效果基础变量
+  --premium-gradient-primary: linear-gradient(135deg, rgba(100, 150, 255, 0.1), rgba(100, 150, 255, 0.05));
+  --premium-gradient-secondary: linear-gradient(135deg, rgba(100, 255, 150, 0.1), rgba(100, 255, 150, 0.05));
+  --premium-gradient-accent: linear-gradient(135deg, rgba(255, 100, 150, 0.1), rgba(255, 100, 150, 0.05));
+
+  // =============================================================================
+  // 动画与交互参数 (Animation & Interaction Parameters)
+  // 为流体动效系统提供基础变量
+  // =============================================================================
+
+  // 动画时长系统
+  --premium-duration-instant: 100ms;
+  --premium-duration-fast: 150ms;
+  --premium-duration-normal: 250ms;
+  --premium-duration-slow: 350ms;
+  --premium-duration-slower: 500ms;
+  --premium-duration-slowest: 750ms;
+
+  // 缓动函数 - 物理动画曲线
+  --premium-ease-linear: linear;
+  --premium-ease-ease: ease;
+  --premium-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --premium-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --premium-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --premium-ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --premium-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  // 微交互参数
+  --premium-scale-hover: 1.02;
+  --premium-scale-active: 0.98;
+  --premium-scale-focus: 1.01;
+  --premium-opacity-hover: 0.9;
+  --premium-opacity-active: 0.95;
+  --premium-opacity-disabled: 0.4;
+  --premium-opacity-muted: 0.6;
+
+  // =============================================================================
+  // 兼容性与降级支持 (Compatibility & Fallback Support)
+  // 确保在不支持高级特性的设备上正常工作
+  // =============================================================================
+
+  // 标准暗色主题兼容变量
+  --premium-compat-white: var(--premium-bg-void);
+  --premium-compat-black: var(--premium-text-primary);
+  --premium-compat-gray: var(--premium-bg-cosmos);
+  --premium-compat-primary: rgb(100, 150, 255);
+  --premium-compat-hover-color: var(--premium-bg-stellar);
+  --premium-compat-border: var(--premium-border-void);
+  --premium-compat-shadow: var(--premium-shadow-md);
+
+  // =============================================================================
+  // Apple UI Design System Typography Variables
+  // 符合Apple Human Interface Guidelines的字体系统
+  // =============================================================================
+
+  // Apple官方推荐的系统字体栈
+  --premium-font-system: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  --premium-font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --premium-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --premium-font-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  
+  // Apple Typography Scale (iOS/macOS标准) - 符合Apple HIG 11pt最小标准
+  --premium-font-size-xs: 11px;      // Tab bar labels (Apple HIG最小11pt标准)
+  --premium-font-size-sm: 13px;      // Captions, Tertiary text
+  --premium-font-size-base: 15px;    // Secondary text
+  --premium-font-size-md: 17px;      // Body text, Buttons (Apple标准正文)
+  --premium-font-size-lg: 20px;      // SF Pro Display threshold
+  --premium-font-size-xl: 28px;      // Large titles (collapsed state)
+  --premium-font-size-2xl: 34px;     // Large titles (expanded state)
+  
+  // Apple Font Weights (符合SF Pro系列)
+  --premium-font-weight-ultralight: 100;
+  --premium-font-weight-thin: 200;
+  --premium-font-weight-light: 300;
+  --premium-font-weight-regular: 400;
+  --premium-font-weight-medium: 500;
+  --premium-font-weight-semibold: 600;
+  --premium-font-weight-bold: 700;
+  --premium-font-weight-heavy: 800;
+  --premium-font-weight-black: 900;
+  
+  // Apple Line Heights (针对可读性优化)
+  --premium-line-height-tight: 1.2;
+  --premium-line-height-normal: 1.4;
+  --premium-line-height-relaxed: 1.6;
+  
+  // Apple Letter Spacing (SF字体的动态间距)
+  --premium-letter-spacing-tight: -0.05em;
+  --premium-letter-spacing-normal: 0;
+  --premium-letter-spacing-wide: 0.05em;
+
+  // =============================================================================
+  // Apple UI Component Typography Tokens
+  // 具体UI组件的字体令牌
+  // =============================================================================
+  
+  // Navigation & Headers
+  --premium-typography-nav-title: var(--premium-font-weight-semibold) var(--premium-font-size-md)/var(--premium-line-height-tight) var(--premium-font-text);
+  --premium-typography-large-title: var(--premium-font-weight-bold) var(--premium-font-size-2xl)/var(--premium-line-height-tight) var(--premium-font-display);
+  
+  // Body & Content
+  --premium-typography-body: var(--premium-font-weight-regular) var(--premium-font-size-md)/var(--premium-line-height-normal) var(--premium-font-text);
+  --premium-typography-secondary: var(--premium-font-weight-regular) var(--premium-font-size-base)/var(--premium-line-height-normal) var(--premium-font-text);
+  --premium-typography-caption: var(--premium-font-weight-regular) var(--premium-font-size-sm)/var(--premium-line-height-normal) var(--premium-font-text);
+  
+  // Interactive Elements
+  --premium-typography-button: var(--premium-font-weight-medium) var(--premium-font-size-md)/var(--premium-line-height-tight) var(--premium-font-text);
+  --premium-typography-tab: var(--premium-font-weight-medium) var(--premium-font-size-xs)/var(--premium-line-height-tight) var(--premium-font-text);
+  
+  // Code & Monospace
+  --premium-typography-code: var(--premium-font-weight-regular) var(--premium-font-size-sm)/var(--premium-line-height-relaxed) var(--premium-font-mono);
+}
+
+// =============================================================================
+// 深邃主题类定义 (Deep Theme Class Definition)
+// 提供.premium-dark类供主题切换使用
+// =============================================================================
+
+.premium-dark {
+  // 继承所有premium变量
+  color-scheme: dark;
+  
+  // 确保基础变量映射
+  --white: var(--premium-bg-void);
+  --black: var(--premium-text-primary);
+  --gray: var(--premium-bg-cosmos);
+  --primary: rgb(100, 150, 255);
+  --second: var(--premium-bg-space);
+  --hover-color: var(--premium-bg-stellar);
+  --bar-color: rgba(100, 150, 255, 0.1);
+  --theme-color: var(--premium-bg-cosmos);
+  --border-in-light: var(--premium-border-starlight);
+  --shadow: var(--premium-shadow-lg);
+  --card-shadow: var(--premium-shadow-md);
+  
+  // Apple UI Typography System Integration
+  // 将Apple字体系统映射到全局变量
+  --font-family: var(--premium-font-text);
+  --font-family-code: var(--premium-font-mono);
+  --font-size-body: var(--premium-font-size-md);
+  --font-size-small: var(--premium-font-size-sm);
+  --font-size-large: var(--premium-font-size-lg);
+  
+  // 应用Apple标准字体设置到根元素
+  font-family: var(--premium-font-text);
+  font-size: var(--premium-font-size-md);
+  line-height: var(--premium-line-height-normal);
+
+  // SVG图标颜色调整
+  div:not(.no-dark) > svg {
+    filter: invert(0.8) hue-rotate(200deg) saturate(1.2);
+  }
+}
+
+// =============================================================================
+// 响应式适配 (Responsive Adaptation)
+// 根据设备能力调整效果强度
+// =============================================================================
+
+// 低端设备降级 - 减少复杂效果
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --premium-duration-fast: 0ms;
+    --premium-duration-normal: 0ms;
+    --premium-duration-slow: 0ms;
+    --premium-glow-primary: none;
+    --premium-glow-secondary: none;
+    --premium-energy-field: var(--premium-shadow-sm);
+  }
+}
+
+// 触摸设备优化 - 调整交互参数
+@media (hover: none) {
+  :root {
+    --premium-scale-hover: 1;
+    --premium-opacity-hover: 1;
+  }
+}
+
+// 高刷新率显示器优化
+@media (min-resolution: 120dpi) {
+  :root {
+    --premium-duration-fast: 120ms;
+    --premium-duration-normal: 200ms;
+  }
+}
+
+// =============================================================================
+// 调试与开发工具 (Debug & Development Tools)
+// 开发环境下的调试辅助
+// =============================================================================
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    // 自动应用深邃主题变量作为默认值
+    --white: var(--premium-bg-void);
+    --black: var(--premium-text-primary);
+    --gray: var(--premium-bg-cosmos);
+  }
+}
+
+// 调试边框 - 开发时启用
+.premium-debug {
+  * {
+    outline: 1px solid var(--premium-border-starlight) !important;
+  }
+}
+
+// =============================================================================
+// 光感边框Mixin系统 (Starlight Border Mixin System) v2.0
+// 高端光感边框效果库 - 支持不同强度和颜色的星光边框
+// 
+// {{CHENGQI:
+// Action: Added
+// Timestamp: 2025-06-10 16:49:01 +08:00
+// Reason: P1-LD-003任务 - 实现光感边框Mixin库，支持starlight-border、focus-glow、energy-border等效果
+// Principle_Applied: KISS (简洁易用的mixin接口) + DRY (复用现有CSS变量) + 单一职责 (每个mixin专注单一效果)
+// Optimization: 使用GPU加速的transform和box-shadow，支持参数化配置
+// Architectural_Note (AR): 遵循现有变量系统架构，为后续量子流体动效做准备
+// Documentation_Note (DW): 完整的注释和使用说明，确保团队理解和维护
+// }}
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. 微妙星光边框 (Subtle Starlight Border)
+// 用于默认状态的微妙光感边框效果
+// -----------------------------------------------------------------------------
+@mixin starlight-border($intensity: normal, $color: var(--premium-border-starlight)) {
+  @if $intensity == subtle {
+    border: 1px solid rgba(100, 150, 255, 0.2);
+    box-shadow: 
+      0 0 4px rgba(100, 150, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  } @else if $intensity == normal {
+    border: 1px solid $color;
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.15),
+      0 0 16px rgba(100, 150, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  } @else if $intensity == strong {
+    border: 1px solid var(--premium-border-stellar);
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  transition: 
+    border-color var(--premium-duration-normal) var(--premium-ease-out),
+    box-shadow var(--premium-duration-normal) var(--premium-ease-out);
+}
+
+// -----------------------------------------------------------------------------
+// 2. 焦点光晕效果 (Focus Glow Effect)
+// 用于输入框、按钮等元素的聚焦状态
+// -----------------------------------------------------------------------------
+@mixin focus-glow($color: var(--premium-border-focus), $size: normal) {
+  @if $size == small {
+    border: 1px solid $color;
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.3),
+      0 0 16px rgba(100, 150, 255, 0.1),
+      inset 0 0 4px rgba(100, 150, 255, 0.1);
+  } @else if $size == normal {
+    border: 1px solid $color;
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      0 0 36px rgba(100, 150, 255, 0.05),
+      inset 0 0 6px rgba(100, 150, 255, 0.15);
+  } @else if $size == large {
+    border: 1px solid var(--premium-border-active);
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.5),
+      0 0 32px rgba(100, 150, 255, 0.2),
+      0 0 48px rgba(100, 150, 255, 0.08),
+      inset 0 0 8px rgba(100, 150, 255, 0.2);
+  }
+  
+  outline: none;
+  transform: scale(var(--premium-scale-focus));
+  transition: 
+    border-color var(--premium-duration-fast) var(--premium-ease-out),
+    box-shadow var(--premium-duration-fast) var(--premium-ease-out),
+    transform var(--premium-duration-fast) var(--premium-ease-spring);
+}
+
+// -----------------------------------------------------------------------------
+// 3. 能量边框效果 (Energy Border Effect)
+// 用于高级交互状态的动态能量场边框
+// -----------------------------------------------------------------------------
+@mixin energy-border($type: default, $animation: true) {
+  @if $type == default {
+    border: 1px solid var(--premium-border-energy);
+    box-shadow: var(--premium-energy-field);
+  } @else if $type == pulse {
+    border: 1px solid var(--premium-border-energy);
+    box-shadow: var(--premium-energy-field);
+    
+    @if $animation {
+      animation: energy-pulse 2s var(--premium-ease-in-out) infinite;
+    }
+  } @else if $type == flow {
+    position: relative;
+    border: 1px solid transparent;
+    background: 
+      linear-gradient(var(--premium-bg-void), var(--premium-bg-void)) padding-box,
+      linear-gradient(90deg, 
+        rgba(100, 150, 255, 0.5),
+        rgba(150, 100, 255, 0.5),
+        rgba(100, 150, 255, 0.5)
+      ) border-box;
+    
+    @if $animation {
+      background-size: 100% 100%, 200% 100%;
+      animation: energy-flow 3s linear infinite;
+    }
+  }
+  
+  transition: 
+    border-color var(--premium-duration-normal) var(--premium-ease-out),
+    box-shadow var(--premium-duration-normal) var(--premium-ease-out);
+}
+
+// -----------------------------------------------------------------------------
+// 4. 悬浮增强边框 (Hover Enhanced Border)
+// 用于hover状态的增强光感效果
+// -----------------------------------------------------------------------------
+@mixin hover-enhanced-border($base-intensity: normal) {
+  @include starlight-border($base-intensity);
+  
+  &:hover {
+    border-color: var(--premium-border-stellar);
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.3),
+      0 0 32px rgba(100, 150, 255, 0.1),
+      0 0 48px rgba(100, 150, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    
+    transform: scale(var(--premium-scale-hover));
+  }
+  
+  &:active {
+    transform: scale(var(--premium-scale-active));
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.4),
+      0 0 16px rgba(100, 150, 255, 0.15),
+      inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 5. 组合光感边框 (Composite Glow Border)
+// 多种光感效果的组合，用于最高级的UI元素
+// -----------------------------------------------------------------------------
+@mixin composite-glow-border($primary: true, $secondary: false, $accent: false) {
+  border: 1px solid var(--premium-border-aurora);
+  
+  $shadows: ();
+  
+  @if $primary {
+    $shadows: append($shadows, (0 0 12px rgba(100, 150, 255, 0.4)), comma);
+    $shadows: append($shadows, (0 0 24px rgba(100, 150, 255, 0.15)), comma);
+  }
+  
+  @if $secondary {
+    $shadows: append($shadows, (0 0 16px rgba(100, 255, 150, 0.25)), comma);
+    $shadows: append($shadows, (0 0 32px rgba(100, 255, 150, 0.1)), comma);
+  }
+  
+  @if $accent {
+    $shadows: append($shadows, (0 0 16px rgba(255, 100, 150, 0.25)), comma);
+    $shadows: append($shadows, (0 0 32px rgba(255, 100, 150, 0.1)), comma);
+  }
+  
+  // 添加内阴影和基础结构阴影
+  $shadows: append($shadows, (inset 0 1px 0 rgba(255, 255, 255, 0.15)), comma);
+  $shadows: append($shadows, (inset 0 -1px 0 rgba(0, 0, 0, 0.1)), comma);
+  $shadows: append($shadows, (0 4px 8px rgba(0, 0, 0, 0.3)), comma);
+  
+  box-shadow: $shadows;
+  
+  transition: 
+    border-color var(--premium-duration-normal) var(--premium-ease-out),
+    box-shadow var(--premium-duration-normal) var(--premium-ease-out),
+    transform var(--premium-duration-normal) var(--premium-ease-spring);
+}
+
+// -----------------------------------------------------------------------------
+// 6. 状态指示边框 (Status Indicator Border)
+// 用于成功、警告、错误等状态的语义化边框
+// -----------------------------------------------------------------------------
+@mixin status-border($status: default, $intensity: normal) {
+  @if $status == success {
+    border: 1px solid rgba(100, 255, 150, 0.5);
+    box-shadow: 
+      0 0 8px rgba(100, 255, 150, 0.3),
+      0 0 16px rgba(100, 255, 150, 0.1);
+  } @else if $status == warning {
+    border: 1px solid rgba(255, 200, 100, 0.5);
+    box-shadow: 
+      0 0 8px rgba(255, 200, 100, 0.3),
+      0 0 16px rgba(255, 200, 100, 0.1);
+  } @else if $status == error {
+    border: 1px solid rgba(255, 100, 100, 0.5);
+    box-shadow: 
+      0 0 8px rgba(255, 100, 100, 0.3),
+      0 0 16px rgba(255, 100, 100, 0.1);
+  } @else if $status == info {
+    border: 1px solid rgba(100, 200, 255, 0.5);
+    box-shadow: 
+      0 0 8px rgba(100, 200, 255, 0.3),
+      0 0 16px rgba(100, 200, 255, 0.1);
+  } @else {
+    @include starlight-border($intensity);
+  }
+  
+  @if $intensity == strong {
+    filter: brightness(1.2) saturate(1.1);
+  }
+  
+  transition: 
+    border-color var(--premium-duration-fast) var(--premium-ease-out),
+    box-shadow var(--premium-duration-fast) var(--premium-ease-out),
+    filter var(--premium-duration-fast) var(--premium-ease-out);
+}
+
+// =============================================================================
+// 动态光流动画关键帧 (Dynamic Light Flow Animations)
+// 为energy-border提供动态动画效果
+// =============================================================================
+
+// 能量脉冲动画
+@keyframes energy-pulse {
+  0% {
+    box-shadow: var(--premium-energy-field);
+  }
+  50% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.6),
+      0 0 24px rgba(100, 150, 255, 0.3),
+      0 0 48px rgba(100, 150, 255, 0.15),
+      inset 0 0 12px rgba(100, 150, 255, 0.15);
+  }
+  100% {
+    box-shadow: var(--premium-energy-field);
+  }
+}
+
+// 能量流动动画
+@keyframes energy-flow {
+  0% {
+    background-position: 100% 0, 0% 0;
+  }
+  100% {
+    background-position: 100% 0, 200% 0;
+  }
+}
+
+// 星光闪烁动画
+@keyframes starlight-shimmer {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.15),
+      0 0 16px rgba(100, 150, 255, 0.05);
+  }
+  25% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      0 0 36px rgba(100, 150, 255, 0.05);
+  }
+  50% {
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.35),
+      0 0 32px rgba(100, 150, 255, 0.15),
+      0 0 48px rgba(100, 150, 255, 0.08);
+  }
+  75% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      0 0 36px rgba(100, 150, 255, 0.05);
+  }
+}
+
+// 光晕呼吸动画
+@keyframes glow-breathing {
+  0%, 100% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.1) saturate(1.2);
+  }
+}
+
+// =============================================================================
+// 性能优化与降级支持 (Performance Optimization & Fallback)
+// 确保在低端设备上的性能表现
+// =============================================================================
+
+// 简化版本 - 用于性能敏感场景
+@mixin starlight-border-simple($color: var(--premium-border-starlight)) {
+  border: 1px solid $color;
+  box-shadow: 0 0 4px rgba(100, 150, 255, 0.2);
+  transition: border-color var(--premium-duration-fast) var(--premium-ease-out);
+}
+
+// 禁用动画版本 - 用于reduced motion
+@mixin focus-glow-static($color: var(--premium-border-focus)) {
+  border: 1px solid $color;
+  box-shadow: 0 0 8px rgba(100, 150, 255, 0.3);
+  outline: none;
+}
+
+// 降级检测和自动应用
+@media (prefers-reduced-motion: reduce) {
+  // 禁用所有动画
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 768px) and (hover: none) {
+  // 移动设备优化 - 减少复杂效果
+  :root {
+    --premium-glow-primary: 0 0 4px rgba(100, 150, 255, 0.2);
+    --premium-energy-field: 0 0 4px rgba(100, 150, 255, 0.3);
+  }
+}
+
+// =============================================================================
+// 使用示例与文档 (Usage Examples & Documentation)
+// 供开发团队参考的使用指南
+// =============================================================================
+
+/*
+使用示例 (Usage Examples):
+
+1. 基础星光边框:
+   .element {
+     @include starlight-border();
+   }
+
+2. 强度可调的星光边框:
+   .element {
+     @include starlight-border(strong);
+   }
+
+3. 焦点光晕效果:
+   .input {
+     @include starlight-border();
+     
+     &:focus {
+       @include focus-glow();
+     }
+   }
+
+4. 悬停增强边框:
+   .button {
+     @include hover-enhanced-border();
+   }
+
+5. 动态能量边框:
+   .premium-card {
+     @include energy-border(pulse);
+   }
+
+6. 状态指示边框:
+   .error-message {
+     @include status-border(error);
+   }
+
+7. 组合光感边框 (最高级):
+   .hero-element {
+     @include composite-glow-border(true, true, false);
+   }
+
+性能考虑:
+- 在移动设备上自动使用简化版本
+- 支持 prefers-reduced-motion 降级
+- 使用 GPU 加速的 transform 和 box-shadow
+- 避免在滚动容器中使用复杂动画效果
+*/ 

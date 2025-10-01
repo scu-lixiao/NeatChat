@@ -1,0 +1,335 @@
+// {{CHENGQI:
+// Action: Created Apple HIG Typography Test Styles
+// Timestamp: 2025-06-22
+// Reason: Comprehensive styling for Apple HIG typography compliance testing
+// Principle_Applied: Apple Human Interface Guidelines - Typography System
+// Optimization: Visual hierarchy and accessibility testing styles
+// Architectural_Note (AR): Uses premium-theme variables for consistency
+// Documentation_Note (DW): Apple HIG typography test component styles
+// }}
+
+@import "../styles/premium-theme.scss";
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: var(--premium-font-text);
+  background: var(--premium-bg-space);
+  color: var(--premium-text-primary);
+  border-radius: 12px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--premium-border-primary);
+}
+
+.title {
+  font: var(--premium-typography-large-title);
+  color: var(--premium-text-primary);
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font: var(--premium-typography-body);
+  color: var(--premium-text-secondary);
+  margin: 0;
+}
+
+.section {
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background: var(--premium-bg-void);
+  border-radius: 8px;
+  border: 1px solid var(--premium-border-secondary);
+}
+
+.sectionTitle {
+  font: var(--premium-typography-title-2);
+  color: var(--premium-text-primary);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--premium-border-tertiary);
+}
+
+// 字体层级测试样式
+.hierarchyTest {
+  .largeTitle {
+    font-family: var(--premium-font-display);
+    font-size: var(--premium-font-size-2xl);
+    font-weight: var(--premium-font-weight-bold);
+    line-height: var(--premium-line-height-tight);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .title1 {
+    font-family: var(--premium-font-display);
+    font-size: var(--premium-font-size-xl);
+    font-weight: var(--premium-font-weight-bold);
+    line-height: var(--premium-line-height-tight);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .title2 {
+    font-family: var(--premium-font-text);
+    font-size: 22px;
+    font-weight: var(--premium-font-weight-semibold);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .title3 {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-lg);
+    font-weight: var(--premium-font-weight-semibold);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .headline {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-md);
+    font-weight: var(--premium-font-weight-semibold);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .body {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-md);
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-relaxed);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .callout {
+    font-family: var(--premium-font-text);
+    font-size: 16px;
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-primary);
+    margin: 1rem 0;
+  }
+
+  .subheadline {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-base);
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-secondary);
+    margin: 1rem 0;
+  }
+
+  .footnote {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-sm);
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-tertiary);
+    margin: 1rem 0;
+  }
+
+  .caption1 {
+    font-family: var(--premium-font-text);
+    font-size: 12px;
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-tertiary);
+    margin: 1rem 0;
+  }
+
+  .caption2 {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-xs); // 11px - Apple HIG最小标准
+    font-weight: var(--premium-font-weight-regular);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-quaternary);
+    margin: 1rem 0;
+  }
+}
+
+// 字体权重测试样式
+.weightTest {
+  p {
+    font-family: var(--premium-font-text);
+    font-size: var(--premium-font-size-md);
+    line-height: var(--premium-line-height-normal);
+    color: var(--premium-text-primary);
+    margin: 0.5rem 0;
+  }
+
+  .ultraLight { font-weight: var(--premium-font-weight-ultralight); }
+  .thin { font-weight: var(--premium-font-weight-thin); }
+  .light { font-weight: var(--premium-font-weight-light); }
+  .regular { font-weight: var(--premium-font-weight-regular); }
+  .medium { font-weight: var(--premium-font-weight-medium); }
+  .semibold { font-weight: var(--premium-font-weight-semibold); }
+  .bold { font-weight: var(--premium-font-weight-bold); }
+  .heavy { font-weight: var(--premium-font-weight-heavy); }
+  .black { font-weight: var(--premium-font-weight-black); }
+}
+
+// 系统字体测试样式
+.fontTest {
+  p, code {
+    font-size: var(--premium-font-size-md);
+    line-height: var(--premium-line-height-relaxed);
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: var(--premium-bg-nebula);
+  }
+
+  .systemFont {
+    font-family: var(--premium-font-system);
+    color: var(--premium-text-primary);
+  }
+
+  .displayFont {
+    font-family: var(--premium-font-display);
+    color: var(--premium-text-primary);
+  }
+
+  .textFont {
+    font-family: var(--premium-font-text);
+    color: var(--premium-text-primary);
+  }
+
+  .monoFont {
+    font-family: var(--premium-font-mono);
+    color: var(--premium-accent-primary);
+    background: var(--premium-bg-stellar);
+    border: 1px solid var(--premium-border-secondary);
+  }
+}
+
+// 可访问性测试样式
+.accessibilityTest {
+  .contrastTest {
+    margin-bottom: 2rem;
+
+    h3 {
+      font: var(--premium-typography-title-3);
+      color: var(--premium-text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .highContrast {
+      color: var(--premium-text-primary);
+      background: var(--premium-bg-cosmos);
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0;
+    }
+
+    .mediumContrast {
+      color: var(--premium-text-secondary);
+      margin: 0.5rem 0;
+    }
+
+    .lowContrast {
+      color: var(--premium-text-quaternary);
+      margin: 0.5rem 0;
+    }
+  }
+
+  .dynamicTypeTest {
+    h3 {
+      font: var(--premium-typography-title-3);
+      color: var(--premium-text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .scalableText {
+      font-size: clamp(14px, 17px, 24px);
+      line-height: var(--premium-line-height-relaxed);
+      color: var(--premium-text-primary);
+      transition: font-size 0.2s ease;
+    }
+  }
+}
+
+// 多语言测试样式
+.languageTest {
+  p {
+    font-size: var(--premium-font-size-md);
+    line-height: var(--premium-line-height-relaxed);
+    margin: 1rem 0;
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: var(--premium-bg-nebula);
+  }
+
+  .english {
+    font-family: var(--premium-font-text);
+    color: var(--premium-text-primary);
+  }
+
+  .chinese {
+    font-family: var(--premium-font-text);
+    color: var(--premium-text-primary);
+  }
+
+  .japanese {
+    font-family: var(--premium-font-text);
+    color: var(--premium-text-primary);
+  }
+
+  .korean {
+    font-family: var(--premium-font-text);
+    color: var(--premium-text-primary);
+  }
+
+  .emoji {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    color: var(--premium-text-primary);
+    font-size: 1.2em;
+  }
+}
+
+// 测试结果摘要样式
+.summary {
+  .checkItem {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+    font: var(--premium-typography-body);
+    color: var(--premium-text-primary);
+
+    .checkMark {
+      margin-right: 0.75rem;
+      font-size: 1.2em;
+      color: var(--premium-success);
+    }
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .section {
+    padding: 1rem;
+  }
+
+  .hierarchyTest {
+    .largeTitle {
+      font-size: var(--premium-font-size-xl);
+    }
+
+    .title1 {
+      font-size: var(--premium-font-size-lg);
+    }
+  }
+}

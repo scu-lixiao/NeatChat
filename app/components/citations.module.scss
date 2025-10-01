@@ -1,0 +1,192 @@
+// {{CHENGQI:
+// Action: Modified - 更新Citations组件样式以支持简化的链接显示
+// Timestamp: 2025-01-02 17:30:00 +08:00
+// Reason: 更新样式以支持只显示title作为链接的新显示方式
+// Principle_Applied: KISS - 简化样式结构，移除不需要的URL样式
+// Optimization: 合并title和URL样式为单一的链接样式，提供更清洁的外观
+// Architectural_Note (AR): 简化的样式结构提供更好的用户体验
+// Documentation_Note (DW): 更新为支持简化链接显示的样式规范
+// }}
+
+.chat-message-citations {
+  margin-top: 12px;
+  margin-bottom: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--premium-bg-surface);
+  border: 1px solid var(--premium-border-subtle);
+  box-shadow: var(--premium-shadow-xs);
+  transition: all var(--premium-duration-normal) var(--premium-ease-out);
+
+  &:hover {
+    border-color: var(--premium-border-soft);
+    box-shadow: var(--premium-shadow-sm);
+    background-color: var(--premium-bg-surface-hover);
+  }
+
+  .citations-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+    transition: all var(--premium-duration-fast) var(--premium-ease-out);
+
+    &:hover {
+      color: var(--premium-text-primary);
+    }
+
+    .citations-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--premium-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      &::before {
+        content: "📚";
+        font-size: 12px;
+      }
+    }
+
+    .citations-toggle {
+      font-size: 11px;
+      color: var(--premium-text-tertiary);
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: var(--premium-bg-surface-soft);
+      transition: all var(--premium-duration-fast) var(--premium-ease-out);
+
+      &:hover {
+        background-color: var(--premium-bg-muted);
+        color: var(--premium-text-secondary);
+      }
+    }
+  }
+
+  .citations-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--premium-duration-normal) var(--premium-ease-out);
+
+    &.expanded {
+      margin-top: 10px;
+      overflow-y: auto;
+    }
+
+    .citations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .citation-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background-color: var(--premium-bg-void);
+        border: 1px solid var(--premium-border-subtle);
+        transition: all var(--premium-duration-fast) var(--premium-ease-out);
+
+        &:hover {
+          background-color: var(--premium-bg-surface);
+          border-color: var(--premium-border-soft);
+          transform: translateY(-1px);
+          box-shadow: var(--premium-shadow-xs);
+        }
+
+        .citation-index {
+          flex-shrink: 0;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background-color: var(--premium-accent-primary);
+          color: var(--premium-text-contrast);
+          font-size: 10px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: 1px;
+        }
+
+        .citation-content {
+          flex: 1;
+          min-width: 0;
+
+          .citation-title-link {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--premium-accent-primary);
+            text-decoration: none;
+            line-height: 1.4;
+            word-break: break-word;
+            display: block;
+            transition: all var(--premium-duration-fast) var(--premium-ease-out);
+
+            &:hover {
+              color: var(--premium-accent-secondary);
+              text-decoration: underline;
+              transform: translateX(2px);
+            }
+
+            &:active {
+              transform: translateX(1px);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Dark theme adjustments
+[data-theme="dark"] .chat-message-citations {
+  background-color: var(--premium-bg-surface-dark);
+  border-color: var(--premium-border-subtle-dark);
+
+  &:hover {
+    background-color: var(--premium-bg-surface-hover-dark);
+    border-color: var(--premium-border-soft-dark);
+  }
+
+  .citations-header {
+    .citations-title {
+      color: var(--premium-text-secondary-dark);
+    }
+
+    .citations-toggle {
+      background-color: var(--premium-bg-surface-soft-dark);
+      color: var(--premium-text-tertiary-dark);
+
+      &:hover {
+        background-color: var(--premium-bg-muted-dark);
+        color: var(--premium-text-secondary-dark);
+      }
+    }
+  }
+
+  .citations-content .citations-list .citation-item {
+    background-color: var(--premium-bg-void-dark);
+    border-color: var(--premium-border-subtle-dark);
+
+    &:hover {
+      background-color: var(--premium-bg-surface-dark);
+      border-color: var(--premium-border-soft-dark);
+    }
+
+    .citation-content {
+      .citation-title-link {
+        color: var(--premium-accent-primary-dark);
+
+        &:hover {
+          color: var(--premium-accent-secondary-dark);
+        }
+      }
+    }
+  }
+} 

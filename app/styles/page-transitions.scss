@@ -1,0 +1,473 @@
+/**
+ * 页面转场动画系统 - Premium UI Enhancement v2
+ * 
+ * 功能特性:
+ * - 3D空间感页面切换
+ * - 模态框维度切换效果  
+ * - 流体内容加载动画
+ * - 量子流体动效集成
+ * - 深邃空间主题适配
+ * 
+ * 性能优化:
+ * - GPU硬件加速 (transform3d)
+ * - will-change优化
+ * - prefers-reduced-motion支持
+ * - 60fps性能保证
+ */
+
+// 导入premium主题变量
+@import './premium-theme.scss';
+
+/* ===== 基础动画配置 ===== */
+
+// 3D透视容器配置
+.page-transition-container {
+  perspective: 1000px;
+  perspective-origin: center center;
+  overflow: hidden;
+  position: relative;
+  
+  // GPU加速优化
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+// 通用转场基础
+.page-transition-base {
+  transition-timing-function: var(--premium-ease-out-quart);
+  transition-duration: var(--premium-duration-slow);
+  will-change: transform, opacity;
+  
+  // 支持减少动画偏好
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: var(--premium-duration-fast);
+    transform: none !important;
+  }
+}
+
+/* ===== 页面切换转场动画 ===== */
+
+// 3D空间滑动转场
+.page-slide-3d {
+  @extend .page-transition-base;
+  transform-style: preserve-3d;
+  
+  &.enter {
+    transform: translate3d(100%, 0, -200px) rotateY(45deg);
+    opacity: 0;
+    
+    &.active {
+      transform: translate3d(0, 0, 0) rotateY(0);
+      opacity: 1;
+    }
+  }
+  
+  &.exit {
+    transform: translate3d(0, 0, 0) rotateY(0);
+    opacity: 1;
+    
+    &.active {
+      transform: translate3d(-100%, 0, -200px) rotateY(-45deg);
+      opacity: 0;
+    }
+  }
+}
+
+// 深度层叠转场
+.page-depth-stack {
+  @extend .page-transition-base;
+  transition-duration: var(--premium-duration-slower);
+  
+  &.enter {
+    transform: translate3d(0, 0, -500px) scale(0.8);
+    opacity: 0;
+    filter: blur(8px);
+    
+    &.active {
+      transform: translate3d(0, 0, 0) scale(1);
+      opacity: 1;
+      filter: blur(0);
+    }
+  }
+  
+  &.exit {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+    filter: blur(0);
+    
+    &.active {
+      transform: translate3d(0, 0, 200px) scale(1.1);
+      opacity: 0;
+      filter: blur(4px);
+    }
+  }
+}
+
+// 量子传送效果
+.page-quantum-teleport {
+  @extend .page-transition-base;
+  transition-duration: var(--premium-duration-normal);
+  
+  &.enter {
+    transform: scale(0) rotate(180deg);
+    opacity: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 50px var(--premium-glow-primary);
+    
+    &.active {
+      transform: scale(1) rotate(0deg);
+      opacity: 1;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+  
+  &.exit {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    border-radius: 0;
+    
+    &.active {
+      transform: scale(0) rotate(-180deg);
+      opacity: 0;
+      border-radius: 50%;
+      box-shadow: 0 0 100px var(--premium-glow-primary);
+    }
+  }
+}
+
+/* ===== 模态框转场动画 ===== */
+
+// 维度切换效果
+.modal-dimension-shift {
+  @extend .page-transition-base;
+  transform-origin: center center;
+  
+  // 背景遮罩动画
+  &::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      45deg,
+      rgba(var(--premium-bg-cosmos-rgb), 0.95),
+      rgba(var(--premium-bg-nebula-rgb), 0.9)
+    );
+    backdrop-filter: blur(20px) saturate(1.8);
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--premium-ease-out-quart);
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  &.enter {
+    transform: translate3d(-50%, -50%, -1000px) rotateX(90deg) scale(0.1);
+    opacity: 0;
+    
+    &::before {
+      opacity: 0;
+    }
+    
+    &.active {
+      transform: translate3d(-50%, -50%, 0) rotateX(0) scale(1);
+      opacity: 1;
+      
+      &::before {
+        opacity: 1;
+      }
+    }
+  }
+  
+  &.exit {
+    transform: translate3d(-50%, -50%, 0) rotateX(0) scale(1);
+    opacity: 1;
+    
+    &.active {
+      transform: translate3d(-50%, -50%, -1000px) rotateX(-90deg) scale(0.1);
+      opacity: 0;
+      
+      &::before {
+        opacity: 0;
+      }
+    }
+  }
+}
+
+// 能量场展开效果
+.modal-energy-field {
+  @extend .page-transition-base;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: conic-gradient(
+      from 0deg,
+      var(--premium-border-focus),
+      var(--premium-glow-primary),
+      var(--premium-border-focus)
+    );
+    border-radius: inherit;
+    opacity: 0;
+    animation: energyRotate 2s linear infinite;
+    z-index: -1;
+  }
+  
+  &.enter {
+    transform: scale(0);
+    opacity: 0;
+    
+    &::before {
+      opacity: 0;
+      transform: scale(2);
+    }
+    
+    &.active {
+      transform: scale(1);
+      opacity: 1;
+      
+      &::before {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  }
+}
+
+@keyframes energyRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 内容加载动画 ===== */
+
+// 数据流入动画
+.content-data-stream {
+  @extend .page-transition-base;
+  overflow: hidden;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(var(--premium-glow-primary-rgb), 0.3),
+      transparent
+    );
+    animation: dataFlow 1.5s ease-out;
+  }
+  
+  &.loading {
+    opacity: 0;
+    transform: translateY(20px);
+    
+    &.loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@keyframes dataFlow {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+// 分子重组效果
+.content-molecular-assembly {
+  &.loading {
+    .char {
+      display: inline-block;
+      opacity: 0;
+      transform: scale(0) rotate(360deg);
+      animation: molecularAssemble 0.6s ease-out forwards;
+      
+      @for $i from 1 through 20 {
+        &:nth-child(#{$i}) {
+          animation-delay: #{$i * 0.05}s;
+        }
+      }
+    }
+  }
+}
+
+@keyframes molecularAssemble {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(360deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+// 量子态加载
+.content-quantum-loading {
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--premium-glow-primary);
+    border-radius: 50%;
+    animation: quantumSpin 1s linear infinite;
+    opacity: 0;
+  }
+  
+  &.loading {
+    opacity: 0.3;
+    
+    &::after {
+      opacity: 1;
+    }
+  }
+}
+
+@keyframes quantumSpin {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.5); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* ===== 组合动效系统 ===== */
+
+// 嵌套页面转场
+.nested-page-transition {
+  .page-content {
+    transition: all var(--premium-duration-normal) var(--premium-ease-out-quart);
+    
+    &.nested-enter {
+      transform: translate3d(0, 100%, 0);
+      opacity: 0;
+      
+      &.active {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+      }
+    }
+    
+    &.nested-exit {
+      transform: translate3d(0, 0, 0);
+      opacity: 1;
+      
+      &.active {
+        transform: translate3d(0, -100%, 0);
+        opacity: 0;
+      }
+    }
+  }
+}
+
+// 路由转场协调器
+.route-transition-coordinator {
+  position: relative;
+  overflow: hidden;
+  
+  .route-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: all var(--premium-duration-slow) var(--premium-ease-spring);
+  }
+}
+
+/* ===== 性能优化和可访问性 ===== */
+
+// 性能优化类
+.transition-optimized {
+  contain: layout style paint;
+  content-visibility: auto;
+  will-change: transform, opacity;
+}
+
+// 减少动画支持
+@media (prefers-reduced-motion: reduce) {
+  .page-transition-base,
+  .page-slide-3d,
+  .page-depth-stack,
+  .page-quantum-teleport,
+  .modal-dimension-shift,
+  .modal-energy-field,
+  .content-data-stream,
+  .content-molecular-assembly,
+  .content-quantum-loading {
+    transition-duration: 0.01s !important;
+    animation-duration: 0.01s !important;
+    transform: none !important;
+  }
+}
+
+// 高对比度支持
+@media (prefers-contrast: high) {
+  .modal-dimension-shift::before {
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: none;
+  }
+  
+  .content-data-stream::before {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.8),
+      transparent
+    );
+  }
+}
+
+/* ===== 工具类 ===== */
+
+// 快速转场模式
+.transition-fast {
+  transition-duration: var(--premium-duration-fast) !important;
+  animation-duration: var(--premium-duration-fast) !important;
+}
+
+// 禁用转场
+.transition-none {
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+// 调试模式
+.transition-debug {
+  border: 2px dashed var(--premium-border-focus) !important;
+  
+  &::before {
+    content: 'TRANSITION DEBUG';
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--premium-glow-primary);
+    color: var(--premium-text-on-primary);
+    padding: 2px 6px;
+    font-size: 10px;
+    z-index: 1000;
+  }
+} 

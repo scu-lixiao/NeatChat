@@ -1,0 +1,79 @@
+@import "../styles/premium-mixins.scss";
+
+.input-range {
+  // {{CHENGQI:
+  // Action: Modified - 升级范围输入为量子流体交互
+  // Timestamp: 2025-06-10 18:07:52 +08:00
+  // Reason: 实现P2-LD-010任务 - 为范围输入组件添加流体交互效果
+  // Principle_Applied: DRY - 复用量子输入系统，KISS - 保持简洁API
+  // Optimization: 范围输入的光感边框和流体反馈
+  // Architectural_Note (AR): 统一的输入组件流体交互体验
+  // Documentation_Note (DW): 范围输入现在具有量子流体交互效果
+  // }}
+   // 量子流体交互核心效果
+   // 性能优化
+  
+  border-radius: 10px;
+  padding: 5px 10px 5px 10px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  max-width: 40%;
+
+  input[type="range"] {
+    max-width: calc(100% - 34px);
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    
+    // 滑轨样式 - 深邃主题
+    &::-webkit-slider-track {
+      height: 4px;
+      background: rgb(12, 12, 12);
+      border-radius: 2px;
+      border: 1px solid rgba(100, 150, 255, 0.3);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    // 滑块样式 - 光感效果
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: rgb(24, 24, 24);
+      border: 2px solid rgba(100, 150, 255, 0.6);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      
+      &:hover {
+        transform: scale(1.1) translateZ(0);
+        box-shadow: 0 0 8px rgba(100, 150, 255, 0.4);
+      }
+      
+      &:active {
+        transform: scale(0.95) translateZ(0);
+        box-shadow: 0 0 12px rgba(100, 150, 255, 0.6);
+      }
+    }
+    
+    // Firefox兼容性
+    &::-moz-range-track {
+      height: 4px;
+      background: rgb(12, 12, 12);
+      border-radius: 2px;
+      border: 1px solid rgba(100, 150, 255, 0.3);
+    }
+    
+    &::-moz-range-thumb {
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: rgb(24, 24, 24);
+      border: 2px solid rgba(100, 150, 255, 0.6);
+      cursor: pointer;
+    }
+  }
+}

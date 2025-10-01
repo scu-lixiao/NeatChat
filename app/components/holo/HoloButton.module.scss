@@ -1,0 +1,801 @@
+// HoloButton.module.scss - 全息按钮高端样式系统
+// {{CHENGQI:
+// Action: Created  
+// Timestamp: 2025-06-10 18:39:15 +08:00
+// Reason: P3-LD-014任务 - 创建HoloButton样式系统，实现全息材质和能量场效果
+// Principle_Applied: DRY(复用premium-theme变量), KISS(模块化样式结构), 性能优化(GPU加速)
+// Optimization: 硬件加速动画 + 多层渲染优化 + 可访问性支持
+// Architectural_Note (AR): 基于premium-theme变量系统，集成量子动画和光感边框mixin
+// Documentation_Note (DW): 完整的全息效果实现，支持多种材质和能量场模式
+// }}
+
+@import "../../styles/premium-mixins.scss";
+
+/* =================================================================
+   HoloButton - 全息高端按钮组件样式系统
+   实现全息彩虹边框、能量场效果、量子发光、维度深度等高端视觉效果
+   ================================================================= */
+
+/* 基础按钮容器 */
+.holoButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--premium-border-radius-lg);
+  background: var(--premium-bg-void);
+  color: var(--premium-text-primary);
+  font: var(--premium-typography-button);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  outline: none;
+  transition: all var(--premium-duration-normal) var(--quantum-ease-out);
+  
+  /* GPU加速优化 */
+  will-change: transform, box-shadow, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  
+  /* 基础光感边框 */
+  
+  
+  /* 深邃空间背景 */
+  box-shadow: 
+    var(--premium-shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  /* 防止文本选择 */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  
+  /* 可访问性 */
+  &:focus-visible {
+    
+    outline: 2px solid var(--premium-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* =================================================================
+   全息背景层系统 - 3层深度背景
+   ================================================================= */
+.holoBackground {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.holoLayer1 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    var(--premium-bg-space) 0%,
+    var(--premium-bg-void) 50%,
+    var(--premium-bg-nebula) 100%
+  );
+  opacity: 0.8;
+  border-radius: inherit;
+}
+
+.holoLayer2 {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(100, 150, 255, 0.1) 0%,
+    transparent 70%
+  );
+  border-radius: inherit;
+}
+
+.holoLayer3 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: conic-gradient(
+    from 45deg,
+    transparent 0deg,
+    rgba(100, 150, 255, 0.1) 90deg,
+    transparent 180deg,
+    rgba(150, 100, 255, 0.1) 270deg,
+    transparent 360deg
+  );
+  opacity: 0;
+  transition: opacity var(--premium-duration-fast) var(--quantum-ease-out);
+  border-radius: inherit;
+}
+
+/* =================================================================
+   全息效果类型 - 5种不同的全息材质效果
+   ================================================================= */
+
+/* 彩虹全息效果 */
+.holo-rainbow {
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: conic-gradient(
+      from 0deg,
+      #ff0080 0deg,
+      #ff8000 72deg,
+      #ffff00 144deg,
+      #80ff00 216deg,
+      #0080ff 288deg,
+      #8000ff 360deg
+    );
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--quantum-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 0.6;
+    animation: rainbow-rotation 3s linear infinite;
+  }
+}
+
+/* 极光全息效果 */
+.holo-aurora {
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(
+      45deg,
+      rgba(0, 255, 150, 0.3) 0%,
+      rgba(150, 0, 255, 0.3) 25%,
+      rgba(255, 150, 0, 0.3) 50%,
+      rgba(0, 150, 255, 0.3) 75%,
+      rgba(255, 0, 150, 0.3) 100%
+    );
+    background-size: 400% 400%;
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--quantum-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 0.5;
+    animation: aurora-flow 4s ease-in-out infinite;
+  }
+}
+
+/* 星云全息效果 */
+.holo-nebula {
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: radial-gradient(
+      ellipse at top left,
+      rgba(100, 150, 255, 0.4) 0%,
+      rgba(255, 100, 150, 0.4) 50%,
+      rgba(150, 255, 100, 0.4) 100%
+    );
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    filter: blur(1px);
+    transition: all var(--premium-duration-normal) var(--quantum-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 0.6;
+    filter: blur(0px);
+    transform: scale(1.05);
+  }
+}
+
+/* 量子全息效果 */
+.holo-quantum {
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: 
+      linear-gradient(90deg, transparent 0%, rgba(100, 150, 255, 0.3) 50%, transparent 100%),
+      linear-gradient(0deg, transparent 0%, rgba(150, 100, 255, 0.3) 50%, transparent 100%);
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity var(--premium-duration-normal) var(--quantum-ease-out);
+  }
+  
+  &.hovered::before,
+  &.holoActive::before {
+    opacity: 0.7;
+    animation: quantum-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* 能量全息效果 */
+.holo-energy {
+  
+  
+  &.hovered,
+  &.holoActive {
+    
+    box-shadow: 
+      var(--premium-shadow-lg),
+      0 0 20px rgba(100, 150, 255, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* =================================================================
+   强度级别 - 4种不同的视觉强度
+   ================================================================= */
+.intensity-subtle {
+  --holo-intensity: 0.3;
+}
+
+.intensity-normal {
+  --holo-intensity: 0.6;
+}
+
+.intensity-intense {
+  --holo-intensity: 0.8;
+}
+
+.intensity-extreme {
+  --holo-intensity: 1.0;
+  
+  &.holoActive {
+    transform: scale(1.02) translateZ(0);
+  }
+}
+
+/* =================================================================
+   动画类型 - 5种不同的动画模式
+   ================================================================= */
+.animation-pulse .holoLayer3 {
+  &.holoActive {
+    animation: quantum-pulse 1.5s ease-in-out infinite;
+  }
+}
+
+.animation-shimmer .holoLayer3 {
+  &.hovered,
+  &.holoActive {
+    animation: starlight-shimmer 2s ease-in-out infinite;
+  }
+}
+
+.animation-flow .holoLayer3 {
+  &.hovered,
+  &.holoActive {
+    animation: energy-flow 3s linear infinite;
+  }
+}
+
+.animation-breathing .holoLayer3 {
+  &.hovered,
+  &.holoActive {
+    animation: glow-breathing 2.5s ease-in-out infinite;
+  }
+}
+
+/* =================================================================
+   能量场效果系统
+   ================================================================= */
+.energyField {
+  .energyFieldContainer {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .energyFieldCore {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(100, 150, 255, calc(var(--energy-field-strength, 0.4) * 0.2)) 0%,
+      transparent 70%
+    );
+    border-radius: inherit;
+  }
+  
+  .energyFieldAura {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 30%,
+      rgba(100, 150, 255, calc(var(--energy-field-strength, 0.4) * 0.1)) 70%,
+      transparent 100%
+    );
+    border-radius: inherit;
+    filter: blur(2px);
+  }
+  
+  .energyFieldPulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid rgba(100, 150, 255, calc(var(--energy-field-strength, 0.4) * 0.3));
+    border-radius: inherit;
+    opacity: 0;
+  }
+}
+
+/* 能量场模式 */
+.energy-charging .energyFieldPulse {
+  animation: energy-pulse 2s ease-in-out infinite;
+}
+
+.energy-active .energyFieldPulse {
+  animation: energy-pulse 1s ease-in-out infinite;
+}
+
+.energy-critical .energyFieldPulse {
+  animation: energy-pulse 0.5s ease-in-out infinite;
+  border-color: rgba(255, 100, 100, calc(var(--energy-field-strength, 0.4) * 0.5));
+}
+
+/* =================================================================
+   磨砂玻璃效果 (Glass Morphism)
+   ================================================================= */
+.glassMorphism {
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.05);
+  
+  .holoLayer1 {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.05) 50%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: inherit;
+    border-radius: inherit;
+    filter: blur(1px);
+    z-index: -1;
+  }
+}
+
+/* =================================================================
+   量子发光效果
+   ================================================================= */
+.quantumGlow {
+  .quantumGlowContainer {
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .quantumGlowInner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(100, 150, 255, calc(var(--holo-intensity, 0.6) * 0.2)) 0%,
+      transparent 60%
+    );
+    border-radius: inherit;
+    animation: quantum-glow-inner 3s ease-in-out infinite;
+  }
+  
+  .quantumGlowOuter {
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: conic-gradient(
+      from 0deg,
+      rgba(100, 150, 255, calc(var(--holo-intensity, 0.6) * 0.1)) 0deg,
+      rgba(150, 100, 255, calc(var(--holo-intensity, 0.6) * 0.1)) 120deg,
+      rgba(255, 100, 150, calc(var(--holo-intensity, 0.6) * 0.1)) 240deg,
+      rgba(100, 150, 255, calc(var(--holo-intensity, 0.6) * 0.1)) 360deg
+    );
+    border-radius: inherit;
+    filter: blur(1px);
+    animation: quantum-glow-outer 4s linear infinite;
+  }
+}
+
+/* =================================================================
+   维度深度效果
+   ================================================================= */
+.dimensionalDepth {
+  .dimensionalBorder {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  .dimensionalLayer1 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 1px solid rgba(100, 150, 255, 0.1);
+    border-radius: inherit;
+    transform: scale(1.0);
+  }
+  
+  .dimensionalLayer2 {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    right: 1px;
+    bottom: 1px;
+    border: 1px solid rgba(100, 150, 255, 0.05);
+    border-radius: inherit;
+    transform: scale(0.98);
+  }
+  
+  .dimensionalLayer3 {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    border: 1px solid rgba(100, 150, 255, 0.03);
+    border-radius: inherit;
+    transform: scale(0.96);
+  }
+  
+  &.hovered .dimensionalBorder {
+    .dimensionalLayer1 { border-color: rgba(100, 150, 255, 0.3); }
+    .dimensionalLayer2 { border-color: rgba(100, 150, 255, 0.2); }
+    .dimensionalLayer3 { border-color: rgba(100, 150, 255, 0.1); }
+  }
+}
+
+/* =================================================================
+   粒子轨迹效果
+   ================================================================= */
+.particleTrail {
+  .particleTrailContainer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
+  }
+  
+  .particle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: rgba(100, 150, 255, 0.8);
+    border-radius: 50%;
+    animation: particle-trail 2s ease-out infinite;
+  }
+  
+  @for $i from 0 through 5 {
+    .particle-#{$i} {
+      top: #{20 + $i * 10}%;
+      left: #{10 + $i * 15}%;
+      animation-delay: #{$i * 0.2}s;
+    }
+  }
+}
+
+/* =================================================================
+   按钮内容样式
+   ================================================================= */
+.buttonContent {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 1;
+  
+  .buttonIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    
+    svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+    }
+  }
+  
+  .buttonText {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* 加载状态 */
+.loadingSpinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  .quantumSpinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--premium-primary);
+    border-radius: 50%;
+    animation: quantum-spin 1s linear infinite;
+  }
+}
+
+/* =================================================================
+   状态样式
+   ================================================================= */
+
+/* 悬停状态 */
+.hovered {
+  transform: translateY(-1px) translateZ(0);
+  box-shadow: 
+    var(--premium-shadow-lg),
+    0 0 20px rgba(100, 150, 255, calc(var(--holo-intensity, 0.6) * 0.3));
+  
+  .holoLayer3 {
+    opacity: calc(var(--holo-intensity, 0.6) * 0.5);
+  }
+}
+
+/* 按压状态 */
+.pressed {
+  transform: translateY(0) scale(0.98) translateZ(0);
+  transition: transform var(--quantum-duration-instant) var(--quantum-ease-out);
+}
+
+/* 全息激活状态 */
+.holoActive {
+  .holoLayer3 {
+    opacity: var(--holo-intensity, 0.6);
+  }
+}
+
+/* 禁用状态 */
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  
+  &::before,
+  .holoLayer3,
+  .energyFieldContainer,
+  .quantumGlowContainer {
+    opacity: 0 !important;
+    animation: none !important;
+  }
+}
+
+/* 加载状态 */
+.loading {
+  .buttonContent {
+    opacity: 0.7;
+  }
+}
+
+/* =================================================================
+   性能模式
+   ================================================================= */
+.performance-eco {
+  .holoLayer3,
+  .energyFieldContainer,
+  .quantumGlowContainer,
+  .particleTrailContainer {
+    display: none;
+  }
+  
+  &::before {
+    animation: none !important;
+  }
+}
+
+.performance-balanced {
+  .quantumGlowOuter {
+    animation-duration: 6s;
+  }
+}
+
+.performance-high {
+  /* 所有效果正常运行 */
+}
+
+/* =================================================================
+   可访问性支持
+   ================================================================= */
+.reducedMotion {
+  &,
+  &::before,
+  &::after,
+  & * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .holoButton {
+    border: 2px solid currentColor;
+    
+    &::before {
+      opacity: 0 !important;
+    }
+  }
+}
+
+/* =================================================================
+   响应式设计
+   ================================================================= */
+@media (max-width: 768px) {
+  .holoButton {
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+  
+  .particleTrailContainer,
+  .quantumGlowOuter {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .holoButton {
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  
+  .energyFieldContainer {
+    display: none;
+  }
+}
+
+/* =================================================================
+   动画关键帧定义
+   ================================================================= */
+
+@keyframes rainbow-rotation {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes aurora-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes quantum-pulse {
+  0%, 100% { 
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes particle-trail {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0);
+  }
+}
+
+@keyframes quantum-glow-inner {
+  0%, 100% { 
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.6;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes quantum-glow-outer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes quantum-spin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+@keyframes energy-pulse {
+  0%, 100% { 
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: calc(var(--energy-field-strength, 0.4) * 0.6);
+    transform: scale(1.05);
+  }
+} 

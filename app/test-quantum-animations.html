@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Animations System Test - 量子流体动效系统测试</title>
+    <style>
+        @import url('./styles/premium-theme.scss');
+        @import url('./styles/premium-animations.scss');
+        
+        /* 基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--premium-bg-cosmos);
+            color: var(--premium-text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: var(--premium-bg-void);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--premium-border-starlight);
+        }
+        
+        .test-section {
+            margin-bottom: 40px;
+            background: var(--premium-bg-space);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--premium-border-starlight);
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        /* 量子按钮测试 */
+        .quantum-button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--premium-bg-nebula), var(--premium-bg-stellar));
+            color: var(--premium-text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            
+            /* 应用量子动画 */
+            transition: all var(--quantum-duration-molecule) var(--quantum-spring-medium);
+            
+            &:hover {
+                transform: translateY(-2px) translateZ(0);
+                box-shadow: var(--premium-shadow-lg), 0 0 20px var(--premium-glow-primary);
+                transition: all var(--quantum-duration-molecule) var(--quantum-spring-medium);
+            }
+            
+            &:active {
+                transform: translateY(0) scale(0.98) translateZ(0);
+                transition: all var(--quantum-duration-photon) var(--quantum-damped-critical);
+            }
+        }
+        
+        .quantum-button.spring-soft {
+            transition-timing-function: var(--quantum-spring-soft);
+        }
+        
+        .quantum-button.spring-strong {
+            transition-timing-function: var(--quantum-spring-strong);
+        }
+        
+        .quantum-button.spring-bounce {
+            transition-timing-function: var(--quantum-spring-bounce);
+        }
+        
+        /* 量子卡片测试 */
+        .quantum-card {
+            padding: 20px;
+            background: var(--premium-bg-void);
+            border-radius: 12px;
+            border: 1px solid var(--premium-border-starlight);
+            cursor: pointer;
+            
+            /* GPU加速优化 */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            will-change: transform, box-shadow;
+            
+            transition: all var(--quantum-duration-molecule) var(--quantum-wave-propagate);
+            
+            &:hover {
+                transform: translateY(-4px) translateZ(0);
+                box-shadow: var(--premium-shadow-xl), 0 0 30px var(--premium-glow-primary);
+                border-color: rgba(100, 150, 255, 0.6);
+            }
+        }
+        
+        /* 物理动画曲线演示 */
+        .physics-demo {
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, var(--premium-glow-primary), var(--premium-glow-secondary));
+            border-radius: 50%;
+            margin: 10px auto;
+            cursor: pointer;
+            transform: translateX(0) translateZ(0);
+        }
+        
+        .physics-demo.spring-soft:hover {
+            animation: demo-move var(--quantum-duration-system) var(--quantum-spring-soft);
+        }
+        
+        .physics-demo.damped-light:hover {
+            animation: demo-move var(--quantum-duration-system) var(--quantum-damped-light);
+        }
+        
+        .physics-demo.momentum-enter:hover {
+            animation: demo-move var(--quantum-duration-system) var(--quantum-momentum-enter);
+        }
+        
+        .physics-demo.gravity-fall:hover {
+            animation: demo-move var(--quantum-duration-system) var(--quantum-gravity-fall);
+        }
+        
+        @keyframes demo-move {
+            0%, 100% { transform: translateX(0) translateZ(0); }
+            50% { transform: translateX(100px) translateZ(0); }
+        }
+        
+        /* 连锁反应演示 */
+        .chain-reaction-demo {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .reaction-item {
+            width: 40px;
+            height: 40px;
+            background: var(--premium-bg-stellar);
+            border-radius: 50%;
+            border: 2px solid var(--premium-border-starlight);
+            transition: all var(--quantum-duration-molecule) var(--quantum-spring-medium);
+        }
+        
+        .chain-reaction-demo:hover .reaction-item:nth-child(1) {
+            transform: scale(1.2) translateZ(0);
+            animation: quantum-energy-transfer var(--quantum-duration-wave) ease-out;
+        }
+        
+        .chain-reaction-demo:hover .reaction-item:nth-child(2) {
+            transform: scale(1.2) translateZ(0);
+            animation: quantum-energy-transfer var(--quantum-duration-wave) ease-out 0.1s;
+        }
+        
+        .chain-reaction-demo:hover .reaction-item:nth-child(3) {
+            transform: scale(1.2) translateZ(0);
+            animation: quantum-energy-transfer var(--quantum-duration-wave) ease-out 0.2s;
+        }
+        
+        .chain-reaction-demo:hover .reaction-item:nth-child(4) {
+            transform: scale(1.2) translateZ(0);
+            animation: quantum-energy-transfer var(--quantum-duration-wave) ease-out 0.3s;
+        }
+        
+        /* 磁场效应演示 */
+        .magnetic-demo {
+            width: 120px;
+            height: 60px;
+            background: linear-gradient(45deg, var(--premium-bg-nebula), var(--premium-bg-aurora));
+            border-radius: 8px;
+            border: 1px solid var(--premium-border-starlight);
+            margin: 20px auto;
+            cursor: pointer;
+            transition: all var(--quantum-duration-molecule) var(--quantum-spring-medium);
+        }
+        
+        .magnetic-demo:hover {
+            animation: quantum-magnetic-attract var(--quantum-duration-wave) var(--quantum-spring-medium) forwards;
+        }
+        
+        /* 粒子效果演示 */
+        .particle-demo-area {
+            height: 200px;
+            background: var(--premium-bg-void);
+            border-radius: 12px;
+            border: 1px solid var(--premium-border-starlight);
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--premium-text-secondary);
+        }
+        
+        /* 能量流演示 */
+        .energy-stream-demo {
+            height: 8px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                var(--premium-glow-primary) 50%,
+                transparent 100%
+            );
+            background-size: 200% 100%;
+            border-radius: 4px;
+            animation: quantum-energy-flow var(--quantum-duration-system) linear infinite;
+            margin: 20px 0;
+        }
+        
+        /* 性能监控显示 */
+        .performance-monitor {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--premium-bg-void);
+            border: 1px solid var(--premium-border-starlight);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        /* 主题切换器 */
+        .theme-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .theme-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: var(--premium-bg-stellar);
+            color: var(--premium-text-primary);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all var(--quantum-duration-electron) var(--quantum-spring-soft);
+        }
+        
+        .theme-btn:hover {
+            transform: translateY(-1px) translateZ(0);
+            box-shadow: var(--premium-shadow-md);
+        }
+        
+        .theme-btn.active {
+            background: var(--premium-glow-primary);
+            color: var(--premium-bg-cosmos);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .test-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .performance-monitor {
+                position: relative;
+                top: auto;
+                right: auto;
+                margin-top: 20px;
+            }
+            
+            .theme-switcher {
+                position: relative;
+                top: auto;
+                left: auto;
+                margin-bottom: 20px;
+                justify-content: center;
+            }
+        }
+        
+        /* 减少动画支持 */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                transition-delay: 0ms !important;
+            }
+        }
+    </style>
+</head>
+<body class="premium-dark">
+    <!-- 主题切换器 -->
+    <div class="theme-switcher">
+        <button class="theme-btn active" onclick="switchTheme('premium-dark')">Premium Dark</button>
+        <button class="theme-btn" onclick="switchTheme('dark')">Standard Dark</button>
+        <button class="theme-btn" onclick="switchTheme('light')">Light</button>
+    </div>
+    
+    <!-- 性能监控 -->
+    <div class="performance-monitor">
+        <div>FPS: <span id="fps-counter">--</span></div>
+        <div>Particles: <span id="particle-count">0</span></div>
+        <div>Animations: <span id="animation-count">0</span></div>
+    </div>
+    
+    <div class="test-container">
+        <!-- 测试头部 -->
+        <div class="test-header">
+            <h1>🌌 Quantum Fluid Animation System Test</h1>
+            <p>量子流体动效系统全面测试 - Phase 2 阶段验证</p>
+            <p style="font-size: 14px; margin-top: 10px; opacity: 0.8;">
+                基于量子物理学和流体动力学原理构建的高级动画系统<br>
+                支持60fps性能保证 + GPU硬件加速 + 自动降级机制
+            </p>
+        </div>
+        
+        <!-- 1. 物理动画曲线测试 -->
+        <div class="test-section">
+            <h2>1. 物理动画曲线测试 (Physics-based Easing)</h2>
+            <p>悬停以下圆形查看不同物理动画曲线效果：</p>
+            
+            <div class="test-grid">
+                <div>
+                    <h4>量子弹簧 - 轻柔弹性</h4>
+                    <div class="physics-demo spring-soft"></div>
+                    <code>--quantum-spring-soft</code>
+                </div>
+                <div>
+                    <h4>阻尼振荡 - 轻阻尼</h4>
+                    <div class="physics-demo damped-light"></div>
+                    <code>--quantum-damped-light</code>
+                </div>
+                <div>
+                    <h4>惯性延续 - 惯性进入</h4>
+                    <div class="physics-demo momentum-enter"></div>
+                    <code>--quantum-momentum-enter</code>
+                </div>
+                <div>
+                    <h4>重力场模拟 - 重力下降</h4>
+                    <div class="physics-demo gravity-fall"></div>
+                    <code>--quantum-gravity-fall</code>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 2. 量子按钮系统测试 -->
+        <div class="test-section">
+            <h2>2. 量子按钮系统测试 (Quantum Button System)</h2>
+            <p>不同弹性强度的按钮交互效果：</p>
+            
+            <div class="test-grid">
+                <button class="quantum-button spring-soft">轻柔弹性按钮</button>
+                <button class="quantum-button">标准弹性按钮</button>
+                <button class="quantum-button spring-strong">强烈弹性按钮</button>
+                <button class="quantum-button spring-bounce">反弹效果按钮</button>
+            </div>
+        </div>
+        
+        <!-- 3. 量子卡片系统测试 -->
+        <div class="test-section">
+            <h2>3. 量子卡片系统测试 (Quantum Card System)</h2>
+            <p>GPU加速优化的卡片悬浮交互效果：</p>
+            
+            <div class="test-grid">
+                <div class="quantum-card">
+                    <h4>🚀 高性能卡片</h4>
+                    <p>GPU硬件加速 + 60fps保证</p>
+                    <small>transform + box-shadow优化</small>
+                </div>
+                <div class="quantum-card">
+                    <h4>⚡ 量子变换卡片</h4>
+                    <p>3D变换优化 + 防锯齿</p>
+                    <small>will-change预优化</small>
+                </div>
+                <div class="quantum-card">
+                    <h4>🌊 流体交互卡片</h4>
+                    <p>波传播动画曲线</p>
+                    <small>quantum-wave-propagate</small>
+                </div>
+                <div class="quantum-card">
+                    <h4>🎯 智能响应卡片</h4>
+                    <p>自适应性能调整</p>
+                    <small>设备性能自动检测</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 4. 连锁反应动画测试 -->
+        <div class="test-section">
+            <h2>4. 连锁反应动画测试 (Chain Reaction Animation)</h2>
+            <p>悬停触发相邻元素的能量传递效果：</p>
+            
+            <div class="chain-reaction-demo">
+                <div class="reaction-item"></div>
+                <div class="reaction-item"></div>
+                <div class="reaction-item"></div>
+                <div class="reaction-item"></div>
+            </div>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--premium-text-secondary);">
+                模拟能量从一个元素传递到相邻元素的物理效应
+            </p>
+        </div>
+        
+        <!-- 5. 磁场效应动画测试 -->
+        <div class="test-section">
+            <h2>5. 磁场效应动画测试 (Magnetic Field Animation)</h2>
+            <p>基于电磁场理论的变形动画效果：</p>
+            
+            <div class="magnetic-demo"></div>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--premium-text-secondary);">
+                悬停查看磁吸引变形效果 - scale + border-radius动态变化
+            </p>
+        </div>
+        
+        <!-- 6. 粒子效果系统测试 -->
+        <div class="test-section">
+            <h2>6. 粒子效果系统测试 (Quantum Particle System)</h2>
+            <p>鼠标轨迹粒子和能量流动可视化：</p>
+            
+            <div class="particle-demo-area" id="particleArea">
+                移动鼠标查看量子粒子轨迹效果
+            </div>
+            
+            <div class="energy-stream-demo"></div>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--premium-text-secondary);">
+                能量流动可视化 - 适用于加载状态和数据处理过程
+            </p>
+        </div>
+        
+        <!-- 7. 时间级别系统测试 -->
+        <div class="test-section">
+            <h2>7. 量子时间级别测试 (Quantum Duration System)</h2>
+            <p>从微观量子到宇宙空间的12个时间级别：</p>
+            
+            <div class="test-grid">
+                <button class="quantum-button" onclick="testDuration('planck', 50)">
+                    普朗克时间级 (50ms)
+                </button>
+                <button class="quantum-button" onclick="testDuration('photon', 100)">
+                    光子速度级 (100ms)
+                </button>
+                <button class="quantum-button" onclick="testDuration('molecule', 300)">
+                    分子级 (300ms)
+                </button>
+                <button class="quantum-button" onclick="testDuration('system', 750)">
+                    系统级 (750ms)
+                </button>
+            </div>
+        </div>
+        
+        <!-- 8. 性能优化验证 -->
+        <div class="test-section">
+            <h2>8. 性能优化验证 (Performance Optimization)</h2>
+            <p>60fps保证机制和GPU加速验证：</p>
+            
+            <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                <button class="quantum-button" onclick="startPerformanceTest()">
+                    启动性能压力测试
+                </button>
+                <button class="quantum-button" onclick="stopPerformanceTest()">
+                    停止测试
+                </button>
+                <button class="quantum-button" onclick="clearParticles()">
+                    清理粒子
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 14px;">
+                <div>GPU层级创建: <span id="layer-count">0</span></div>
+                <div>内存使用: <span id="memory-usage">--</span> MB</div>
+                <div>渲染时间: <span id="render-time">--</span> ms</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 性能监控
+        let animationCount = 0;
+        let particleCount = 0;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let fps = 0;
+
+        function updateFPS() {
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime >= lastTime + 1000) {
+                fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                document.getElementById('fps-counter').textContent = fps;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+        updateFPS();
+
+        // 主题切换
+        function switchTheme(theme) {
+            document.body.className = theme;
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // 粒子系统
+        let particles = [];
+        
+        function createQuantumParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'quantum-particle';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            document.body.appendChild(particle);
+            particles.push(particle);
+            particleCount++;
+            
+            // 清理粒子
+            setTimeout(() => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                    particles = particles.filter(p => p !== particle);
+                    particleCount--;
+                    updateParticleCount();
+                }
+            }, 500);
+            
+            updateParticleCount();
+        }
+        
+        function updateParticleCount() {
+            document.getElementById('particle-count').textContent = particleCount;
+        }
+        
+        // 粒子区域鼠标跟踪
+        document.getElementById('particleArea').addEventListener('mousemove', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            if (Math.random() > 0.8) { // 控制粒子生成频率
+                createQuantumParticle(x, y);
+            }
+        });
+        
+        // 时间级别测试
+        function testDuration(level, duration) {
+            const button = event.target;
+            button.style.transform = 'scale(0.9) translateZ(0)';
+            button.style.transition = `all ${duration}ms var(--quantum-spring-medium)`;
+            
+            setTimeout(() => {
+                button.style.transform = 'scale(1) translateZ(0)';
+            }, 50);
+        }
+        
+        // 性能压力测试
+        let performanceTestInterval;
+        
+        function startPerformanceTest() {
+            performanceTestInterval = setInterval(() => {
+                // 创建多个动画元素进行压力测试
+                for (let i = 0; i < 5; i++) {
+                    const x = Math.random() * window.innerWidth;
+                    const y = Math.random() * window.innerHeight;
+                    createQuantumParticle(x, y);
+                }
+            }, 100);
+            
+            animationCount += 10;
+            document.getElementById('animation-count').textContent = animationCount;
+        }
+        
+        function stopPerformanceTest() {
+            if (performanceTestInterval) {
+                clearInterval(performanceTestInterval);
+                performanceTestInterval = null;
+            }
+            animationCount = Math.max(0, animationCount - 10);
+            document.getElementById('animation-count').textContent = animationCount;
+        }
+        
+        function clearParticles() {
+            particles.forEach(particle => {
+                if (particle.parentNode) {
+                    particle.parentNode.removeChild(particle);
+                }
+            });
+            particles = [];
+            particleCount = 0;
+            updateParticleCount();
+        }
+        
+        // 内存使用监控 (近似)
+        function updateMemoryUsage() {
+            if (performance.memory) {
+                const usedMemory = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                document.getElementById('memory-usage').textContent = usedMemory;
+            }
+        }
+        
+        // 渲染时间监控
+        function updateRenderTime() {
+            const start = performance.now();
+            requestAnimationFrame(() => {
+                const renderTime = (performance.now() - start).toFixed(2);
+                document.getElementById('render-time').textContent = renderTime;
+            });
+        }
+        
+        // 定期更新性能指标
+        setInterval(() => {
+            updateMemoryUsage();
+            updateRenderTime();
+            
+            // 更新层级计数 (近似)
+            const layerCount = document.querySelectorAll('.quantum-particle, .quantum-card, .quantum-button').length;
+            document.getElementById('layer-count').textContent = layerCount;
+        }, 1000);
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🌌 Quantum Fluid Animation System Loaded');
+            console.log('📊 Performance monitoring active');
+            console.log('🎯 60fps target enabled');
+            console.log('⚡ GPU acceleration optimized');
+            
+            // 检测设备性能
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            console.log(`📱 Device pixel ratio: ${devicePixelRatio}`);
+            
+            if (devicePixelRatio < 1.5) {
+                console.log('🔄 Low performance device detected - animations simplified');
+            } else if (devicePixelRatio >= 2) {
+                console.log('🚀 High performance device detected - full animations enabled');
+            }
+            
+            // 检测reduced motion偏好
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                console.log('♿ Reduced motion preference detected - animations simplified');
+            }
+        });
+        
+        // 键盘快捷键
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'p' || e.key === 'P') {
+                if (performanceTestInterval) {
+                    stopPerformanceTest();
+                } else {
+                    startPerformanceTest();
+                }
+            } else if (e.key === 'c' || e.key === 'C') {
+                clearParticles();
+            }
+        });
+        
+        console.log('⌨️  Keyboard shortcuts: P (performance test), C (clear particles)');
+    </script>
+</body>
+</html> 

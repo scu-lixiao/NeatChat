@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Premium Theme Test - NextChat Deep Space UI</title>
+    <style>
+        /* Import premium theme styles */
+        @import url("./styles/globals.scss");
+        @import url("./styles/premium-theme.scss");
+        @import url("./components/home.module.scss");
+        
+        /* Test page specific styles */
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--premium-bg-cosmos, #000);
+            color: var(--premium-text-primary, #f0f0f0);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            min-height: 100vh;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            min-height: 80vh;
+        }
+        
+        .test-sidebar {
+            width: 300px;
+            height: 600px;
+            background-color: var(--premium-bg-space, #111);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--premium-shadow-xl);
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--premium-bg-void, #222);
+            border-radius: 12px;
+            border: 1px solid var(--premium-border-starlight, rgba(100,150,255,0.3));
+        }
+        
+        .test-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--premium-text-primary, #f0f0f0);
+            margin-bottom: 8px;
+        }
+        
+        .test-subtitle {
+            font-size: 14px;
+            color: var(--premium-text-secondary, #999);
+        }
+        
+        .theme-switcher {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .theme-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--premium-border-starlight, rgba(100,150,255,0.3));
+            background: var(--premium-bg-void, #222);
+            color: var(--premium-text-primary, #f0f0f0);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .theme-btn:hover {
+            background: var(--premium-bg-nebula, #333);
+            transform: translateY(-1px);
+            box-shadow: var(--premium-shadow-md);
+        }
+        
+        .theme-btn.active {
+            background: var(--premium-bg-stellar, #444);
+            border-color: var(--premium-glow-primary, rgba(100,150,255,0.6));
+        }
+        
+        /* Test specific sidebar styles */
+        .test-sidebar .sidebar {
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+        
+        .demo-features {
+            background: var(--premium-bg-void, #222);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--premium-border-starlight, rgba(100,150,255,0.3));
+        }
+        
+        .feature-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: var(--premium-bg-space, #111);
+            border-radius: 8px;
+            border: 1px solid var(--premium-border-starlight, rgba(100,150,255,0.2));
+        }
+        
+        .feature-title {
+            font-weight: bold;
+            color: var(--premium-text-primary, #f0f0f0);
+            margin-bottom: 5px;
+        }
+        
+        .feature-desc {
+            font-size: 12px;
+            color: var(--premium-text-secondary, #999);
+        }
+        
+        /* Premium dark theme application */
+        html.premium-dark {
+            --white: var(--premium-bg-void);
+            --black: var(--premium-text-primary);
+            --gray: var(--premium-bg-cosmos);
+            --primary: rgb(100, 150, 255);
+            --second: var(--premium-bg-space);
+            --hover-color: var(--premium-bg-nebula);
+            --border-in-light: var(--premium-border-starlight);
+        }
+    </style>
+</head>
+<body class="premium-dark">
+    <div class="test-header">
+        <div class="test-title">🚀 Sidebar Premium Theme Test</div>
+        <div class="test-subtitle">深邃空间主题系统 - 侧边栏组件升级验证</div>
+        
+        <div class="theme-switcher">
+            <button class="theme-btn active" onclick="switchTheme('premium-dark')">Premium Dark</button>
+            <button class="theme-btn" onclick="switchTheme('dark')">Standard Dark</button>
+            <button class="theme-btn" onclick="switchTheme('light')">Light</button>
+        </div>
+    </div>
+    
+    <div class="test-container">
+        <!-- Sidebar Test -->
+        <div class="test-sidebar">
+            <div class="sidebar">
+                <!-- Sidebar Header -->
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">🌌</div>
+                    <div class="sidebar-title-container">
+                        <div class="sidebar-title">NextChat</div>
+                        <div class="sidebar-sub-title">Premium UI</div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar Header Bar with Buttons -->
+                <div class="sidebar-header-bar">
+                    <button class="sidebar-bar-button">➕ 新建</button>
+                    <button class="sidebar-bar-button">📂 导入</button>
+                </div>
+                
+                <!-- Sidebar Body -->
+                <div class="sidebar-body">
+                    <!-- Chat Items -->
+                    <div class="chat-item chat-item-selected">
+                        <div class="chat-item-title">深邃空间主题设计</div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-count">15条消息</div>
+                            <div class="chat-item-date">今天</div>
+                        </div>
+                        <div class="chat-item-delete">🗑️</div>
+                    </div>
+                    
+                    <div class="chat-item">
+                        <div class="chat-item-title">量子流体动效系统</div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-count">8条消息</div>
+                            <div class="chat-item-date">昨天</div>
+                        </div>
+                        <div class="chat-item-delete">🗑️</div>
+                    </div>
+                    
+                    <div class="chat-item">
+                        <div class="chat-item-title">全息材质效果开发</div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-count">23条消息</div>
+                            <div class="chat-item-date">3天前</div>
+                        </div>
+                        <div class="chat-item-delete">🗑️</div>
+                    </div>
+                    
+                    <div class="chat-item">
+                        <div class="chat-item-title">UI组件库重构</div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-count">42条消息</div>
+                            <div class="chat-item-date">1周前</div>
+                        </div>
+                        <div class="chat-item-delete">🗑️</div>
+                    </div>
+                    
+                    <div class="chat-item">
+                        <div class="chat-item-title">性能优化与监控</div>
+                        <div class="chat-item-info">
+                            <div class="chat-item-count">16条消息</div>
+                            <div class="chat-item-date">2周前</div>
+                        </div>
+                        <div class="chat-item-delete">🗑️</div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar Tail -->
+                <div class="sidebar-tail">
+                    <div class="sidebar-actions">
+                        <div class="sidebar-action">⚙️</div>
+                        <div class="sidebar-action">💡</div>
+                        <div class="sidebar-action">❓</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Demo Features -->
+        <div class="demo-features">
+            <h3 style="color: var(--premium-text-primary); margin-top: 0;">✨ Premium Features Demonstration</h3>
+            
+            <div class="feature-item">
+                <div class="feature-title">🌌 深邃空间背景层次</div>
+                <div class="feature-desc">6层背景深度：cosmos(4,4,4) → space(8,8,8) → void(12,12,12) → nebula(16,16,16) → stellar(20,20,20) → aurora(28,28,28)</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">✨ 星光边框系统</div>
+                <div class="feature-desc">微妙蓝光边框 rgba(100,150,255,0.3-0.8)，三种强度：subtle/normal/intense</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">🎭 聊天列表项交互</div>
+                <div class="feature-desc">悬浮效果：translateY(-1px)，星光边框增强，蓝光阴影</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">⚡ 选中状态能量场</div>
+                <div class="feature-desc">energy-border(pulse) - 脉冲能量边框，stellar背景</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">🎮 按钮光感交互</div>
+                <div class="feature-desc">侧边栏按钮：starlight-border + hover增强 + 浮动效果</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">🚀 GPU硬件加速</div>
+                <div class="feature-desc">will-change: transform, box-shadow - 60fps动画性能保证</div>
+            </div>
+            
+            <div class="feature-item">
+                <div class="feature-title">📱 响应式兼容</div>
+                <div class="feature-desc">保持原有响应式设计，移动端和narrow模式适配</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function switchTheme(theme) {
+            const html = document.documentElement;
+            const buttons = document.querySelectorAll('.theme-btn');
+            
+            // Remove all theme classes
+            html.classList.remove('premium-dark', 'dark', 'light');
+            
+            // Add selected theme
+            if (theme !== 'light') {
+                html.classList.add(theme);
+            }
+            
+            // Update button states
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            console.log(`Theme switched to: ${theme}`);
+        }
+        
+        // Add interaction debugging
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Sidebar Premium Theme Test Page Loaded');
+            console.log('Features to test:');
+            console.log('- Deep space background layers');
+            console.log('- Starlight border effects');
+            console.log('- Chat item hover interactions');
+            console.log('- Selected state energy borders');
+            console.log('- Button light sensing effects');
+            console.log('- Smooth premium animations');
+            
+            // Add hover debugging for chat items
+            const chatItems = document.querySelectorAll('.chat-item');
+            chatItems.forEach((item, index) => {
+                item.addEventListener('mouseenter', () => {
+                    console.log(`Chat item ${index + 1} hovered - starlight enhanced`);
+                });
+            });
+            
+            // Add click debugging for buttons
+            const buttons = document.querySelectorAll('.sidebar-bar-button, .sidebar-action');
+            buttons.forEach((btn, index) => {
+                btn.addEventListener('click', () => {
+                    console.log(`Button ${index + 1} clicked - light sensing activated`);
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

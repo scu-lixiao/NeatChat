@@ -1,0 +1,492 @@
+import { ApiPath, Google } from "@/app/constant";
+import {
+  ChatOptions,
+  getHeaders,
+  LLMApi,
+  LLMModel,
+  LLMUsage,
+  SpeechOptions,
+} from "../api";
+import {
+  useAccessStore,
+  useAppConfig,
+  useChatStore,
+  usePluginStore,
+  ChatMessageTool,
+} from "@/app/store";
+import { streamWithThink } from "@/app/utils/chat";
+import { getClientConfig } from "@/app/config/client";
+import { GEMINI_BASE_URL } from "@/app/constant";
+
+import {
+  getMessageTextContent,
+  getMessageImages,
+  isVisionModel,
+  getTimeoutMSByModel,
+} from "@/app/utils";
+import { preProcessImageContent } from "@/app/utils/chat";
+import { nanoid } from "nanoid";
+import { RequestPayload } from "./openai";
+import { fetch } from "@/app/utils/stream";
+
+export class GeminiProApi implements LLMApi {
+  path(path: string, shouldStream = false): string {
+    const accessStore = useAccessStore.getState();
+
+    let baseUrl = "";
+    if (accessStore.useCustomConfig) {
+      baseUrl = accessStore.googleUrl;
+    }
+
+    const isApp = !!getClientConfig()?.isApp;
+    if (baseUrl.length === 0) {
+      baseUrl = isApp ? GEMINI_BASE_URL : ApiPath.Google;
+    }
+    if (baseUrl.endsWith("/")) {
+      baseUrl = baseUrl.slice(0, baseUrl.length - 1);
+    }
+    if (!baseUrl.startsWith("http") && !baseUrl.startsWith(ApiPath.Google)) {
+      baseUrl = "https://" + baseUrl;
+    }
+
+    console.log("[Proxy Endpoint] ", baseUrl, path);
+
+    let chatPath = [baseUrl, path].join("/");
+    if (shouldStream) {
+      chatPath += chatPath.includes("?") ? "&alt=sse" : "?alt=sse";
+    }
+
+    return chatPath;
+  }
+  extractMessage(res: any) {
+    console.log("[Response] gemini-pro response: ", res);
+
+    const getTextFromParts = (parts: any[]) => {
+      if (!Array.isArray(parts)) return "";
+
+      return parts
+        .map((part) => part?.text || "")
+        .filter((text) => text.trim() !== "")
+        .join("\n\n");
+    };
+
+    let content = "";
+    if (Array.isArray(res)) {
+      res.map((item) => {
+        content += getTextFromParts(item?.candidates?.at(0)?.content?.parts);
+      });
+    }
+
+    return (
+      getTextFromParts(res?.candidates?.at(0)?.content?.parts) ||
+      content || //getTextFromParts(res?.at(0)?.candidates?.at(0)?.content?.parts) ||
+      res?.error?.message ||
+      ""
+    );
+  }
+  speech(options: SpeechOptions): Promise<ArrayBuffer> {
+    throw new Error("Method not implemented.");
+  }
+
+  async chat(options: ChatOptions): Promise<void> {
+    const apiClient = this;
+    let multimodal = false;
+
+    // try get base64image from local cache image_url
+    const _messages: ChatOptions["messages"] = [];
+    for (const v of options.messages) {
+      const content = await preProcessImageContent(v.content);
+      _messages.push({ role: v.role, content });
+    }
+    const messages = _messages.map((v) => {
+      let parts: any[] = [{ text: getMessageTextContent(v) }];
+      if (isVisionModel(options.config.model)) {
+        const images = getMessageImages(v);
+        if (images.length > 0) {
+          multimodal = true;
+          parts = parts.concat(
+            images.map((image) => {
+              const imageType = image.split(";")[0].split(":")[1];
+              const imageData = image.split(",")[1];
+              return {
+                inline_data: {
+                  mime_type: imageType,
+                  data: imageData,
+                },
+              };
+            }),
+          );
+        }
+      }
+      return {
+        role: v.role.replace("assistant", "model").replace("system", "user"),
+        parts: parts,
+      };
+    });
+
+    // google requires that role in neighboring messages must not be the same
+    for (let i = 0; i < messages.length - 1; ) {
+      // Check if current and next item both have the role "model"
+      if (messages[i].role === messages[i + 1].role) {
+        // Concatenate the 'parts' of the current and next item
+        messages[i].parts = messages[i].parts.concat(messages[i + 1].parts);
+        // Remove the next item
+        messages.splice(i + 1, 1);
+      } else {
+        // Move to the next item
+        i++;
+      }
+    }
+    // if (visionModel && messages.length > 1) {
+    //   options.onError?.(new Error("Multiturn chat is not enabled for models/gemini-pro-vision"));
+    // }
+
+    const accessStore = useAccessStore.getState();
+
+    const modelConfig = {
+      ...useAppConfig.getState().modelConfig,
+      ...useChatStore.getState().currentSession().mask.modelConfig,
+      ...{
+        model: options.config.model,
+      },
+    };
+    const requestPayload = {
+      contents: messages,
+      generationConfig: {
+        // stopSequences: [
+        //   "Title"
+        // ],
+        temperature: modelConfig.temperature,
+        maxOutputTokens: modelConfig.max_tokens,
+        topP: modelConfig.top_p,
+        // "topK": modelConfig.top_k,
+      },
+      safetySettings: [
+        {
+          category: "HARM_CATEGORY_HARASSMENT",
+          threshold: accessStore.googleSafetySettings,
+        },
+        {
+          category: "HARM_CATEGORY_HATE_SPEECH",
+          threshold: accessStore.googleSafetySettings,
+        },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: accessStore.googleSafetySettings,
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: accessStore.googleSafetySettings,
+        },
+      ],
+    };
+
+    // {{CHENGQI:
+    // Action: Added - 添加Google Search工具和思考配置
+    // Timestamp: 2025-01-27 08:49:57 +08:00
+    // Reason: P1-LD-002任务 - 根据用户要求添加google_search工具和thinking配置
+    // Principle_Applied: KISS - 简单直接的配置方式
+    // Optimization: 根据不同模型设置不同的思考预算
+    // Architectural_Note (AR): Google平台思考模式的参数配置
+    // Documentation_Note (DW): 为支持思考模式的Gemini模型添加配置
+    // }}
+    (requestPayload as any).tools = [
+      {
+        "google_search": {}
+      }
+    ];
+
+    // {{CHENGQI:
+    // Action: Modified - 改进模型匹配逻辑并添加详细日志
+    // Timestamp: 2025-01-27 09:15:32 +08:00
+    // Reason: 调试用户反映的功能不生效问题，添加完整的请求体和响应体日志
+    // Principle_Applied: DRY - 简化模型匹配逻辑
+    // Optimization: 更准确的模型名称匹配，详细的调试信息
+    // Architectural_Note (AR): 增强调试能力，便于问题排查
+    // Documentation_Note (DW): 添加完整的请求响应日志输出
+    // }}
+    console.log("[Google API] Current model:", modelConfig.model);
+    
+    // 改进模型匹配逻辑，支持更多模型变体
+    const isThinkingModel = modelConfig.model.includes("2.5-flash-preview") || 
+                           modelConfig.model.includes("2.5-pro-preview") ||
+                           modelConfig.model.includes("flash-thinking") ||
+                           modelConfig.model.includes("pro-thinking");
+    
+    if (modelConfig.model.includes("2.5-flash-preview") || modelConfig.model.includes("flash-thinking")) {
+      (requestPayload as any).generationConfig.thinkingConfig = {
+        "includeThoughts": true,
+        "thinkingBudget": 24576
+      };
+      console.log("[Google API] Applied flash thinking config:", (requestPayload as any).generationConfig.thinkingConfig);
+    } else if (modelConfig.model.includes("2.5-pro-preview") || modelConfig.model.includes("pro-thinking")) {
+      (requestPayload as any).generationConfig.thinkingConfig = {
+        "includeThoughts": true,
+        "thinkingBudget": 32768
+      };
+      console.log("[Google API] Applied pro thinking config:", (requestPayload as any).generationConfig.thinkingConfig);
+    } else {
+      (requestPayload as any).generationConfig.thinkingConfig = {
+        "includeThoughts": false,
+        "thinkingBudget": 0
+      };
+      console.log("[Google API] Applied default thinking config (disabled):", (requestPayload as any).generationConfig.thinkingConfig);
+    }
+
+    // 输出完整的请求体用于调试
+    console.log("[Google API] Complete request payload:", JSON.stringify(requestPayload, null, 2));
+
+    let shouldStream = !!options.config.stream;
+    const controller = new AbortController();
+    options.onController?.(controller);
+    try {
+      // https://github.com/google-gemini/cookbook/blob/main/quickstarts/rest/Streaming_REST.ipynb
+      const chatPath = this.path(
+        Google.ChatPath(modelConfig.model),
+        shouldStream,
+      );
+
+      console.log("[Google API] Request URL:", chatPath);
+
+      const chatPayload = {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+        headers: getHeaders(),
+      };
+
+      console.log("[Google API] Request headers:", getHeaders());
+
+      const isThinking = options.config.model.includes("-thinking");
+      // make a fetch request
+      const requestTimeoutId = setTimeout(
+        () => controller.abort(),
+        getTimeoutMSByModel(options.config.model),
+      );
+
+      if (shouldStream) {
+        const [tools, funcs] = usePluginStore
+          .getState()
+          .getAsTools(
+            useChatStore.getState().currentSession().mask?.plugin || [],
+          );
+        // {{CHENGQI:
+        // Action: Modified - 替换stream为streamWithThink并添加思考内容提取逻辑
+        // Timestamp: 2025-01-27 08:49:57 +08:00
+        // Reason: P1-LD-003,P1-LD-004任务 - 支持思考模式的流式处理和内容提取
+        // Principle_Applied: SOLID - 单一职责，专门处理思考内容的函数
+        // Optimization: 统一思考内容和引用提取逻辑
+        // Architectural_Note (AR): Google平台与思考窗口系统的完整集成
+        // Documentation_Note (DW): 实现思考内容、引用提取和流式处理
+        // }}
+        const collectedCitations: { title: string; url: string }[] = [];
+        
+        return streamWithThink(
+          chatPath,
+          requestPayload,
+          getHeaders(),
+          // @ts-ignore
+          tools.length > 0
+            ? // @ts-ignore
+              [{ functionDeclarations: tools.map((tool) => tool.function) }]
+            : [],
+          funcs,
+          controller,
+          // parseSSE
+          (text: string, runTools: ChatMessageTool[]) => {
+            // {{CHENGQI:
+            // Action: Modified - 添加详细的响应调试日志
+            // Timestamp: 2025-01-27 09:15:32 +08:00
+            // Reason: 调试响应解析问题，输出完整响应内容
+            // Principle_Applied: SOLID - 单一职责，调试信息独立处理
+            // Optimization: 详细的响应结构分析
+            // Architectural_Note (AR): 增强响应解析的可观测性
+            // Documentation_Note (DW): 完整记录响应解析过程
+            // }}
+            console.log("[Google API] Raw response chunk:", text);
+            
+            try {
+              const chunkJson = JSON.parse(text);
+              console.log("[Google API] Parsed response chunk:", JSON.stringify(chunkJson, null, 2));
+
+              // 提取引用信息
+              if (chunkJson?.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+                const chunks = chunkJson.candidates[0].groundingMetadata.groundingChunks;
+                console.log("[Google API] Found grounding chunks:", chunks);
+                
+                const citations = chunks
+                  .filter((chunk: any) => chunk.web?.uri)
+                  .map((chunk: any) => ({
+                    title: chunk.web.title || chunk.web.uri,
+                    url: chunk.web.uri
+                  }))
+                  .filter((citation: any) => citation.url && citation.url.trim().length > 0);
+                
+                if (citations.length > 0) {
+                  console.log("[Google API] Extracted citations:", citations);
+                  citations.forEach((citation: { title: string; url: string; }) => {
+                    if (!collectedCitations.some(c => c.url === citation.url)) {
+                      collectedCitations.push(citation);
+                    }
+                  });
+                }
+              }
+
+              const functionCall = chunkJson?.candidates
+                ?.at(0)
+                ?.content.parts.at(0)?.functionCall;
+              if (functionCall) {
+                console.log("[Google API] Found function call:", functionCall);
+                const { name, args } = functionCall;
+                runTools.push({
+                  id: nanoid(),
+                  type: "function",
+                  function: {
+                    name,
+                    arguments: JSON.stringify(args),
+                  },
+                });
+              }
+              
+              // 分离思考内容和正文内容
+              let thinkingContent = "";
+              let regularContent = "";
+              let hasThinking = false;
+              
+              if (chunkJson?.candidates?.[0]?.content?.parts) {
+                const parts = chunkJson.candidates[0].content.parts;
+                console.log("[Google API] Processing parts:", parts);
+                
+                parts.forEach((part: any, index: number) => {
+                  console.log(`[Google API] Part ${index}:`, part);
+                  if (part.text) {
+                    if (part.thought === true) {
+                      // 这是思考过程
+                      console.log("[Google API] Found thinking content:", part.text);
+                      thinkingContent += part.text;
+                      hasThinking = true;
+                    } else {
+                      // 这是正文内容
+                      console.log("[Google API] Found regular content:", part.text);
+                      regularContent += part.text;
+                    }
+                  }
+                });
+              }
+
+              // 如果有思考内容，返回思考内容
+              if (hasThinking && thinkingContent.length > 0) {
+                console.log("[Google API] Returning thinking content:", thinkingContent);
+                return {
+                  isThinking: true,
+                  content: thinkingContent,
+                };
+              } else if (regularContent.length > 0) {
+                console.log("[Google API] Returning regular content:", regularContent);
+                return {
+                  isThinking: false,
+                  content: regularContent,
+                };
+              }
+
+              // 回退到原有逻辑
+              const content = chunkJson?.candidates
+                ?.at(0)
+                ?.content.parts?.map((part: { text: string }) => part.text)
+                .join("\n\n");
+
+              console.log("[Google API] Fallback content:", content);
+              return {
+                isThinking: false,
+                content: content || "",
+              };
+            } catch (parseError) {
+              console.error("[Google API] Failed to parse response chunk:", parseError);
+              console.error("[Google API] Raw text that failed to parse:", text);
+              return {
+                isThinking: false,
+                content: "",
+              };
+            }
+          },
+          // processToolMessage, include tool_calls message and tool call results
+          (
+            requestPayload: RequestPayload,
+            toolCallMessage: any,
+            toolCallResult: any[],
+          ) => {
+            // @ts-ignore
+            requestPayload?.contents?.splice(
+              // @ts-ignore
+              requestPayload?.contents?.length,
+              0,
+              {
+                role: "model",
+                parts: toolCallMessage.tool_calls.map(
+                  (tool: ChatMessageTool) => ({
+                    functionCall: {
+                      name: tool?.function?.name,
+                      args: JSON.parse(tool?.function?.arguments as string),
+                    },
+                  }),
+                ),
+              },
+              // @ts-ignore
+              ...toolCallResult.map((result) => ({
+                role: "function",
+                parts: [
+                  {
+                    functionResponse: {
+                      name: result.name,
+                      response: {
+                        name: result.name,
+                        content: result.content, // TODO just text content...
+                      },
+                    },
+                  },
+                ],
+              })),
+            );
+          },
+          {
+            ...options,
+            // {{CHENGQI:
+            // Action: Added - 思考内容回调传递
+            // Timestamp: 2025-01-27 08:49:57 +08:00
+            // Reason: P1-LD-005任务 - 确保Google平台正确传递onThinkingUpdate回调
+            // Principle_Applied: SOLID - 责任传递，保持回调链的完整性
+            // Optimization: 思考内容的实时流式更新支持
+            // Architectural_Note (AR): Google平台与思考窗口系统的集成
+            // Documentation_Note (DW): 思考内容通过onThinkingUpdate回调实时传递给UI
+            // }}
+            onThinkingUpdate: options.onThinkingUpdate,
+          },
+        );
+      } else {
+        const res = await fetch(chatPath, chatPayload);
+        clearTimeout(requestTimeoutId);
+        const resJson = await res.json();
+        if (resJson?.promptFeedback?.blockReason) {
+          // being blocked
+          options.onError?.(
+            new Error(
+              "Message is being blocked for reason: " +
+                resJson.promptFeedback.blockReason,
+            ),
+          );
+        }
+        const message = apiClient.extractMessage(resJson);
+        options.onFinish(message, res);
+      }
+    } catch (e) {
+      console.log("[Request] failed to make a chat request", e);
+      options.onError?.(e as Error);
+    }
+  }
+  usage(): Promise<LLMUsage> {
+    throw new Error("Method not implemented.");
+  }
+  async models(): Promise<LLMModel[]> {
+    return [];
+  }
+}

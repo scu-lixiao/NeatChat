@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="premium-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextChat Premium - 聊天界面深邃主题测试</title>
+    <style>
+        @import './styles/globals.scss';
+        @import './components/chat.module.scss';
+        
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--premium-bg-cosmos);
+            color: var(--premium-text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--premium-bg-space);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--premium-shadow-lg);
+        }
+        
+        .test-header {
+            padding: 20px;
+            background: var(--premium-bg-void);
+            border-bottom: 1px solid var(--premium-border-starlight);
+            text-align: center;
+        }
+        
+        .test-title {
+            margin: 0 0 10px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .test-subtitle {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+        
+        .chat-demo {
+            height: 600px;
+        }
+        
+        /* 模拟聊天消息样式 */
+        .demo-message {
+            margin: 20px;
+        }
+        
+        .demo-user-message .chat-message-item {
+            margin-left: auto;
+            max-width: 70%;
+        }
+        
+        .demo-ai-message .chat-message-item {
+            margin-right: auto;
+            max-width: 70%;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <!-- 测试标题 -->
+        <div class="test-header">
+            <h1 class="test-title">NextChat Premium 聊天界面</h1>
+            <p class="test-subtitle">深邃空间主题 + 光感边框系统测试</p>
+        </div>
+        
+        <!-- 聊天界面演示 -->
+        <div class="chat chat-demo">
+            <!-- 聊天内容区域 -->
+            <div class="chat-body">
+                <!-- AI消息示例 -->
+                <div class="demo-message demo-ai-message">
+                    <div class="chat-message-item">
+                        <h4>🤖 AI Assistant</h4>
+                        <p>欢迎使用NextChat Premium！这是升级后的深邃空间主题界面。</p>
+                        <p>注意观察消息卡片的光感边框和悬浮效果。</p>
+                    </div>
+                </div>
+                
+                <!-- 用户消息示例 -->
+                <div class="demo-message demo-user-message">
+                    <div class="chat-message-item">
+                        <h4>👤 用户</h4>
+                        <p>哇，这个界面看起来非常有科技感！深邃的背景和蓝色光感边框营造了很棒的宇宙空间感。</p>
+                    </div>
+                </div>
+                
+                <!-- AI长消息示例 -->
+                <div class="demo-message demo-ai-message">
+                    <div class="chat-message-item">
+                        <h4>🤖 AI Assistant</h4>
+                        <p>感谢您的反馈！这个界面使用了以下技术特性：</p>
+                        <ul>
+                            <li>深邃空间背景系统 (6层渐进背景)</li>
+                            <li>星光边框与光感效果</li>
+                            <li>多维度阴影系统</li>
+                            <li>GPU硬件加速优化</li>
+                            <li>响应式交互动画</li>
+                        </ul>
+                        <p>悬停在消息上试试看光感边框的动态效果！</p>
+                    </div>
+                </div>
+                
+                <!-- 音频消息示例 -->
+                <div class="demo-message demo-user-message">
+                    <div class="chat-message-audio">
+                        <span>🎵 语音消息</span>
+                        <audio controls style="width: 200px;">
+                            <source src="#" type="audio/mpeg">
+                            您的浏览器不支持音频播放。
+                        </audio>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 输入面板 -->
+            <div class="chat-input-panel">
+                <!-- 提示面板 -->
+                <div class="prompt-hints">
+                    <div class="prompt-hint">
+                        <div class="hint-title">💡 智能提示</div>
+                        <div class="hint-content">尝试悬停在这个提示上查看光感效果</div>
+                    </div>
+                    <div class="prompt-hint">
+                        <div class="hint-title">🚀 性能优化</div>
+                        <div class="hint-content">所有动画都使用GPU加速确保60fps流畅度</div>
+                    </div>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="chat-input-actions">
+                    <div class="chat-input-action" style="--icon-width: 40px; --full-width: 120px;">
+                        <span class="icon">📎</span>
+                        <span class="text">添加附件</span>
+                    </div>
+                    <div class="chat-input-action" style="--icon-width: 40px; --full-width: 100px;">
+                        <span class="icon">🎯</span>
+                        <span class="text">提示词</span>
+                    </div>
+                    <div class="chat-input-action" style="--icon-width: 40px; --full-width: 110px;">
+                        <span class="icon">🎨</span>
+                        <span class="text">模式切换</span>
+                    </div>
+                </div>
+                
+                <!-- 输入框容器 -->
+                <div class="chat-input-panel-inner">
+                    <textarea 
+                        class="chat-input" 
+                        placeholder="输入您的消息... (点击聚焦查看光感边框效果)"
+                        rows="3"
+                    ></textarea>
+                    <button class="chat-input-send">
+                        ▶️
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 添加交互效果演示
+        document.addEventListener('DOMContentLoaded', function() {
+            // 自动聚焦输入框演示效果
+            const chatInput = document.querySelector('.chat-input');
+            const focusDemo = () => {
+                chatInput.focus();
+                setTimeout(() => {
+                    chatInput.blur();
+                    setTimeout(focusDemo, 3000);
+                }, 2000);
+            };
+            
+            // 3秒后开始演示
+            setTimeout(focusDemo, 3000);
+            
+            // 消息悬停效果提示
+            const messages = document.querySelectorAll('.chat-message-item');
+            messages.forEach(msg => {
+                msg.addEventListener('mouseenter', () => {
+                    console.log('消息悬停 - 光感边框激活');
+                });
+            });
+            
+            console.log('✨ NextChat Premium 聊天界面测试加载完成');
+            console.log('🎯 测试重点：');
+            console.log('   - 消息卡片的光感边框和悬浮效果');
+            console.log('   - 输入框的聚焦光感动画');
+            console.log('   - 深邃空间背景的层次感');
+            console.log('   - 操作按钮的交互反馈');
+        });
+    </script>
+</body>
+</html> 

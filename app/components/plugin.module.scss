@@ -1,0 +1,48 @@
+@import "../styles/premium-mixins.scss";
+
+.plugin-title {
+  font-weight: bolder;
+  font-size: 16px;
+  margin: 10px 0;
+  color: rgb(240, 240, 240);
+}
+.plugin-content {
+  font-size: 14px;
+  font-family: inherit;
+  color: rgb(240, 240, 240);
+  
+  pre code {
+    max-height: 240px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    min-width: 280px;
+    background: rgb(4, 4, 4);
+    color: rgb(240, 240, 240);
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+  }
+}
+
+.plugin-schema {
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: row;
+
+  input {
+    margin-right: 20px;
+
+    @media screen and (max-width: 600px) {
+        margin-right: 0px;
+      }
+  }
+
+  @media screen and (max-width: 600px) {
+    flex-direction: column;
+    gap: 5px;
+
+    button {
+      padding: 10px;
+    }
+  }
+}

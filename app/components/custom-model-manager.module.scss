@@ -1,0 +1,343 @@
+// {{CHENGQI:
+// Action: Created - 自定义模型管理组件样式
+// Timestamp: 2025-06-18 16:45:00 +08:00
+// Reason: 为自定义模型管理组件提供 Apple UI 设计系统样式
+// Principle_Applied: DRY - 复用现有设计系统，保持一致性
+// Optimization: 简化样式，确保编译成功
+// Architectural_Note (AR): 遵循项目的 Apple UI 设计规范
+// Documentation_Note (DW): 自定义模型管理界面的完整样式定义
+// }}
+
+@import "../styles/premium-mixins.scss";
+
+.model-manager {
+  min-height: 400px;
+  max-height: 600px;
+  overflow-y: auto;
+  
+  // Apple UI 滚动条样式
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+
+    &:hover {
+      background: rgba(100, 150, 255, 0.6);
+    }
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: rgb(240, 240, 240);
+
+  p {
+    margin-bottom: 20px;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+}
+
+.model-editor {
+  padding: 20px 0;
+  
+  .editor-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    
+    // 简化的按钮样式
+    button {
+      @include starlight-border(subtle);
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      border-radius: 8px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+
+      &:hover {
+        @include focus-glow(rgba(100, 150, 255, 0.6), normal);
+        transform: translateY(-2px) scale(1.02);
+      }
+
+      &:active {
+        transform: translateY(0) scale(0.98);
+        transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+      }
+    }
+  }
+}
+
+.model-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  input[type="checkbox"] {
+    // Apple UI 复选框样式
+    @include starlight-border(subtle);
+    margin-right: 8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    &:checked {
+      @include status-border(success, normal);
+      background-color: rgba(100, 255, 150, 0.2);
+
+      &::after {
+        content: '✓';
+        color: rgb(100, 255, 150);
+        font-size: 12px;
+        line-height: 1;
+      }
+    }
+  }
+  
+  button {
+    // 简化的按钮样式
+    @include starlight-border(subtle);
+    min-width: 32px;
+    height: 32px;
+    padding: 6px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    &:hover {
+      @include focus-glow(rgba(100, 150, 255, 0.6), small);
+      transform: scale(1.1) translateZ(0);
+    }
+
+    &:active {
+      transform: scale(0.95) translateZ(0);
+      transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+
+    // 危险操作按钮样式
+    &[data-type="danger"] {
+      &:hover {
+        @include status-border(error, normal);
+        background-color: rgba(255, 100, 100, 0.1);
+        color: rgb(255, 100, 100);
+      }
+    }
+  }
+}
+
+// 模型项的增强样式
+:global(.list) .model-item {
+  // Apple UI 列表项样式增强
+  @include hover-enhanced-border(subtle);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    transform: translateX(4px) translateZ(0);
+  }
+
+  &:active {
+    transform: translateX(2px) scale(0.99) translateZ(0);
+    transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+}
+
+// 输入框增强样式
+.model-editor input[type="text"],
+.model-editor input[type="email"] {
+  @include quantum-input-fluid-interaction();
+
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 16px;
+
+  &:focus {
+    @include focus-glow(rgba(100, 150, 255, 0.6), normal);
+    outline: none;
+  }
+
+  &::placeholder {
+    color: rgba(240, 240, 240, 0.5);
+  }
+
+  // 错误状态
+  &.error {
+    @include status-border(error, normal);
+  }
+
+  // 成功状态
+  &.success {
+    @include status-border(success, normal);
+  }
+}
+
+// 复选框增强样式
+.model-editor input[type="checkbox"] {
+  @include starlight-border(subtle);
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  appearance: none;
+  position: relative;
+
+  &:checked {
+    @include status-border(success, normal);
+    background-color: rgba(100, 255, 150, 0.2);
+
+    &::after {
+      content: '✓';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgb(100, 255, 150);
+      font-size: 12px;
+      font-weight: bold;
+    }
+  }
+
+  &:hover {
+    @include focus-glow(rgba(100, 150, 255, 0.6), small);
+    transform: scale(1.05) translateZ(0);
+  }
+
+  &:active {
+    transform: scale(0.95) translateZ(0);
+    transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+}
+
+// 模态框内容区域样式
+:global(.modal) .model-manager,
+:global(.modal) .model-editor {
+  // 确保模态框内容的正确显示
+  max-width: 100%;
+  overflow: visible;
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .model-manager {
+    min-height: 300px;
+    max-height: 400px;
+  }
+  
+  .model-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+    
+    button {
+      min-width: 28px;
+      height: 28px;
+      padding: 4px;
+    }
+  }
+  
+  .editor-actions {
+    flex-direction: column;
+    gap: 8px;
+    
+    button {
+      width: 100%;
+    }
+  }
+}
+
+// 暗色主题适配
+:global(.dark) {
+  .model-manager {
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+
+      &:hover {
+        background: rgba(100, 150, 255, 0.6);
+      }
+    }
+  }
+
+  .model-editor input[type="text"],
+  .model-editor input[type="email"] {
+    background-color: rgb(20, 20, 20);
+    color: rgb(240, 240, 240);
+  }
+}
+
+// Premium 主题适配
+:global(.premium-dark) {
+  .model-manager,
+  .model-editor {
+    // Premium 深空主题的特殊效果
+    background: linear-gradient(135deg,
+      rgb(8, 8, 16) 0%,
+      rgb(16, 8, 24) 100%);
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 20% 50%, rgba(100, 150, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(150, 100, 255, 0.1) 0%, transparent 50%);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+  }
+
+  .model-actions button {
+    &:hover {
+      box-shadow: 0 4px 16px rgba(100, 150, 255, 0.3);
+      background: rgba(100, 150, 255, 0.1);
+    }
+  }
+}
+
+// {{CHENGQI:
+// Action: Added - 分组标题样式
+// Timestamp: 2025-06-18 18:50:00 +08:00
+// Reason: 为自定义模型和默认模型分组添加视觉分隔
+// Principle_Applied: Apple UI 设计系统 - 清晰的信息层次
+// Optimization: 提升用户体验，清晰的分组显示
+// Architectural_Note (AR): 扩展样式系统以支持分组显示
+// Documentation_Note (DW): 模型分组的标题样式
+// }}
+.section-header {
+  padding: 1rem 0 0.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.5rem;
+
+  h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(100, 150, 255, 0.9);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}

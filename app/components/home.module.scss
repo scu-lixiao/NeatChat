@@ -1,0 +1,506 @@
+// {{CHENGQI:
+// Action: Added premium-theme import and enhanced container styling
+// Timestamp: 2025-06-10 17:05:41 +08:00
+// Reason: Import premium theme system for deep space sidebar enhancement
+// Principle_Applied: DRY - Reuse established premium-theme variable system
+// Optimization: Import at top for CSS cascade efficiency
+// Architectural_Note (AR): Maintains compatibility while enabling deep space theme integration
+// Documentation_Note (DW): Added premium theme support while preserving existing functionality
+// }}
+@import "../styles/premium-mixins.scss";
+
+@mixin container {
+  background-color: var(--white);
+  border: var(--border-in-light);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  color: var(--black);
+  background-color: var(--white);
+  min-width: 600px;
+  min-height: 370px;
+  max-width: 1200px;
+
+  display: flex;
+  overflow: hidden;
+  box-sizing: border-box;
+
+  width: var(--window-width);
+  height: var(--window-height);
+}
+
+.container {
+  @include container();
+}
+
+@media only screen and (min-width: 600px) {
+  .tight-container {
+    --window-width: 100vw;
+    --window-height: var(--full-height);
+    --window-content-width: calc(100% - var(--sidebar-width));
+
+    @include container();
+
+    max-width: 100vw;
+    max-height: var(--full-height);
+
+    border-radius: 0;
+    border: 0;
+  }
+}
+
+.sidebar {
+  top: 0;
+  width: var(--sidebar-width);
+  box-sizing: border-box;
+  padding: 20px;
+  // {{CHENGQI:
+  // Action: Enhanced sidebar with deep space background and premium styling, removed left border
+  // Timestamp: 2025-06-11 20:07:00 +08:00
+  // Reason: Remove left border to eliminate white/blue border on left side as requested by user
+  // Principle_Applied: KISS - Simple removal of problematic left border, DRY - Keep premium theme vars
+  // Optimization: Enhanced box-shadow with multiple layers for depth perception, no left border
+  // Architectural_Note (AR): Maintains responsive design while adding premium visual depth
+  // Documentation_Note (DW): Deep space background creates visual hierarchy, left border removed per user request
+  // }}
+  background-color: var(--premium-bg-space, var(--second)); // Deep space background with fallback
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    inset -2px 0px 2px 0px rgba(0, 0, 0, 0.05),
+    var(--premium-shadow-md); // Premium multi-layer shadow, left border removed
+  position: relative;
+  transition: width var(--premium-duration-fast, 0.05s) var(--premium-ease-out, ease);
+
+  .sidebar-header-bar {
+    display: flex;
+    margin-bottom: 20px;
+
+    .sidebar-bar-button {
+      flex-grow: 1;
+
+      &:not(:last-child) {
+        margin-right: 10px;
+      }
+      
+      // {{CHENGQI:
+      // Action: Enhanced sidebar header buttons with starlight borders and premium styling
+      // Timestamp: 2025-06-10 17:05:41 +08:00
+      // Reason: Apply premium theme to sidebar action buttons for consistency
+      // Principle_Applied: DRY - Reuse starlight-border mixin, KISS - Simple enhancement
+      // Optimization: Subtle light sensing effects, smooth premium transitions
+      // Architectural_Note (AR): Maintains button functionality while adding premium visuals
+      // Documentation_Note (DW): Header buttons now have cosmic light sensing effects
+      // }}
+      @include starlight-border(subtle); // Subtle starlight border
+      background-color: var(--premium-bg-void, transparent);
+      border-radius: 8px;
+      padding: 8px 12px;
+      transition: 
+        all var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease);
+      will-change: transform, box-shadow;
+      
+      &:hover {
+        @include starlight-border(normal); // Enhanced starlight on hover
+        background-color: var(--premium-bg-nebula, var(--hover-color));
+        transform: translateY(-1px);
+        box-shadow: var(--premium-shadow-md);
+      }
+      
+      &:active {
+        transform: translateY(0);
+        box-shadow: var(--premium-shadow-sm);
+      }
+    }
+  }
+
+  &:hover,
+  &:active {
+    .sidebar-drag {
+      background-color: rgba($color: #000000, $alpha: 0.01);
+
+      svg {
+        opacity: 0.2;
+      }
+    }
+  }
+}
+
+.sidebar-drag {
+  $width: 14px;
+
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: $width;
+  background-color: rgba($color: #000000, $alpha: 0);
+  cursor: ew-resize;
+  transition: all ease 0.3s;
+  display: flex;
+  align-items: center;
+
+  svg {
+    opacity: 0;
+    margin-left: -2px;
+  }
+}
+
+.window-content {
+  width: var(--window-content-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile {
+  display: none;
+}
+
+@media only screen and (max-width: 600px) {
+  .container {
+    min-height: unset;
+    min-width: unset;
+    max-height: unset;
+    min-width: unset;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .sidebar {
+    position: absolute;
+    left: -100%;
+    z-index: 1000;
+    height: var(--full-height);
+    transition: all ease 0.3s;
+    box-shadow: none;
+  }
+
+  .sidebar-show {
+    left: 0;
+  }
+
+  .mobile {
+    display: block;
+  }
+}
+
+.sidebar-header {
+  position: relative;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  &-narrow {
+    justify-content: center;
+  }
+}
+
+.sidebar-logo {
+  display: inline-flex;
+}
+
+.sidebar-title-container {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.sidebar-title {
+  font-size: 20px;
+  font-weight: bold;
+  animation: slide-in ease 0.3s;
+}
+
+.sidebar-sub-title {
+  font-size: 12px;
+  font-weight: 400;
+  animation: slide-in ease 0.3s;
+}
+
+.sidebar-body {
+  flex: 1;
+  overflow: auto;
+  overflow-x: hidden;
+}
+
+.chat-item {
+  padding: 10px 14px;
+  // {{CHENGQI:
+  // Action: Enhanced chat-item with starlight border and deep space styling
+  // Timestamp: 2025-06-10 17:05:41 +08:00
+  // Reason: Apply premium theme to chat list items - starlight borders and floating shadows
+  // Principle_Applied: KISS - Use existing mixin system, DRY - Reuse starlight-border mixin
+  // Optimization: GPU-accelerated hover transform, premium shadow depth
+  // Architectural_Note (AR): Consistent with chat interface styling for unified UX
+  // Documentation_Note (DW): Chat items now have cosmic floating sensation with light sensing
+  // }}
+  background-color: var(--premium-bg-void, var(--white)); // Deep void background
+  border-radius: 10px;
+  margin-bottom: 10px;
+  @include starlight-border(subtle); // Starlight border effect
+  box-shadow: var(--premium-shadow-lg), var(--card-shadow); // Enhanced floating shadow
+  transition: 
+    background-color var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease),
+    transform var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease),
+    box-shadow var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  cursor: pointer;
+  user-select: none;
+  border: 2px solid transparent;
+  position: relative;
+  content-visibility: auto;
+  will-change: transform, box-shadow; // GPU acceleration hint
+}
+
+.chat-item:hover {
+  // {{CHENGQI:
+  // Action: Enhanced hover state with starlight border intensification and floating effect
+  // Timestamp: 2025-06-10 17:05:41 +08:00
+  // Reason: Premium hover interaction - enhanced light sensing and floating sensation
+  // Principle_Applied: Single Responsibility - Focus on hover enhancement only
+  // Optimization: Subtle transform for floating effect, enhanced glow intensity
+  // Architectural_Note (AR): Consistent hover behavior across all interactive elements
+  // Documentation_Note (DW): Hover creates enhanced light sensing and levitation effect
+  // }}
+  background-color: var(--premium-bg-nebula, var(--hover-color)); // Enhanced nebula background
+  @include starlight-border(normal); // Intensified starlight on hover
+  transform: translateY(-1px); // Floating sensation
+  box-shadow: 
+    var(--premium-shadow-xl),
+    0 8px 25px rgba(100, 150, 255, 0.1); // Enhanced floating shadow with blue glow
+}
+
+.chat-item-selected {
+  // {{CHENGQI:
+  // Action: Enhanced selected state with energy border and premium glow
+  // Timestamp: 2025-06-10 17:05:41 +08:00
+  // Reason: Selected state gets energy border for clear visual distinction
+  // Principle_Applied: Single Responsibility - Clear selected state indication
+  // Optimization: Energy border with subtle pulse animation
+  // Architectural_Note (AR): Consistent selected state styling across all components
+  // Documentation_Note (DW): Selected chat items have energy field indication for clarity
+  // }}
+  @include energy-border(pulse); // Energy border with subtle pulse
+  background-color: var(--premium-bg-stellar, var(--white)); // Stellar background for selected state
+  border-color: transparent; // Remove default border, energy-border handles it
+}
+
+.chat-item-title {
+  font-size: 14px;
+  font-weight: bolder;
+  display: block;
+  width: calc(100% - 15px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  animation: slide-in ease 0.3s;
+}
+
+.chat-item-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  // {{CHENGQI:
+  // Action: Enhanced delete button with premium transitions and light sensing
+  // Timestamp: 2025-06-10 17:05:41 +08:00
+  // Reason: Premium styling for delete action with subtle light sensing
+  // Principle_Applied: Single Responsibility - Focus on delete button enhancement
+  // Optimization: Smooth premium transitions, subtle starlight glow
+  // Architectural_Note (AR): Consistent with other interactive elements styling
+  // Documentation_Note (DW): Delete button gains cosmic glow for better discoverability
+  // }}
+  transition: 
+    all var(--premium-duration-normal, 0.3s) var(--premium-ease-out, ease);
+  opacity: 0;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 4px;
+  
+  // Subtle starlight glow when visible
+  &:hover {
+    @include starlight-border(subtle);
+    background-color: var(--premium-bg-void, transparent);
+    box-shadow: var(--premium-shadow-sm);
+  }
+}
+
+.chat-item:hover > .chat-item-delete {
+  opacity: 0.5;
+  transform: translateX(-4px);
+}
+
+.chat-item:hover > .chat-item-delete:hover {
+  opacity: 1;
+}
+
+.chat-item-info {
+  display: flex;
+  justify-content: space-between;
+  color: rgb(166, 166, 166);
+  font-size: 12px;
+  margin-top: 8px;
+  animation: slide-in ease 0.3s;
+}
+
+.chat-item-count,
+.chat-item-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.narrow-sidebar {
+  .sidebar-title,
+  .sidebar-sub-title {
+    display: none;
+  }
+  .sidebar-logo {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .sidebar-header-bar {
+    flex-direction: column;
+
+    .sidebar-bar-button {
+      &:not(:last-child) {
+        margin-right: 0;
+        margin-bottom: 10px;
+      }
+    }
+  }
+
+  .chat-item {
+    padding: 0;
+    min-height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all ease 0.3s;
+    overflow: hidden;
+
+    &:hover {
+      .chat-item-narrow {
+        transform: scale(0.7) translateX(-50%);
+      }
+    }
+  }
+
+  .chat-item-narrow {
+    line-height: 0;
+    font-weight: lighter;
+    color: var(--black);
+    transform: translateX(0);
+    transition: all ease 0.3s;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    .chat-item-avatar {
+      display: flex;
+      justify-content: center;
+      opacity: 0.2;
+      position: absolute;
+      transform: scale(4);
+    }
+
+    .chat-item-narrow-count {
+      font-size: 24px;
+      font-weight: bolder;
+      text-align: center;
+      color: var(--primary);
+      opacity: 0.6;
+    }
+  }
+
+  .sidebar-tail {
+    flex-direction: column-reverse;
+    align-items: center;
+
+    .sidebar-actions {
+      flex-direction: column-reverse;
+      align-items: center;
+
+      .sidebar-action {
+        margin-right: 0;
+        margin-top: 15px;
+      }
+    }
+  }
+}
+
+.sidebar-tail {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 20px;
+}
+
+.sidebar-actions {
+  display: inline-flex;
+}
+
+.sidebar-action:not(:last-child) {
+  margin-right: 15px;
+}
+
+// {{CHENGQI:
+// Action: Removed borders and background colors from sidebar action buttons
+// Timestamp: 2025-06-14 15:33:20 +08:00
+// Reason: User requested to cancel borders and background colors for bottom three iconbuttons
+// Principle_Applied: KISS - Simplified styling by removing unnecessary visual effects
+// Optimization: Cleaner UI appearance with minimal styling
+// Architectural_Note (AR): Maintained button functionality while simplifying visual design
+// Documentation_Note (DW): Sidebar action buttons now have clean appearance without borders/backgrounds
+// }}
+.sidebar-action {
+  border: none; // Remove all borders
+  background-color: transparent; // Transparent background
+  border-radius: 8px;
+  padding: 8px;
+  transition: 
+    all var(--premium-duration-fast, 0.15s) var(--premium-ease-out, ease);
+  will-change: transform, box-shadow;
+  cursor: pointer;
+  
+  // Force all child icon buttons to be transparent
+  .icon-button {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    
+    &:hover {
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+    
+    &:active {
+      background-color: transparent !important;
+      box-shadow: none !important;
+    }
+  }
+  
+  &:hover {
+    background-color: transparent; // Keep transparent on hover
+    transform: translateY(-1px);
+    box-shadow: none; // Remove shadow effects
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: none; // Remove shadow effects
+  }
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+.rtl-screen {
+  direction: rtl;
+}

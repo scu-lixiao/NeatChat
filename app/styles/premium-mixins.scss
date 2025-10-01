@@ -1,0 +1,649 @@
+// =============================================================================
+// Premium UI Enhancement v2 - Mixin Library
+// CSS Modules Safe版本 - 只包含mixin，不包含CSS变量定义
+// 用于.module.scss文件导入
+// Created: 2025-06-10 (from premium-theme.scss)
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. 星光边框效果 (Starlight Border Effect)
+// 营造微妙的科技感蓝光边框，有3种强度级别
+// -----------------------------------------------------------------------------
+@mixin starlight-border($intensity: subtle) {
+  @if $intensity == subtle {
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.15),
+      0 0 16px rgba(100, 150, 255, 0.05);
+  } @else if $intensity == normal {
+    border: 1px solid rgba(100, 150, 255, 0.5);
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      0 0 36px rgba(100, 150, 255, 0.05);
+  } @else if $intensity == intense {
+    border: 1px solid rgba(100, 150, 255, 0.7);
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.35),
+      0 0 32px rgba(100, 150, 255, 0.15),
+      0 0 48px rgba(100, 150, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  transition: 
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+
+// -----------------------------------------------------------------------------
+// 2. 焦点光晕效果 (Focus Glow Effect)
+// 用于输入框、按钮等元素的聚焦状态
+// -----------------------------------------------------------------------------
+@mixin focus-glow($color: rgba(100, 150, 255, 0.6), $size: normal) {
+  @if $size == small {
+    border: 1px solid $color;
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.3),
+      0 0 16px rgba(100, 150, 255, 0.1),
+      inset 0 0 4px rgba(100, 150, 255, 0.1);
+  } @else if $size == normal {
+    border: 1px solid $color;
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      0 0 36px rgba(100, 150, 255, 0.05),
+      inset 0 0 6px rgba(100, 150, 255, 0.15);
+  } @else if $size == large {
+    border: 1px solid rgba(100, 150, 255, 0.8);
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.5),
+      0 0 32px rgba(100, 150, 255, 0.2),
+      0 0 48px rgba(100, 150, 255, 0.08),
+      inset 0 0 8px rgba(100, 150, 255, 0.2);
+  }
+  
+  outline: none;
+  transform: scale(1.02);
+  transition: 
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+// -----------------------------------------------------------------------------
+// 3. 能量边框效果 (Energy Border Effect)
+// 用于高级交互状态的动态能量场边框
+// -----------------------------------------------------------------------------
+@mixin energy-border($type: default, $animation: true) {
+  @if $type == default {
+    border: 1px solid rgba(100, 150, 255, 0.6);
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      inset 0 0 6px rgba(100, 150, 255, 0.1);
+  } @else if $type == pulse {
+    border: 1px solid rgba(100, 150, 255, 0.6);
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      inset 0 0 6px rgba(100, 150, 255, 0.1);
+    
+    @if $animation {
+      animation: energy-pulse 2s ease-in-out infinite;
+    }
+  } @else if $type == flow {
+    position: relative;
+    border: 1px solid transparent;
+    background: 
+      linear-gradient(rgb(8,8,8), rgb(8,8,8)) padding-box,
+      linear-gradient(90deg, 
+        rgba(100, 150, 255, 0.5),
+        rgba(150, 100, 255, 0.5),
+        rgba(100, 150, 255, 0.5)
+      ) border-box;
+    
+    @if $animation {
+      background-size: 100% 100%, 200% 100%;
+      animation: energy-flow 3s linear infinite;
+    }
+  }
+  
+  transition: 
+    border-color 0.25s ease-out,
+    box-shadow 0.25s ease-out;
+}
+
+// -----------------------------------------------------------------------------
+// 4. 悬浮增强边框 (Hover Enhanced Border)
+// 用于hover状态的增强光感效果
+// -----------------------------------------------------------------------------
+@mixin hover-enhanced-border($base-intensity: normal) {
+  @include starlight-border($base-intensity);
+  
+  &:hover {
+    border-color: rgba(100, 150, 255, 0.7);
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.3),
+      0 0 32px rgba(100, 150, 255, 0.1),
+      0 0 48px rgba(100, 150, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    
+    transform: scale(1.02);
+  }
+  
+  &:active {
+    transform: scale(0.98);
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.4),
+      0 0 16px rgba(100, 150, 255, 0.15),
+      inset 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 5. 组合光感边框 (Composite Glow Border)
+// 多种光感效果的组合，用于最高级的UI元素
+// -----------------------------------------------------------------------------
+@mixin composite-glow-border($primary: true, $secondary: false, $accent: false) {
+  border: 1px solid rgba(100, 150, 255, 0.8);
+  
+  $shadows: ();
+  
+  @if $primary {
+    $shadows: append($shadows, (0 0 12px rgba(100, 150, 255, 0.4)), comma);
+    $shadows: append($shadows, (0 0 24px rgba(100, 150, 255, 0.15)), comma);
+  }
+  
+  @if $secondary {
+    $shadows: append($shadows, (0 0 16px rgba(100, 255, 150, 0.25)), comma);
+    $shadows: append($shadows, (0 0 32px rgba(100, 255, 150, 0.1)), comma);
+  }
+  
+  @if $accent {
+    $shadows: append($shadows, (0 0 16px rgba(255, 100, 150, 0.25)), comma);
+    $shadows: append($shadows, (0 0 32px rgba(255, 100, 150, 0.1)), comma);
+  }
+  
+  // 添加内阴影和基础结构阴影
+  $shadows: append($shadows, (inset 0 1px 0 rgba(255, 255, 255, 0.15)), comma);
+  $shadows: append($shadows, (inset 0 -1px 0 rgba(0, 0, 0, 0.1)), comma);
+  $shadows: append($shadows, (0 4px 8px rgba(0, 0, 0, 0.3)), comma);
+  
+  box-shadow: $shadows;
+  
+  transition: 
+    border-color 0.25s ease-out,
+    box-shadow 0.25s ease-out,
+    transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+// -----------------------------------------------------------------------------
+// 6. 状态指示边框 (Status Indicator Border)
+// 用于成功、警告、错误等状态的语义化边框
+// -----------------------------------------------------------------------------
+@mixin status-border($status: default, $intensity: normal) {
+  @if $status == success {
+    border: 1px solid rgba(100, 255, 150, 0.5);
+    box-shadow: 
+      0 0 8px rgba(100, 255, 150, 0.3),
+      0 0 16px rgba(100, 255, 150, 0.1);
+  } @else if $status == warning {
+    border: 1px solid rgba(255, 200, 100, 0.5);
+    box-shadow: 
+      0 0 8px rgba(255, 200, 100, 0.3),
+      0 0 16px rgba(255, 200, 100, 0.1);
+  } @else if $status == error {
+    border: 1px solid rgba(255, 100, 100, 0.5);
+    box-shadow: 
+      0 0 8px rgba(255, 100, 100, 0.3),
+      0 0 16px rgba(255, 100, 100, 0.1);
+  } @else if $status == info {
+    border: 1px solid rgba(100, 200, 255, 0.5);
+    box-shadow: 
+      0 0 8px rgba(100, 200, 255, 0.3),
+      0 0 16px rgba(100, 200, 255, 0.1);
+  } @else {
+    @include starlight-border($intensity);
+  }
+  
+  @if $intensity == strong {
+    filter: brightness(1.2) saturate(1.1);
+  }
+  
+  transition: 
+    border-color 0.15s ease-out,
+    box-shadow 0.15s ease-out,
+    filter 0.15s ease-out;
+}
+
+// =============================================================================
+// 动态光流动画关键帧 (Dynamic Light Flow Animations)
+// 为energy-border提供动态动画效果
+// =============================================================================
+
+// 能量脉冲动画
+@keyframes energy-pulse {
+  0% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      inset 0 0 6px rgba(100, 150, 255, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.6),
+      0 0 24px rgba(100, 150, 255, 0.3),
+      0 0 48px rgba(100, 150, 255, 0.15),
+      inset 0 0 12px rgba(100, 150, 255, 0.15);
+  }
+  100% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.4),
+      0 0 24px rgba(100, 150, 255, 0.15),
+      inset 0 0 6px rgba(100, 150, 255, 0.1);
+  }
+}
+
+// 能量流动动画
+@keyframes energy-flow {
+  0% {
+    background-position: 100% 0, 0% 0;
+  }
+  100% {
+    background-position: 100% 0, 200% 0;
+  }
+}
+
+// 星光闪烁动画
+@keyframes starlight-shimmer {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(100, 150, 255, 0.15),
+      0 0 16px rgba(100, 150, 255, 0.05);
+  }
+  25% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      0 0 36px rgba(100, 150, 255, 0.05);
+  }
+  50% {
+    box-shadow: 
+      0 0 16px rgba(100, 150, 255, 0.35),
+      0 0 32px rgba(100, 150, 255, 0.15),
+      0 0 48px rgba(100, 150, 255, 0.08);
+  }
+  75% {
+    box-shadow: 
+      0 0 12px rgba(100, 150, 255, 0.25),
+      0 0 24px rgba(100, 150, 255, 0.1),
+      0 0 36px rgba(100, 150, 255, 0.05);
+  }
+}
+
+// 光晕呼吸动画
+@keyframes glow-breathing {
+  0%, 100% {
+    filter: brightness(1) saturate(1);
+  }
+  50% {
+    filter: brightness(1.1) saturate(1.2);
+  }
+}
+
+// =============================================================================
+// 量子动画系统 (Quantum Animation System)
+// GPU优化的动画mixin库
+// =============================================================================
+
+/**
+ * GPU硬件加速基础Mixin - 强制启用硬件加速
+ */
+@mixin quantum-gpu-accelerated() {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, box-shadow;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/**
+ * 60fps性能保证 - 优化动画性能
+ */
+@mixin quantum-60fps-guaranteed() {
+  @include quantum-gpu-accelerated();
+  will-change: transform;
+  isolation: isolate;
+}
+
+/**
+ * 量子悬停预测动效 - 智能感知鼠标接近
+ */
+@mixin quantum-hover-anticipation() {
+  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  &:hover {
+    transform: translateY(-2px) translateZ(0);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.98) translateZ(0);
+    transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+  }
+}
+
+/**
+ * 量子适配性支持 - 根据设备性能自动调整动画复杂度
+ */
+@mixin quantum-adaptive-performance() {
+  // 默认高性能动画
+  will-change: transform, opacity, box-shadow;
+  
+  // 低端设备检测（通过媒体查询近似检测）
+  @media (max-resolution: 1dppx) {
+    // 降低动画复杂度
+    transition-duration: 0.1s !important;
+    will-change: auto;
+  }
+  
+  @media (max-resolution: 1dppx) {
+    &:hover {
+      transform: none !important;
+    }
+    
+    &::before {
+      display: none !important;
+    }
+  }
+}
+
+/**
+ * Reduced Motion降级支持
+ */
+@mixin quantum-reduced-motion-support() {
+  @media (prefers-reduced-motion: reduce) {
+    // 禁用所有动画和变换
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    
+    &:hover,
+    &:active {
+      transform: none !important;
+      animation: none !important;
+    }
+    
+    &::before,
+    &::after {
+      animation: none !important;
+    }
+  }
+}
+
+/**
+ * 浏览器兼容性fallback
+ */
+@mixin quantum-browser-fallback() {
+  // Safari旧版本兼容
+  @supports not (backdrop-filter: blur(10px)) {
+    background: rgba(0, 0, 0, 0.8) !important;
+  }
+  
+  // Firefox兼容性
+  @-moz-document url-prefix() {
+    transform: translateZ(0);
+  }
+  
+  // IE11兼容性（如果需要）
+  @media screen and (-ms-high-contrast: active), (-ms-high-contrast: none) {
+    transform: none !important;
+    transition: opacity 0.2s ease !important;
+  }
+}
+
+// 量子动画关键帧
+@keyframes quantum-ripple-expand {
+  0% {
+    transform: scale(0) translateZ(0);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(4) translateZ(0);
+    opacity: 0;
+  }
+}
+
+@keyframes quantum-magnetic-attract {
+  0% {
+    transform: translateZ(0);
+    border-radius: 10px;
+  }
+  100% {
+    transform: translateZ(0) scale(1.02);
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 0 20px rgba(100, 150, 255, 0.3);
+  }
+}
+
+@keyframes quantum-focus-glow {
+  0% {
+    box-shadow: 
+      0 0 0 2px var(--background-color, white),
+      0 0 0 4px rgba(100, 150, 255, 0.8),
+      0 0 15px rgba(100, 150, 255, 0.3);
+  }
+  100% {
+    box-shadow: 
+      0 0 0 2px var(--background-color, white),
+      0 0 0 4px rgba(100, 150, 255, 0.8),
+      0 0 25px rgba(100, 150, 255, 0.5);
+  }
+}
+
+// =============================================================================
+// 输入框流体交互系统 (Input Fluid Interaction System)
+// 为输入组件提供高级流体交互效果
+// =============================================================================
+
+/**
+ * 量子输入流体交互核心效果
+ */
+@mixin quantum-input-fluid-interaction() {
+  // 基础状态
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  background-color: rgb(12, 12, 12);
+  color: rgb(240, 240, 240);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  // 创建光感边框效果的伪元素
+  &::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(
+      45deg,
+      rgba(100, 150, 255, 0.1) 0%,
+      rgba(100, 150, 255, 0.05) 25%,
+      transparent 50%,
+      rgba(100, 150, 255, 0.05) 75%,
+      rgba(100, 150, 255, 0.1) 100%
+    );
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: none;
+    z-index: -1;
+  }
+  
+  // 智能预测动效 - 鼠标接近时触发
+  &:hover:not(:focus) {
+    border-color: rgba(100, 150, 255, 0.4);
+    
+    &::before {
+      opacity: 0.5;
+    }
+  }
+  
+  // 聚焦状态的光感效果
+  &:focus {
+    outline: none;
+    background-color: rgb(20, 20, 20);
+    border-color: rgba(100, 150, 255, 0.6);
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+/**
+ * 高级文本输入流体效果
+ * 适用于多行文本输入框，包含额外的滚动和内容变化动画
+ */
+@mixin quantum-textarea-advanced-fluid() {
+  @include quantum-input-fluid-interaction();
+  
+  // 内容变化时的数据流效果
+  &.content-changing {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(100, 150, 255, 0.1) 25%,
+      rgba(100, 150, 255, 0.2) 50%,
+      rgba(100, 150, 255, 0.1) 75%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: quantum-data-stream 0.75s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+  }
+  
+  // 自动高度调整时的流体动画
+  &.height-adjusting {
+    transition: height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+}
+
+@keyframes quantum-data-stream {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/**
+ * 错误状态流体动画
+ * 为输入验证错误提供明确的视觉反馈
+ */
+@mixin quantum-input-error-feedback() {
+  // 错误状态的红色光感效果
+  &.error, &:invalid {
+    border-color: rgba(255, 99, 99, 0.6);
+    animation: quantum-error-shake 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.4);
+    
+    &:focus {
+      box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.1),
+        inset 0 0 8px rgba(255, 99, 99, 0.1),
+        0 0 16px rgba(255, 99, 99, 0.15);
+    }
+  }
+}
+
+@keyframes quantum-error-shake {
+  0%, 100% { transform: translateX(0) translateZ(0); }
+  25% { transform: translateX(-4px) translateZ(0); }
+  75% { transform: translateX(4px) translateZ(0); }
+}
+
+/**
+ * 输入框连锁反应系统
+ * 当多个输入框存在时，创建它们之间的能量传递效果
+ */
+@mixin quantum-input-chain-reaction() {
+  // 相邻输入框的响应动画
+  &:focus + .quantum-input,
+  &:focus ~ .quantum-input {
+    animation: quantum-adjacent-response 0.3s cubic-bezier(0.42, 0, 0.58, 1);
+  }
+}
+
+@keyframes quantum-adjacent-response {
+  0% {
+    transform: translateZ(0);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateY(-1px) translateZ(0);
+    filter: brightness(1.05);
+  }
+  100% {
+    transform: translateZ(0);
+    filter: brightness(1);
+  }
+}
+
+// =============================================================================
+// 性能优化与降级支持 (Performance Optimization & Fallback)
+// 确保在低端设备上的性能表现
+// =============================================================================
+
+// 简化版本 - 用于性能敏感场景
+@mixin starlight-border-simple($intensity: subtle) {
+  @if $intensity == subtle {
+    border: 1px solid rgba(100, 150, 255, 0.3);
+    box-shadow: 0 0 8px rgba(100, 150, 255, 0.15);
+  } @else if $intensity == normal {
+    border: 1px solid rgba(100, 150, 255, 0.5);
+    box-shadow: 0 0 12px rgba(100, 150, 255, 0.25);
+  } @else if $intensity == intense {
+    border: 1px solid rgba(100, 150, 255, 0.7);
+    box-shadow: 0 0 16px rgba(100, 150, 255, 0.35);
+  }
+  
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+// 降级支持 - 针对prefers-reduced-motion
+@media (prefers-reduced-motion: reduce) {
+  @keyframes energy-pulse {
+    0%, 100% {
+      box-shadow: 
+        0 0 12px rgba(100, 150, 255, 0.4),
+        0 0 24px rgba(100, 150, 255, 0.15),
+        inset 0 0 6px rgba(100, 150, 255, 0.1);
+    }
+  }
+  
+  @keyframes energy-flow {
+    0%, 100% {
+      background-position: 100% 0, 0% 0;
+    }
+  }
+  
+  @keyframes starlight-shimmer {
+    0%, 100% {
+      box-shadow: 
+        0 0 8px rgba(100, 150, 255, 0.15),
+        0 0 16px rgba(100, 150, 255, 0.05);
+    }
+  }
+  
+  @keyframes glow-breathing {
+    0%, 100% {
+      filter: brightness(1) saturate(1);
+    }
+  }
+} 
