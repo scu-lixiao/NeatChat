@@ -433,6 +433,7 @@ const anthropicModels = [
   "claude-3-7-sonnet-20250219-thinking",
   "claude-opus-4-20250514",
   "claude-sonnet-4-20250514",
+  "claude-sonnet-4-5-20250929",
 ];
 
 const baiduModels = [
@@ -465,6 +466,8 @@ const xAIModes = [
   "grok-3-fast-latest",
   "grok-3-mini-latest",
   "grok-3-mini-fast-latest",
+  "grok-4-fast-reasoning-latest",
+  "grok-4-fast-non-reasoning-latest",
 ];
 
 const chatglmModels = [
