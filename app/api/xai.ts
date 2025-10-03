@@ -61,7 +61,7 @@ async function request(req: NextRequest) {
     () => {
       controller.abort();
     },
-    10 * 60 * 1000,
+    20 * 60 * 1000, // Extended to 20 minutes for XAI search and reasoning modes
   );
 
   const fetchUrl = `${baseUrl}${path}`;
@@ -114,14 +114,30 @@ async function request(req: NextRequest) {
     // to prevent browser prompt for credentials
     const newHeaders = new Headers(res.headers);
     newHeaders.delete("www-authenticate");
-    // to disable nginx buffering
+    // to disable nginx buffering - critical for streaming responses
     newHeaders.set("X-Accel-Buffering", "no");
+    // Add keep-alive header to maintain connection stability
+    newHeaders.set("Connection", "keep-alive");
 
     return new Response(res.body, {
       status: res.status,
       statusText: res.statusText,
       headers: newHeaders,
     });
+  } catch (e) {
+    console.error("[XAI] Request failed:", e);
+    // Enhanced error handling for streaming interruptions
+    const error = e as Error;
+    if (error.name === 'AbortError') {
+      return NextResponse.json(
+        {
+          error: true,
+          message: "Request timed out. XAI search and reasoning modes may require more time. Please try again.",
+        },
+        { status: 408 }
+      );
+    }
+    throw e;
   } finally {
     clearTimeout(timeoutId);
   }

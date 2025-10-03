@@ -316,7 +316,18 @@ export class XAIApi implements LLMApi {
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
-      options.onError?.(e as Error);
+      // Enhanced error handling for XAI streaming interruptions
+      const error = e as Error;
+      const isTimeout = error.name === 'AbortError' || error.message.includes('timeout');
+      const isNetworkError = error.message.includes('network') || error.message.includes('fetch');
+
+      if (isTimeout) {
+        options.onError?.(new Error('XAI request timed out. This may happen with complex searches or high reasoning tasks. Please try again or reduce the search scope.'));
+      } else if (isNetworkError) {
+        options.onError?.(new Error('Network error occurred while communicating with XAI. Please check your connection and try again.'));
+      } else {
+        options.onError?.(error);
+      }
     }
   }
   async usage() {
