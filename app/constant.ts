@@ -415,11 +415,9 @@ const googleModels = [
   "gemini-2.5-pro-preview-03-25",
   "gemini-2.5-pro-preview-05-06",
   "gemini-2.5-pro-preview-06-05",
-  "imagen-3.0-generate-002",
-  "imagen-4.0-ultra-generate-exp-05-20",
-  "imagen-4.0-generate-preview-06-06",
-  "imagen-4.0-ultra-generate-preview-06-06",
-  "imagen-4.0-fast-generate-preview-06-06",
+  "imagen-4.0-generate-001",
+  "imagen-4.0-ultra-generate-001",
+  "imagen-4.0-fast-generate-001",
 ];
 
 const anthropicModels = [
