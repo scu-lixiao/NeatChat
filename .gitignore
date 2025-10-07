@@ -53,3 +53,5 @@ app/mcp/mcp_config.json
 
 # custom ignore
 aaa.js
+nextchat.tar.gz
+out.tar.gz
