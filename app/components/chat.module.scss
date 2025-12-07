@@ -507,6 +507,14 @@
   margin-bottom: 16px;
   padding: 0;
   
+  // {{CHENGQI:
+  // Action: Note - ThinkingWindow z-index由thinking-window.module.scss管理
+  // Timestamp: 2025-11-25 Claude 4.5 sonnet
+  // Reason: 该容器的z-index由子组件ThinkingWindow控制（z-index: 10）
+  // Architectural_Note (AR): 确保thinking内容始终显示在WebGPU canvas之上
+  // Documentation_Note (DW): z-index层级由thinking-window.module.scss统一管理
+  // }}
+  
   // 思考窗口在消息内部的分隔效果
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   padding-bottom: 12px;
@@ -1016,5 +1024,94 @@
     &-show {
       transform: translateX(0);
     }
+  }
+}
+
+// {{CHENGQI:
+// Action: Added - 添加加载更多历史消息按钮样式
+// Timestamp: 2025-11-23 06:30:00 +08:00
+// Reason: 阶段 3.1 - 实现历史消息分页加载
+// Principle_Applied: 用户体验优先，清晰的视觉反馈
+// Optimization: 使用 premium 主题变量，保持一致性
+// Architectural_Note (AR): 遵循现有样式架构
+// Documentation_Note (DW): 历史消息分页加载按钮样式
+// }}
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 0;
+  margin: 10px 0;
+}
+
+.load-more-button {
+  padding: 10px 20px;
+  background: var(--premium-primary-color, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+// {{CHENGQI:
+// Action: Added - 添加性能报告导出按钮样式
+// Timestamp: 2025-11-23 07:10:00 +08:00
+// Reason: 阶段 3.3 - 完善性能监控仪表板
+// Principle_Applied: 用户体验优先，清晰的视觉反馈
+// Optimization: 使用 premium 主题变量，保持一致性
+// Architectural_Note (AR): 遵循现有样式架构
+// Documentation_Note (DW): 性能报告导出按钮样式
+// }}
+.export-report-button {
+  width: 100%;
+  padding: 10px 20px;
+  background: var(--premium-accent-color, linear-gradient(135deg, #f093fb 0%, #f5576c 100%));
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(240, 147, 251, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(240, 147, 251, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
   }
 }

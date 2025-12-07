@@ -381,10 +381,23 @@ export function safeLocalStorage(): {
   removeItem: (key: string) => void;
   clear: () => void;
 } {
+  // SSR 环境检测 - 在服务器端静默返回 noop 对象，避免警告
+  const isServer = typeof window === "undefined";
+
+  if (isServer) {
+    // SSR 环境：静默返回空操作对象，不输出警告
+    return {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+    };
+  }
+
   let storage: Storage | null;
 
   try {
-    if (typeof window !== "undefined" && window.localStorage) {
+    if (window.localStorage) {
       storage = window.localStorage;
     } else {
       storage = null;

@@ -13,6 +13,28 @@
   margin-bottom: 0;
   padding: 10px 12px;
   border-radius: 8px;
+  
+  // {{CHENGQI:
+  // Action: Added - iPad Safari GPU加速修复
+  // Timestamp: 2025-11-25 Claude 4.5 sonnet
+  // Reason: iPad Safari Metal backend需要显式GPU加速才能在Force WebGPU模式正确渲染Citations
+  // Bug_Fixed: 与ThinkingWindow同样问题，Citations在iPad上不显示
+  // Principle_Applied: 手写GPU属性（CSS Modules不能@import全局mixin）
+  // Optimization: 确保Metal compositor为Citations创建独立GPU层
+  // Architectural_Note (AR): macOS Safari宽容，iPad Safari Metal严格需要完整GPU配置
+  // Documentation_Note (DW): 与ThinkingWindow保持一致的GPU加速策略
+  // }}
+  // 强制GPU加速（等同quantum-gpu-accelerated mixin）
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, box-shadow;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  position: relative;
+  z-index: 10;
+  
   background-color: var(--premium-bg-surface);
   border: 1px solid var(--premium-border-subtle);
   box-shadow: var(--premium-shadow-xs);

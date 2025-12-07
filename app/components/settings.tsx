@@ -657,7 +657,8 @@ export function Settings() {
   // Documentation_Note (DW): 自定义模型管理的状态控制
   // }}
   const [showCustomModelManager, setShowCustomModelManager] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<ServiceProvider | null>(null);
+  const [selectedProvider, setSelectedProvider] =
+    useState<ServiceProvider | null>(null);
 
   // {{CHENGQI:
   // Action: Added - 自定义模型管理器控制函数
@@ -1667,6 +1668,35 @@ export function Settings() {
           </ListItem>
 
           <ListItem
+            title={Locale.Settings.WebGPUAcceleration.Title}
+            subTitle={Locale.Settings.WebGPUAcceleration.SubTitle}
+          >
+            <Select
+              aria-label={Locale.Settings.WebGPUAcceleration.Title}
+              value={config.webgpuAcceleration}
+              onChange={(e) =>
+                updateConfig(
+                  (config) =>
+                    (config.webgpuAcceleration = e.currentTarget.value as any),
+                )
+              }
+            >
+              <option value="auto">
+                {Locale.Settings.WebGPUAcceleration.Auto}
+              </option>
+              <option value="force-webgpu">
+                {Locale.Settings.WebGPUAcceleration.ForceWebGPU}
+              </option>
+              <option value="force-css">
+                {Locale.Settings.WebGPUAcceleration.ForceCSS}
+              </option>
+              <option value="off">
+                {Locale.Settings.WebGPUAcceleration.Off}
+              </option>
+            </Select>
+          </ListItem>
+
+          <ListItem
             title={Locale.Settings.AutoGenerateTitle.Title}
             subTitle={Locale.Settings.AutoGenerateTitle.SubTitle}
           >
@@ -1916,7 +1946,9 @@ export function Settings() {
           // }} */}
           <ListItem
             title={Locale.Settings.CustomModelManager.Title}
-            subTitle={`为 ${formatProviderName(accessStore.provider)} 管理自定义模型`}
+            subTitle={`为 ${formatProviderName(
+              accessStore.provider,
+            )} 管理自定义模型`}
           >
             <IconButton
               icon={<ConfigIcon />}
@@ -1956,7 +1988,6 @@ export function Settings() {
         {shouldShowPromptModal && (
           <UserPromptModal onClose={() => setShowPromptModal(false)} />
         )}
-
 
         <List>
           <RealtimeConfigList

@@ -10,6 +10,7 @@ import {
   ModelType,
   useAccessStore,
   useChatStore,
+  GoogleResponsePart,
 } from "../store";
 import { ChatGPTApi, DalleRequestPayload } from "./platforms/openai";
 import { GeminiProApi } from "./platforms/google";
@@ -77,7 +78,10 @@ export interface ChatOptions {
   config: LLMConfig;
 
   onUpdate?: (message: string, chunk: string) => void;
-  onFinish: (message: string, responseRes: Response) => void;
+  onFinish: (
+    message: string | MultimodalContent[],
+    responseRes: Response,
+  ) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
   onBeforeTool?: (tool: ChatMessageTool) => void;
@@ -102,6 +106,18 @@ export interface ChatOptions {
   // Documentation_Note (DW): Citations数据通过独立回调传递给UI组件
   // }}
   onCitations?: (citations: Array<{ title: string; url: string }>) => void;
+  // {{CHENGQI:
+  // Action: Added - Google Parts 回调接口
+  // Timestamp: 2025-11-28 Claude Opus 4.5
+  // Reason: 支持 Google Gemini API 的 thoughtSignature 多轮对话功能
+  // Reference: https://ai.google.dev/gemini-api/docs/thought-signatures
+  // Principle_Applied: SOLID - 接口分离，独立的签名数据传递
+  // Architectural_Note (AR): 仅 Google 平台调用此回调
+  // Documentation_Note (DW):
+  //   - Parts 包含 text、inlineData 和 thoughtSignature 信息
+  //   - 用于图片生成/编辑的多轮对话中保持签名
+  // }}
+  onGoogleParts?: (parts: GoogleResponsePart[]) => void;
 }
 
 export interface LLMUsage {

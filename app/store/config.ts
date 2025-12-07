@@ -163,6 +163,9 @@ export const DEFAULT_CONFIG = {
   // Documentation_Note (DW): 隐藏模型按服务提供商分组存储
   // }}
   hiddenModelsByProvider: {} as HiddenModelsByProvider,
+
+  // WebGPU加速配置 (Task 6 - M4 iPad Pro优化)
+  webgpuAcceleration: "auto" as "auto" | "force-webgpu" | "force-css" | "off",
 };
 
 export type ChatConfig = typeof DEFAULT_CONFIG;
@@ -239,7 +242,10 @@ export const useAppConfig = createPersistStore(
     initialize() {
       const state = get();
       // 如果结构化数据为空但字符串数据存在，则进行迁移
-      if (Object.keys(state.customModelsByProvider).length === 0 && state.customModels) {
+      if (
+        Object.keys(state.customModelsByProvider).length === 0 &&
+        state.customModels
+      ) {
         // 直接调用方法而不是通过 store 变量
         useAppConfig.getState().importFromCustomModelsString();
       }
@@ -287,7 +293,10 @@ export const useAppConfig = createPersistStore(
     },
 
     // 添加自定义模型
-    addCustomModel(provider: ServiceProvider, modelData: Omit<CustomModel, 'id' | 'createdAt' | 'updatedAt'>) {
+    addCustomModel(
+      provider: ServiceProvider,
+      modelData: Omit<CustomModel, "id" | "createdAt" | "updatedAt">,
+    ) {
       const now = Date.now();
       const newModel: CustomModel = {
         ...modelData,
@@ -313,13 +322,17 @@ export const useAppConfig = createPersistStore(
     },
 
     // 更新自定义模型
-    updateCustomModel(provider: ServiceProvider, modelId: string, updates: Partial<Omit<CustomModel, 'id' | 'provider' | 'createdAt'>>) {
+    updateCustomModel(
+      provider: ServiceProvider,
+      modelId: string,
+      updates: Partial<Omit<CustomModel, "id" | "provider" | "createdAt">>,
+    ) {
       set((state) => {
         const providerModels = state.customModelsByProvider[provider] || [];
-        const updatedModels = providerModels.map(model =>
+        const updatedModels = providerModels.map((model) =>
           model.id === modelId
             ? { ...model, ...updates, updatedAt: Date.now() }
-            : model
+            : model,
         );
 
         return {
@@ -338,7 +351,9 @@ export const useAppConfig = createPersistStore(
     deleteCustomModel(provider: ServiceProvider, modelId: string) {
       set((state) => {
         const providerModels = state.customModelsByProvider[provider] || [];
-        const filteredModels = providerModels.filter(model => model.id !== modelId);
+        const filteredModels = providerModels.filter(
+          (model) => model.id !== modelId,
+        );
 
         return {
           customModelsByProvider: {
@@ -357,23 +372,30 @@ export const useAppConfig = createPersistStore(
       const state = get();
       const customModelsArray: string[] = [];
 
-      Object.entries(state.customModelsByProvider).forEach(([provider, models]) => {
-        if (models && models.length > 0) {
-          models.forEach(model => {
-            if (model.enabled) {
-              const modelString = model.displayName && model.displayName !== model.name
-                ? `${model.name}=${model.displayName}`
-                : model.name;
-              customModelsArray.push(`+${modelString}@${provider.toLowerCase()}`);
-            } else {
-              customModelsArray.push(`-${model.name}@${provider.toLowerCase()}`);
-            }
-          });
-        }
-      });
+      Object.entries(state.customModelsByProvider).forEach(
+        ([provider, models]) => {
+          if (models && models.length > 0) {
+            models.forEach((model) => {
+              if (model.enabled) {
+                const modelString =
+                  model.displayName && model.displayName !== model.name
+                    ? `${model.name}=${model.displayName}`
+                    : model.name;
+                customModelsArray.push(
+                  `+${modelString}@${provider.toLowerCase()}`,
+                );
+              } else {
+                customModelsArray.push(
+                  `-${model.name}@${provider.toLowerCase()}`,
+                );
+              }
+            });
+          }
+        },
+      );
 
       set(() => ({
-        customModels: customModelsArray.join(','),
+        customModels: customModelsArray.join(","),
       }));
     },
 
@@ -382,27 +404,29 @@ export const useAppConfig = createPersistStore(
       const state = get();
       if (!state.customModels) return;
 
-      const newCustomModelsByProvider: CustomModelsByProvider = { ...state.customModelsByProvider };
+      const newCustomModelsByProvider: CustomModelsByProvider = {
+        ...state.customModelsByProvider,
+      };
 
-      state.customModels.split(',').forEach(modelStr => {
+      state.customModels.split(",").forEach((modelStr) => {
         if (!modelStr.trim()) return;
 
-        const enabled = !modelStr.startsWith('-');
-        const cleanStr = modelStr.replace(/^[+-]/, '');
-        const [nameWithDisplay, providerStr] = cleanStr.split('@');
+        const enabled = !modelStr.startsWith("-");
+        const cleanStr = modelStr.replace(/^[+-]/, "");
+        const [nameWithDisplay, providerStr] = cleanStr.split("@");
 
         if (!nameWithDisplay || !providerStr) return;
 
-        const [name, displayName] = nameWithDisplay.split('=');
+        const [name, displayName] = nameWithDisplay.split("=");
         const provider = Object.values(ServiceProvider).find(
-          p => p.toLowerCase() === providerStr.toLowerCase()
+          (p) => p.toLowerCase() === providerStr.toLowerCase(),
         );
 
         if (!provider) return;
 
         // 检查是否已存在
         const existingModels = newCustomModelsByProvider[provider] || [];
-        const exists = existingModels.some(m => m.name === name);
+        const exists = existingModels.some((m) => m.name === name);
 
         if (!exists) {
           const now = Date.now();
@@ -459,7 +483,9 @@ export const useAppConfig = createPersistStore(
     showModel(provider: ServiceProvider, modelName: string) {
       set((state) => {
         const hiddenModels = state.hiddenModelsByProvider[provider] || [];
-        const filteredModels = hiddenModels.filter(name => name !== modelName);
+        const filteredModels = hiddenModels.filter(
+          (name) => name !== modelName,
+        );
 
         return {
           hiddenModelsByProvider: {

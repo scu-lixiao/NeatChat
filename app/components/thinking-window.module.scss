@@ -14,6 +14,27 @@
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
+  // {{CHENGQI:
+  // Action: Modified - iPad Safari GPU加速修复
+  // Timestamp: 2025-11-25 Claude 4.5 sonnet
+  // Reason: iPad Safari Metal backend需要显式GPU加速才能在Force WebGPU模式正确渲染
+  // Bug_Fixed: 添加GPU加速属性确保iPad M3正确显示ThinkingWindow
+  // Principle_Applied: 手写GPU属性（CSS Modules不能@import全局mixin）
+  // Optimization: GPU层级分离，避免Metal compositor渲染冲突
+  // Architectural_Note (AR): macOS Safari宽容，但iPad Safari Metal严格需要完整GPU配置
+  // Documentation_Note (DW): 核心是perspective+translateZ创建GPU层
+  // }}
+  // 强制GPU加速（等同quantum-gpu-accelerated mixin）
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, box-shadow;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  position: relative;
+  z-index: 10;
+  
   // 使用主题系统的背景变量，与对话区域形成轻微区分
   background: var(--second);  // 使用次要背景色，与主题保持统一
   
@@ -197,6 +218,62 @@
   }
 }
 
+// {{CHENGQI:
+// Action: Added - 代码块和引用块样式
+// Timestamp: 2025-11-27 Claude Opus 4.5
+// Reason: 支持 code_execution 工具输出的代码块显示
+// Principle_Applied: KISS - 简单的代码块样式，保持轻量
+// Optimization: 使用主题变量，适配深色/浅色模式
+// }}
+.thinking-code-block {
+  margin: 8px 0;
+  border-radius: 6px;
+  background: var(--code-bg, rgba(0, 0, 0, 0.05));
+  overflow: hidden;
+  
+  .thinking-code-header {
+    padding: 4px 12px;
+    background: var(--hover-color);
+    border-bottom: 1px solid var(--border-in-light);
+    font-size: 10px;
+    
+    .thinking-code-lang {
+      color: var(--primary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
+  
+  code {
+    display: block;
+    padding: 12px;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Menlo', monospace;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: var(--black);
+    overflow-x: auto;
+  }
+}
+
+.thinking-quote {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--primary);
+  background: var(--hover-color);
+  border-radius: 0 6px 6px 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--black);
+  white-space: pre-wrap;
+  
+  strong {
+    font-weight: 600;
+  }
+}
+
 @keyframes thinking-pulse {
   0%, 100% {
     opacity: 0.6;
@@ -206,6 +283,22 @@
     opacity: 1;
     transform: scale(1.1);
   }
+}
+
+// {{CHENGQI:
+// Action: Performance - 流式文本样式优化
+// Timestamp: 2025-11-29 Claude Opus 4.5
+// Reason: 流式期间使用纯文本渲染，需要对应的样式支持
+// Optimization: 
+//   - 使用 CSS contain 属性限制重绘范围
+//   - 简化样式，减少布局计算
+// }}
+.streaming-text {
+  // 限制重绘范围，提升性能
+  contain: content;
+  // 继承父级样式，保持一致性
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 @media (max-width: 768px) {

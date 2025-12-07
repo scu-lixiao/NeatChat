@@ -158,6 +158,7 @@ export class ChatGPTApi implements LLMApi {
 
     const controller = new AbortController();
     options.onController?.(controller);
+    let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
       const speechPath = this.path(OpenaiPath.SpeechPath);
@@ -169,7 +170,7 @@ export class ChatGPTApi implements LLMApi {
       };
 
       // make a fetch request
-      const requestTimeoutId = setTimeout(
+      requestTimeoutId = setTimeout(
         () => controller.abort(),
         REQUEST_TIMEOUT_MS,
       );
@@ -180,6 +181,10 @@ export class ChatGPTApi implements LLMApi {
     } catch (e) {
       console.log("[Request] failed to make a speech request", e);
       throw e;
+    } finally {
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+      }
     }
   }
 
@@ -201,8 +206,7 @@ export class ChatGPTApi implements LLMApi {
       options.config.model.startsWith("o3") ||
       options.config.model.startsWith("o4-mini");
     const isGPT5OrMini =
-      options.config.model === "gpt-5" ||
-      options.config.model === "gpt-5-mini";
+      options.config.model === "gpt-5" || options.config.model === "gpt-5-mini";
     if (isDalle3) {
       const prompt = getMessageTextContent(
         options.messages.slice(-1)?.pop() as any,
@@ -257,6 +261,7 @@ export class ChatGPTApi implements LLMApi {
     const shouldStream = !isDalle3 && !isGPT5OrMini && !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
+    let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
 
     try {
       let chatPath = "";
@@ -398,7 +403,7 @@ export class ChatGPTApi implements LLMApi {
         };
 
         // make a fetch request
-        const requestTimeoutId = setTimeout(
+        requestTimeoutId = setTimeout(
           () => controller.abort(),
           getTimeoutMSByModel(options.config.model),
         );
@@ -413,6 +418,10 @@ export class ChatGPTApi implements LLMApi {
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
       options.onError?.(e as Error);
+    } finally {
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+      }
     }
   }
   async usage() {

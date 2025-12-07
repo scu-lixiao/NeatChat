@@ -88,7 +88,7 @@ export class XAIApi implements LLMApi {
 
     // {{CHENGQI:
     // Action: Added - XAI思考模式配置
-    // Timestamp: 2025-01-02 12:00:00 +08:00 
+    // Timestamp: 2025-01-02 12:00:00 +08:00
     // Reason: 启用XAI的思考模式和搜索功能
     // Principle_Applied: YAGNI - 仅添加当前需要的功能
     // Optimization: 为特定模型启用高质量推理
@@ -103,13 +103,16 @@ export class XAIApi implements LLMApi {
       max_search_results: 30,
       return_citations: true,
       sources: [
-        {type: "web", safe_search: false},
-        {type: "x"},
-        {type: "news", safe_search: false}
-      ]
+        { type: "web", safe_search: false },
+        { type: "x" },
+        { type: "news", safe_search: false },
+      ],
     };
 
-    if (modelConfig.model === "grok-3-mini-latest" || modelConfig.model === "grok-3-mini-fast-latest") {
+    if (
+      modelConfig.model === "grok-3-mini-latest" ||
+      modelConfig.model === "grok-3-mini"
+    ) {
       delete (requestPayload as any).frequency_penalty;
       (requestPayload as any).reasoning_effort = "high";
     }
@@ -141,7 +144,7 @@ export class XAIApi implements LLMApi {
           .getAsTools(
             useChatStore.getState().currentSession().mask?.plugin || [],
           );
-        
+
         // {{CHENGQI:
         // Action: Added - Citations数据收集变量
         // Timestamp: 2025-01-02 16:15:00 +08:00
@@ -152,7 +155,7 @@ export class XAIApi implements LLMApi {
         // Documentation_Note (DW): Citations数据的收集和处理逻辑
         // }}
         let collectedCitations: any[] = [];
-        
+
         return streamWithThink(
           chatPath,
           requestPayload,
@@ -164,7 +167,7 @@ export class XAIApi implements LLMApi {
           (text: string, runTools: ChatMessageTool[]) => {
             // console.log("parseSSE", text, runTools);
             const json = JSON.parse(text);
-            
+
             // {{CHENGQI:
             // Action: Added - Citations数据处理
             // Timestamp: 2025-01-02 16:15:00 +08:00
@@ -176,33 +179,39 @@ export class XAIApi implements LLMApi {
             // }}
             // Process citations if present
             if (json.citations && Array.isArray(json.citations)) {
-              const newCitations = json.citations.map((citation: any) => {
-                // Handle different citation formats
-                let url = "";
-                let title = "";
-                
-                if (typeof citation === "string") {
-                  url = citation;
-                  title = citation;
-                } else if (citation.url) {
-                  url = citation.url;
-                  title = citation.title || citation.url;
-                } else {
-                  // Skip invalid citations
-                  return null;
-                }
-                
-                return url ? { title, url } : null;
-              }).filter(Boolean);
-              
+              const newCitations = json.citations
+                .map((citation: any) => {
+                  // Handle different citation formats
+                  let url = "";
+                  let title = "";
+
+                  if (typeof citation === "string") {
+                    url = citation;
+                    title = citation;
+                  } else if (citation.url) {
+                    url = citation.url;
+                    title = citation.title || citation.url;
+                  } else {
+                    // Skip invalid citations
+                    return null;
+                  }
+
+                  return url ? { title, url } : null;
+                })
+                .filter(Boolean);
+
               // Add new citations, avoiding duplicates
               newCitations.forEach((newCitation: any) => {
-                if (!collectedCitations.some(existing => existing.url === newCitation.url)) {
+                if (
+                  !collectedCitations.some(
+                    (existing) => existing.url === newCitation.url,
+                  )
+                ) {
                   collectedCitations.push(newCitation);
                 }
               });
             }
-            
+
             const choices = json.choices as Array<{
               delta: {
                 content: string | null;
@@ -229,7 +238,7 @@ export class XAIApi implements LLMApi {
                 runTools[index]["function"]["arguments"] += args;
               }
             }
-            
+
             const reasoning = choices[0]?.delta?.reasoning_content;
             const content = choices[0]?.delta?.content;
 
@@ -318,13 +327,23 @@ export class XAIApi implements LLMApi {
       console.log("[Request] failed to make a chat request", e);
       // Enhanced error handling for XAI streaming interruptions
       const error = e as Error;
-      const isTimeout = error.name === 'AbortError' || error.message.includes('timeout');
-      const isNetworkError = error.message.includes('network') || error.message.includes('fetch');
+      const isTimeout =
+        error.name === "AbortError" || error.message.includes("timeout");
+      const isNetworkError =
+        error.message.includes("network") || error.message.includes("fetch");
 
       if (isTimeout) {
-        options.onError?.(new Error('XAI request timed out. This may happen with complex searches or high reasoning tasks. Please try again or reduce the search scope.'));
+        options.onError?.(
+          new Error(
+            "XAI request timed out. This may happen with complex searches or high reasoning tasks. Please try again or reduce the search scope.",
+          ),
+        );
       } else if (isNetworkError) {
-        options.onError?.(new Error('Network error occurred while communicating with XAI. Please check your connection and try again.'));
+        options.onError?.(
+          new Error(
+            "Network error occurred while communicating with XAI. Please check your connection and try again.",
+          ),
+        );
       } else {
         options.onError?.(error);
       }

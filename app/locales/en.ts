@@ -197,6 +197,14 @@ const en: LocaleType = {
         "Font Family of the chat content, leave empty to apply global default font",
       Placeholder: "Font Family Name",
     },
+    WebGPUAcceleration: {
+      Title: "GPU Acceleration (M4)",
+      SubTitle: "WebGPU hardware acceleration for M4 iPad Pro",
+      Auto: "Auto (Recommended)",
+      ForceWebGPU: "Force WebGPU",
+      ForceCSS: "Use CSS (Power Saving)",
+      Off: "Disable Effects",
+    },
     InjectSystemPrompts: {
       Title: "Inject System Prompts",
       SubTitle: "Inject a global system prompt for every request",
@@ -648,7 +656,8 @@ const en: LocaleType = {
       ModelNamePlaceholder: "Enter model name, e.g.: gpt-4-custom",
       DisplayName: "Display Name",
       DisplayNamePlaceholder: "Enter display name (optional)",
-      DisplayNameSubTitle: "Name shown in model selector, leave empty to use model name",
+      DisplayNameSubTitle:
+        "Name shown in model selector, leave empty to use model name",
 
       Enabled: "Enabled",
       EnabledSubTitle: "Whether to show this model in model selector",
@@ -658,12 +667,14 @@ const en: LocaleType = {
       ToggleEnabled: "Toggle enabled status",
 
       NameRequired: "Model name cannot be empty",
-      InvalidName: "Model name can only contain letters, numbers, dots, underscores and hyphens",
+      InvalidName:
+        "Model name can only contain letters, numbers, dots, underscores and hyphens",
 
       AddSuccess: "Custom model added successfully",
       UpdateSuccess: "Custom model updated successfully",
       DeleteSuccess: "Custom model deleted successfully",
-      DeleteConfirm: "Confirm to delete this custom model? This action cannot be undone.",
+      DeleteConfirm:
+        "Confirm to delete this custom model? This action cannot be undone.",
 
       ExportSuccess: "Custom model config exported successfully",
       ImportSuccess: "Custom model config imported successfully",

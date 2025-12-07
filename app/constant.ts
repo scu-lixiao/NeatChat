@@ -346,6 +346,8 @@ export const VISION_MODEL_REGEXES = [
   /gpt-4o/,
   /gpt-4\.1/,
   /claude-3/,
+  /claude-4/,
+  /claude-4\.5/,
   /gemini-1\.5/,
   /gemini-exp/,
   /gemini-2\.0/,
@@ -359,6 +361,11 @@ export const VISION_MODEL_REGEXES = [
   /vl/i,
   /o3/,
   /o4-mini/,
+  /gemini-3/,
+  /gpt-5/,
+  /gpt-5\.1/,
+  /grok-4/,
+  /grok-4-1/,
 ];
 
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
@@ -404,9 +411,12 @@ const openaiModels = [
   "o3",
   "o3-pro",
   "o4-mini",
+  "gpt-5.1",
 ];
 
 const googleModels = [
+  "gemini-3-pro-preview",
+  "gemini-3-pro-image-preview",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
   "gemini-2.5-pro-exp-03-25",
@@ -434,27 +444,17 @@ const anthropicModels = [
   "claude-sonnet-4-5-20250929",
 ];
 
-const baiduModels = [
-  "ernie-tiny-8k",
-];
+const baiduModels = ["ernie-tiny-8k"];
 
-const bytedanceModels = [
-  "Doubao-pro-128k",
-];
+const bytedanceModels = ["Doubao-pro-128k"];
 
-const alibabaModes = [
-  "qwen-vl-max",
-];
+const alibabaModes = ["qwen-vl-max"];
 
-const tencentModels = [
-  "hunyuan-vision",
-];
+const tencentModels = ["hunyuan-vision"];
 
 const moonshotModes = ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"];
 
-const iflytekModels = [
-  "4.0Ultra",
-];
+const iflytekModels = ["4.0Ultra"];
 
 const deepseekModels = ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"];
 
@@ -466,6 +466,8 @@ const xAIModes = [
   "grok-3-mini-fast-latest",
   "grok-4-fast-reasoning-latest",
   "grok-4-fast-non-reasoning-latest",
+  "grok-4-1-fast-reasoning",
+  "grok-4-1-fast-non-reasoning",
 ];
 
 const chatglmModels = [
@@ -475,9 +477,7 @@ const chatglmModels = [
   //   "cogvideox-flash", // free
 ];
 
-const siliconflowModels = [
-  "Qwen/Qwen2.5-7B-Instruct",
-];
+const siliconflowModels = ["Qwen/Qwen2.5-7B-Instruct"];
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
 export const DEFAULT_MODELS = [

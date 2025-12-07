@@ -51,7 +51,33 @@ masks.json
 app/mcp/mcp_config.json
 .mcp.json
 
-# custom ignore
+# ================================================
+# Custom ignore rules
+# ================================================
+
+# Dot-prefixed files and folders (hidden files)
+.*
+!.gitignore
+!.github
+!.husky
+!.gitpod.yml
+!.lintstagedrc.json
+
+# Specific files
 aaa.js
+
+# Markdown files (except README files)
+*.md
+!README.md
+!README_CN.md
+!README_JA.md
+!**/README.md
+
+# Build artifacts and archives
 nextchat.tar.gz
+out/
 out.tar.gz
+test/
+
+# docs folder
+docs/

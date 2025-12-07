@@ -192,8 +192,16 @@ const cn = {
     },
     FontFamily: {
       Title: "聊天字体",
-      SubTitle: "聊天内容的字体，若置空则应用全局默认字体",
+      SubTitle: "聊天内容的字体,若置空则应用全局默认字体",
       Placeholder: "字体名称",
+    },
+    WebGPUAcceleration: {
+      Title: "GPU 加速 (M4)",
+      SubTitle: "为 M4 iPad Pro 提供 WebGPU 硬件加速",
+      Auto: "自动 (推荐)",
+      ForceWebGPU: "强制 WebGPU",
+      ForceCSS: "使用 CSS (省电)",
+      Off: "关闭特效",
     },
     InjectSystemPrompts: {
       Title: "注入系统级提示信息",
@@ -677,7 +685,7 @@ const cn = {
     Prompt: {
       History: (content: string) => "这是历史聊天总结作为前情提要：" + content,
       Topic:
-        "使用四到五个字直接返回这句话的简要主题，不要解释、不要标点、不要语气词、不要多余文本，不要加粗，如果没有主题，请直接返回\"闲聊\"",
+        '使用四到五个字直接返回这句话的简要主题，不要解释、不要标点、不要语气词、不要多余文本，不要加粗，如果没有主题，请直接返回"闲聊"',
       Summarize:
         "简要总结一下对话内容，用作后续的上下文提示 prompt，控制在 200 字以内",
     },

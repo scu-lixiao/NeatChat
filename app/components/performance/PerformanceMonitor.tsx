@@ -10,9 +10,12 @@
  * }}
  */
 
-import React, { useState } from 'react';
-import { usePerformanceAdapter, usePerformanceMetrics } from '../../hooks/usePerformanceAdapter';
-import { PerformanceLevel, EffectIntensity } from '../../utils/performance-adapter';
+import React, { useState } from "react";
+import {
+  usePerformanceAdapter,
+  usePerformanceMetrics,
+} from "../../hooks/usePerformanceAdapter";
+import { PerformanceLevel } from "../../utils/performance-adapter";
 
 // ==================== 组件类型定义 ====================
 
@@ -21,16 +24,16 @@ export interface PerformanceMonitorProps {
   showMetrics?: boolean;
   showSettings?: boolean;
   showDeviceInfo?: boolean;
-  
+
   // 布局配置
-  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   collapsible?: boolean;
   initialCollapsed?: boolean;
-  
+
   // 样式配置
   compact?: boolean;
   className?: string;
-  
+
   // 开发调试配置
   enableDebugMode?: boolean;
 }
@@ -38,7 +41,8 @@ export interface PerformanceMonitorProps {
 // ==================== 子组件 - 性能指标显示 ====================
 
 const MetricsDisplay: React.FC<{ compact?: boolean }> = ({ compact }) => {
-  const { currentMetrics, averageMetrics, isMonitoring } = usePerformanceMetrics();
+  const { currentMetrics, averageMetrics, isMonitoring } =
+    usePerformanceMetrics();
 
   if (!isMonitoring) {
     return (
@@ -57,38 +61,44 @@ const MetricsDisplay: React.FC<{ compact?: boolean }> = ({ compact }) => {
   }
 
   return (
-    <div className={`performance-metrics ${compact ? 'compact' : ''}`}>
+    <div className={`performance-metrics ${compact ? "compact" : ""}`}>
       <div className="metrics-grid">
         <div className="metric-item">
           <label>FPS</label>
-          <span className={`metric-value ${currentMetrics.fps < 30 ? 'warning' : currentMetrics.fps < 50 ? 'caution' : 'good'}`}>
+          <span
+            className={`metric-value ${
+              currentMetrics.fps < 30
+                ? "warning"
+                : currentMetrics.fps < 50
+                ? "caution"
+                : "good"
+            }`}
+          >
             {currentMetrics.fps}
           </span>
         </div>
-        
+
         <div className="metric-item">
           <label>帧时间</label>
           <span className="metric-value">
             {currentMetrics.frameTime.toFixed(1)}ms
           </span>
         </div>
-        
+
         {currentMetrics.memoryUsage && (
           <div className="metric-item">
             <label>内存</label>
-            <span className="metric-value">
-              {currentMetrics.memoryUsage}MB
-            </span>
+            <span className="metric-value">{currentMetrics.memoryUsage}MB</span>
           </div>
         )}
-        
+
         {!compact && averageMetrics && (
           <>
             <div className="metric-item">
               <label>平均FPS</label>
               <span className="metric-value">{averageMetrics.fps}</span>
             </div>
-            
+
             <div className="metric-item">
               <label>平均帧时间</label>
               <span className="metric-value">
@@ -110,26 +120,87 @@ const PerformanceSettings: React.FC<{ compact?: boolean }> = ({ compact }) => {
     preferences,
     setPerformanceLevel,
     toggleAutoDetection,
-    togglePerformanceMonitoring
+    togglePerformanceMonitoring,
   } = usePerformanceAdapter();
 
-  const performanceLevels: { value: PerformanceLevel; label: string; description: string }[] = [
-    { value: 'eco', label: '节能模式', description: '最小化效果，优化性能' },
-    { value: 'balanced', label: '平衡模式', description: '平衡效果与性能' },
-    { value: 'high', label: '高性能', description: '丰富效果，需要良好硬件' },
-    { value: 'extreme', label: '极致模式', description: '最大效果，需要高端硬件' }
+  const { currentMetrics, averageMetrics } = usePerformanceMetrics();
+
+  const performanceLevels: {
+    value: PerformanceLevel;
+    label: string;
+    description: string;
+  }[] = [
+    { value: "eco", label: "节能模式", description: "最小化效果，优化性能" },
+    { value: "balanced", label: "平衡模式", description: "平衡效果与性能" },
+    { value: "high", label: "高性能", description: "丰富效果，需要良好硬件" },
+    {
+      value: "extreme",
+      label: "极致模式",
+      description: "最大效果，需要高端硬件",
+    },
   ];
 
+  // {{CHENGQI:
+  // Action: Added - 添加性能报告导出功能
+  // Timestamp: 2025-11-23 07:00:00 +08:00
+  // Reason: 阶段 3.3 - 提供完整的性能监控和调试工具
+  // Principle_Applied: 用户体验优先，提供完整的性能报告
+  // Optimization: 导出 JSON 格式，便于分析和分享
+  // Architectural_Note (AR): 使用 Blob 和 URL.createObjectURL 实现下载
+  // Documentation_Note (DW): 性能报告导出功能，提供完整的性能数据
+  // }}
+  const exportPerformanceReport = () => {
+    const report = {
+      timestamp: new Date().toISOString(),
+      device: {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        cpuCores: profile?.capabilities?.cpuCores,
+        deviceMemory: profile?.capabilities?.deviceMemory,
+        screenSize: profile?.capabilities?.screenSize,
+        pixelRatio: profile?.capabilities?.pixelRatio,
+        webglSupport: profile?.capabilities?.webglSupport,
+        webgl2Support: profile?.capabilities?.webgl2Support,
+        hardwareAcceleration: profile?.capabilities?.hardwareAcceleration,
+        effectiveConnectionType: profile?.capabilities?.effectiveConnectionType,
+      },
+      performance: {
+        level: profile?.level,
+        score: profile?.score,
+        currentMetrics: currentMetrics,
+        averageMetrics: averageMetrics,
+      },
+      preferences: preferences,
+    };
+
+    const blob = new Blob([JSON.stringify(report, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `performance-report-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    console.log("[PerformanceMonitor] Performance report exported:", report);
+  };
+
   return (
-    <div className={`performance-settings ${compact ? 'compact' : ''}`}>
+    <div className={`performance-settings ${compact ? "compact" : ""}`}>
       <div className="settings-section">
         <label className="settings-label">性能级别</label>
         <select
-          value={preferences.manualLevel || profile?.level || 'balanced'}
-          onChange={(e) => setPerformanceLevel(e.target.value as PerformanceLevel)}
+          value={preferences.manualLevel || profile?.level || "balanced"}
+          onChange={(e) =>
+            setPerformanceLevel(e.target.value as PerformanceLevel)
+          }
           className="performance-level-select"
         >
-          {performanceLevels.map(level => (
+          {performanceLevels.map((level) => (
             <option key={level.value} value={level.value}>
               {level.label}
             </option>
@@ -137,7 +208,11 @@ const PerformanceSettings: React.FC<{ compact?: boolean }> = ({ compact }) => {
         </select>
         {!compact && (
           <small className="setting-description">
-            {performanceLevels.find(l => l.value === (preferences.manualLevel || profile?.level))?.description}
+            {
+              performanceLevels.find(
+                (l) => l.value === (preferences.manualLevel || profile?.level),
+              )?.description
+            }
           </small>
         )}
       </div>
@@ -168,8 +243,29 @@ const PerformanceSettings: React.FC<{ compact?: boolean }> = ({ compact }) => {
           <span>实时性能监控</span>
         </label>
         {!compact && (
+          <small className="setting-description">监控FPS和内存使用情况</small>
+        )}
+      </div>
+
+      {/* {{CHENGQI:
+        Action: Added - 添加导出按钮
+        Timestamp: 2025-11-23 07:05:00 +08:00
+        Reason: 阶段 3.3 - 提供性能报告导出功能
+        Principle_Applied: 用户体验优先，清晰的视觉反馈
+        Optimization: 使用 premium 主题样式
+        Architectural_Note (AR): 遵循现有样式架构
+        Documentation_Note (DW): 性能报告导出按钮
+      }} */}
+      <div className="settings-section">
+        <button
+          className="export-report-button"
+          onClick={exportPerformanceReport}
+        >
+          📊 导出性能报告
+        </button>
+        {!compact && (
           <small className="setting-description">
-            监控FPS和内存使用情况
+            导出完整的性能数据和设备信息
           </small>
         )}
       </div>
@@ -189,58 +285,67 @@ const DeviceInfo: React.FC<{ compact?: boolean }> = ({ compact }) => {
   const { capabilities } = profile;
 
   return (
-    <div className={`device-info ${compact ? 'compact' : ''}`}>
+    <div className={`device-info ${compact ? "compact" : ""}`}>
       <div className="info-grid">
         <div className="info-item">
           <label>性能评分</label>
           <span className="info-value">{profile.score}/100</span>
         </div>
-        
+
         <div className="info-item">
           <label>CPU核心</label>
           <span className="info-value">{capabilities.cpuCores}</span>
         </div>
-        
+
         <div className="info-item">
           <label>屏幕分辨率</label>
           <span className="info-value">
             {capabilities.screenSize.width}×{capabilities.screenSize.height}
           </span>
         </div>
-        
+
         <div className="info-item">
           <label>像素比</label>
-          <span className="info-value">{capabilities.pixelRatio.toFixed(1)}</span>
+          <span className="info-value">
+            {capabilities.pixelRatio.toFixed(1)}
+          </span>
         </div>
-        
+
         {!compact && (
           <>
             {capabilities.deviceMemory && (
               <div className="info-item">
                 <label>设备内存</label>
-                <span className="info-value">{capabilities.deviceMemory}GB</span>
+                <span className="info-value">
+                  {capabilities.deviceMemory}GB
+                </span>
               </div>
             )}
-            
+
             <div className="info-item">
               <label>WebGL支持</label>
               <span className="info-value">
-                {capabilities.webgl2Support ? 'WebGL 2.0' : 
-                 capabilities.webglSupport ? 'WebGL 1.0' : '不支持'}
+                {capabilities.webgl2Support
+                  ? "WebGL 2.0"
+                  : capabilities.webglSupport
+                  ? "WebGL 1.0"
+                  : "不支持"}
               </span>
             </div>
-            
+
             <div className="info-item">
               <label>硬件加速</label>
               <span className="info-value">
-                {capabilities.hardwareAcceleration ? '✓' : '✗'}
+                {capabilities.hardwareAcceleration ? "✓" : "✗"}
               </span>
             </div>
-            
+
             {capabilities.effectiveConnectionType && (
               <div className="info-item">
                 <label>网络类型</label>
-                <span className="info-value">{capabilities.effectiveConnectionType.toUpperCase()}</span>
+                <span className="info-value">
+                  {capabilities.effectiveConnectionType.toUpperCase()}
+                </span>
               </div>
             )}
           </>
@@ -256,34 +361,42 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
   showMetrics = true,
   showSettings = true,
   showDeviceInfo = false,
-  position = 'top-right',
+  position = "top-right",
   collapsible = true,
   initialCollapsed = false,
   compact = false,
-  className = '',
-  enableDebugMode = false
+  className = "",
+  enableDebugMode = false,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
-  const [activeTab, setActiveTab] = useState<'metrics' | 'settings' | 'device'>('metrics');
-  
+  const [activeTab, setActiveTab] = useState<"metrics" | "settings" | "device">(
+    "metrics",
+  );
+
   const { profile, isInitialized, isLoading } = usePerformanceAdapter({
-    enableDebugLogging: enableDebugMode
+    enableDebugLogging: enableDebugMode,
   });
 
   // 计算显示的标签页
   const availableTabs = [
-    showMetrics && { id: 'metrics' as const, label: '性能指标', icon: '📊' },
-    showSettings && { id: 'settings' as const, label: '设置', icon: '⚙️' },
-    showDeviceInfo && { id: 'device' as const, label: '设备信息', icon: '💻' }
-  ].filter(Boolean) as Array<{ id: 'metrics' | 'settings' | 'device'; label: string; icon: string }>;
+    showMetrics && { id: "metrics" as const, label: "性能指标", icon: "📊" },
+    showSettings && { id: "settings" as const, label: "设置", icon: "⚙️" },
+    showDeviceInfo && { id: "device" as const, label: "设备信息", icon: "💻" },
+  ].filter(Boolean) as Array<{
+    id: "metrics" | "settings" | "device";
+    label: string;
+    icon: string;
+  }>;
 
   if (!isInitialized && !isLoading) {
     return null;
   }
 
   return (
-    <div 
-      className={`performance-monitor performance-monitor--${position} ${compact ? 'compact' : ''} ${className}`}
+    <div
+      className={`performance-monitor performance-monitor--${position} ${
+        compact ? "compact" : ""
+      } ${className}`}
       data-collapsed={isCollapsed}
     >
       {/* 标题栏 */}
@@ -292,19 +405,21 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
           <span className="title-icon">⚡</span>
           <span className="title-text">性能监控</span>
           {profile && (
-            <span className={`performance-badge performance-badge--${profile.level}`}>
+            <span
+              className={`performance-badge performance-badge--${profile.level}`}
+            >
               {profile.level.toUpperCase()}
             </span>
           )}
         </div>
-        
+
         {collapsible && (
           <button
             className="collapse-button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            aria-label={isCollapsed ? '展开' : '折叠'}
+            aria-label={isCollapsed ? "展开" : "折叠"}
           >
-            {isCollapsed ? '▲' : '▼'}
+            {isCollapsed ? "▲" : "▼"}
           </button>
         )}
       </div>
@@ -315,16 +430,18 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
           {/* 标签页导航 */}
           {availableTabs.length > 1 && (
             <div className="monitor-tabs">
-                             {availableTabs.map(tab => (
-                 <button
-                   key={tab.id}
-                   className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                   onClick={() => setActiveTab(tab.id)}
-                 >
-                   <span className="tab-icon">{tab.icon}</span>
-                   {!compact && <span className="tab-label">{tab.label}</span>}
-                 </button>
-               ))}
+              {availableTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  className={`tab-button ${
+                    activeTab === tab.id ? "active" : ""
+                  }`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <span className="tab-icon">{tab.icon}</span>
+                  {!compact && <span className="tab-label">{tab.label}</span>}
+                </button>
+              ))}
             </div>
           )}
 
@@ -335,18 +452,18 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
                 <span>正在初始化性能监控...</span>
               </div>
             )}
-            
+
             {!isLoading && (
               <>
-                {activeTab === 'metrics' && showMetrics && (
+                {activeTab === "metrics" && showMetrics && (
                   <MetricsDisplay compact={compact} />
                 )}
-                
-                {activeTab === 'settings' && showSettings && (
+
+                {activeTab === "settings" && showSettings && (
                   <PerformanceSettings compact={compact} />
                 )}
-                
-                {activeTab === 'device' && showDeviceInfo && (
+
+                {activeTab === "device" && showDeviceInfo && (
                   <DeviceInfo compact={compact} />
                 )}
               </>
@@ -363,7 +480,9 @@ export const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
 /**
  * 简化的性能指标显示组件
  */
-export const SimplePerformanceMetrics: React.FC<{ className?: string }> = ({ className }) => (
+export const SimplePerformanceMetrics: React.FC<{ className?: string }> = ({
+  className,
+}) => (
   <PerformanceMonitor
     showMetrics={true}
     showSettings={false}
@@ -377,7 +496,9 @@ export const SimplePerformanceMetrics: React.FC<{ className?: string }> = ({ cla
 /**
  * 开发者调试用的完整性能面板
  */
-export const DeveloperPerformancePanel: React.FC<{ className?: string }> = ({ className }) => (
+export const DeveloperPerformancePanel: React.FC<{ className?: string }> = ({
+  className,
+}) => (
   <PerformanceMonitor
     showMetrics={true}
     showSettings={true}
@@ -391,4 +512,4 @@ export const DeveloperPerformancePanel: React.FC<{ className?: string }> = ({ cl
   />
 );
 
-export default PerformanceMonitor; 
+export default PerformanceMonitor;
