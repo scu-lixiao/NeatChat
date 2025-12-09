@@ -375,10 +375,24 @@ const getPerformanceConfig = (() => {
         //   - batchDivisor: 80 -> 20 (更积极地计算批次大小)
         //   - maxBatchSize: 5 -> 50 (允许每帧消费更多字符)
         // }}
-        batchDivisor: isMobileDevice ? 20 : 60,
-        minBatchSize: isMobileDevice ? 1 : 1,
-        maxBatchSize: isMobileDevice ? 50 : 10,
-        animationThrottle: isMobileDevice ? 16 : 8, // ms between updates
+        // {{CHENGQI:
+        // Action: Enhanced - 优化桌面端和移动端批处理参数修复思考内容显示卡顿
+        // Timestamp: 2025-12-09 Claude Opus 4.5
+        // Reason: Google Gemini 流式响应中思考内容显示卡顿
+        //   - 思考内容是批量到达的（每次 100-500+ 字符）
+        //   - 原配置消费速度远低于到达速度
+        // Optimization:
+        //   - 桌面端和移动端统一使用高性能配置
+        //   - batchDivisor: 30 (激进的批次计算)
+        //   - maxBatchSize: 120 (允许每帧消费大量字符)
+        //   - animationThrottle: 8ms (高帧率动画)
+        //   - 吞吐量可达 ~15000 字符/秒
+        // Principle_Applied: 最大化性能利用，流畅度优先
+        // }}
+        batchDivisor: 30,
+        minBatchSize: 1,
+        maxBatchSize: 120,
+        animationThrottle: 8, // ms between updates - 统一高帧率
       };
     }
     return config;

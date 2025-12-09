@@ -71,10 +71,18 @@ const isMobileDevice =
 // Architectural_Note (AR): 保持现有节流机制，仅调整参数
 // Documentation_Note (DW): 移动端流式更新优化，平衡流畅度和性能
 // }}
+// {{CHENGQI:
+// Action: Enhanced - 移动端最大性能模式，提升思考内容显示流畅度
+// Timestamp: 2025-12-09 Claude Opus 4.5
+// Reason: 用户反馈移动端（特别是 iPad）思考内容显示卡顿
+//   - 原配置 100ms 节流导致更新间隔过长
+//   - 结合增大的 maxBatchSize，移动端可以处理更高的更新频率
+// Optimization: 移动端节流从 100ms 降到 50ms，与桌面端一致
+// Principle_Applied: 最大化性能利用，保证流畅度优先
+// }}
 // 自适应节流间隔配置
-// 桌面端: 50ms (20 FPS) - 流畅的用户体验
-// 移动端: 100ms (10 FPS) - 优化性能，减少 CPU 占用 33%，降低崩溃风险
-const STREAMING_UPDATE_THROTTLE_MS = isMobileDevice ? 100 : 50;
+// 桌面端和移动端统一: 50ms (20 FPS) - 流畅的用户体验
+const STREAMING_UPDATE_THROTTLE_MS = 50;
 
 // 性能监控日志（已禁用 - 2025-11-28）
 // if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
