@@ -172,6 +172,7 @@ export const Anthropic = {
 
 export const OpenaiPath = {
   ChatPath: "v1/chat/completions",
+  ResponsesPath: "v1/responses", // OpenAI Responses API - 推荐用于多轮对话
   SpeechPath: "v1/audio/speech",
   ImagePath: "v1/images/generations",
   UsagePath: "dashboard/billing/usage",
@@ -364,6 +365,7 @@ export const VISION_MODEL_REGEXES = [
   /gemini-3/,
   /gpt-5/,
   /gpt-5\.1/,
+  /gpt-5\.2/,
   /grok-4/,
   /grok-4-1/,
 ];
@@ -404,6 +406,12 @@ const openaiModels = [
   "gpt-5-mini",
   "gpt-5-nano",
   "gpt-5-chat-latest",
+  "gpt-5.1",
+  "gpt-5.2",
+  "gpt-5.2-instant",
+  "gpt-5.2-chat-latest",
+  "gpt-5.2-thinking",
+  "gpt-5.2-pro",
   "dall-e-3",
   "o1-mini",
   "o1-preview",
@@ -411,20 +419,14 @@ const openaiModels = [
   "o3",
   "o3-pro",
   "o4-mini",
-  "gpt-5.1",
 ];
 
 const googleModels = [
   "gemini-3-pro-preview",
   "gemini-3-pro-image-preview",
+  "gemini-3-flash-preview",
   "gemini-2.5-pro",
   "gemini-2.5-flash",
-  "gemini-2.5-pro-exp-03-25",
-  "gemini-2.5-flash-preview-04-17",
-  "gemini-2.5-flash-preview-05-20",
-  "gemini-2.5-pro-preview-03-25",
-  "gemini-2.5-pro-preview-05-06",
-  "gemini-2.5-pro-preview-06-05",
   "imagen-4.0-generate-001",
   "imagen-4.0-ultra-generate-001",
   "imagen-4.0-fast-generate-001",

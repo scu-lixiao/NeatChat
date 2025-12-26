@@ -585,6 +585,61 @@ const en: LocaleType = {
       SubTitle:
         "A larger value decreasing the likelihood to repeat the same line",
     },
+    ReasoningEffort: {
+      Title: "Reasoning Effort",
+      SubTitle:
+        "Controls the depth of reasoning for GPT-5.2 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
+      Options: {
+        Auto: "Auto (default)",
+        None: "None (fast)",
+        Low: "Low",
+        Medium: "Medium",
+        High: "High",
+        XHigh: "XHigh (deepest)",
+      },
+    },
+    GPT5Tools: {
+      Title: "GPT-5.2 Built-in Tools",
+      SubTitle: "Enable built-in tool features for GPT-5.2 series models",
+      EnableWebSearch: {
+        Title: "Web Search",
+        SubTitle:
+          "Allow the model to search the internet for latest information, results include citations",
+      },
+      EnableCodeInterpreter: {
+        Title: "Code Interpreter",
+        SubTitle:
+          "Allow the model to execute Python code for computation and data analysis",
+      },
+      EnableFileSearch: {
+        Title: "File Search",
+        SubTitle:
+          "Allow the model to search documents in vector stores (requires Vector Store ID)",
+      },
+      VectorStoreIds: {
+        Title: "Vector Store IDs",
+        SubTitle: "OpenAI Vector Store IDs for file search (comma-separated)",
+        Placeholder: "vs_xxx,vs_yyy",
+      },
+      ImageBackground: {
+        Title: "Image Background",
+        SubTitle: "Control the background style of generated images",
+        Options: {
+          Auto: "Auto",
+          Transparent: "Transparent",
+          Opaque: "Opaque",
+        },
+      },
+      ToolChoice: {
+        Title: "Tool Choice",
+        SubTitle: "Control how the model chooses to use tools",
+        Options: {
+          Auto: "Auto (recommended)",
+          None: "Disabled",
+          Required: "Required",
+        },
+      },
+    },
     TTS: {
       Enable: {
         Title: "Enable TTS",

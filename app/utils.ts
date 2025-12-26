@@ -296,6 +296,27 @@ export function isDalle3(model: string) {
   return "dall-e-3" === model;
 }
 
+/**
+ * 判断模型是否支持通过 Responses API 的 image_generation 工具生成图像
+ * GPT-5.2 系列模型原生支持图像生成能力
+ */
+export function isGPT5ImageGenModel(model: string): boolean {
+  const lowerModel = model.toLowerCase();
+  return (
+    lowerModel.startsWith("gpt-5.2") ||
+    lowerModel.startsWith("gpt-5.1") ||
+    lowerModel === "gpt-5" ||
+    lowerModel === "gpt-5-mini"
+  );
+}
+
+/**
+ * 判断模型是否支持图像生成能力（包括 DALL-E 和 GPT-5.2 原生生成）
+ */
+export function supportsImageGeneration(model: string): boolean {
+  return isDalle3(model) || isGPT5ImageGenModel(model);
+}
+
 export function getTimeoutMSByModel(model: string) {
   model = model.toLowerCase();
   if (
@@ -305,7 +326,8 @@ export function getTimeoutMSByModel(model: string) {
     model.startsWith("o3") ||
     model.includes("deepseek-r") ||
     model.includes("-thinking") ||
-    model.includes("grok") // XAI models with search and reasoning modes need extended timeout
+    model.includes("grok") || // XAI models with search and reasoning modes need extended timeout
+    model.startsWith("gpt-5.2") // GPT-5.2 with thinking mode may need extended timeout
   )
     return REQUEST_TIMEOUT_MS_FOR_THINKING;
   return REQUEST_TIMEOUT_MS;
@@ -313,6 +335,10 @@ export function getTimeoutMSByModel(model: string) {
 
 export function getModelSizes(model: string): ModelSize[] {
   if (isDalle3(model)) {
+    return ["1024x1024", "1792x1024", "1024x1792"];
+  }
+  // GPT-5.2 系列支持的图像尺寸
+  if (isGPT5ImageGenModel(model)) {
     return ["1024x1024", "1792x1024", "1024x1792"];
   }
   if (model.toLowerCase().includes("cogview")) {

@@ -578,6 +578,58 @@ const cn = {
       Title: "频率惩罚度 (frequency_penalty)",
       SubTitle: "值越大，越有可能降低重复字词",
     },
+    ReasoningEffort: {
+      Title: "推理深度 (reasoning_effort)",
+      SubTitle:
+        "控制 GPT-5.2 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
+      Options: {
+        Auto: "自动 (默认)",
+        None: "无 (快速)",
+        Low: "低",
+        Medium: "中",
+        High: "高",
+        XHigh: "极高 (最深)",
+      },
+    },
+    GPT5Tools: {
+      Title: "GPT-5.2 内置工具",
+      SubTitle: "启用 GPT-5.2 系列模型的内置工具功能",
+      EnableWebSearch: {
+        Title: "网络搜索",
+        SubTitle: "允许模型搜索互联网获取最新信息，搜索结果将包含引用来源",
+      },
+      EnableCodeInterpreter: {
+        Title: "代码解释器",
+        SubTitle: "允许模型执行 Python 代码进行计算和数据分析",
+      },
+      EnableFileSearch: {
+        Title: "文件搜索",
+        SubTitle: "允许模型在向量存储中搜索文档（需配置 Vector Store ID）",
+      },
+      VectorStoreIds: {
+        Title: "向量存储 ID",
+        SubTitle: "用于文件搜索的 OpenAI Vector Store ID（多个用逗号分隔）",
+        Placeholder: "vs_xxx,vs_yyy",
+      },
+      ImageBackground: {
+        Title: "图像背景",
+        SubTitle: "控制生成图像的背景样式",
+        Options: {
+          Auto: "自动",
+          Transparent: "透明",
+          Opaque: "不透明",
+        },
+      },
+      ToolChoice: {
+        Title: "工具选择",
+        SubTitle: "控制模型如何选择使用工具",
+        Options: {
+          Auto: "自动（推荐）",
+          None: "禁用",
+          Required: "强制使用",
+        },
+      },
+    },
     TTS: {
       Enable: {
         Title: "启用文本转语音",

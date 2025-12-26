@@ -50,6 +50,220 @@ export function ModelConfigList(props: {
           ))}
         </Select>
       </ListItem>
+
+      {/* GPT-5.2 系列模型推理级别配置 */}
+      {props.modelConfig.model.startsWith("gpt-5.2") &&
+        (() => {
+          // 根据模型确定支持的推理级别
+          const model = props.modelConfig.model;
+          const isGPT5_2Pro = model === "gpt-5.2-pro";
+          const isGPT5_2Thinking = model === "gpt-5.2-thinking";
+          const isGPT5_2ChatLatest = model === "gpt-5.2-chat-latest";
+
+          // 动态生成支持的选项
+          // gpt-5.2-instant, gpt-5.2: 支持所有级别
+          // gpt-5.2-chat-latest: 不支持 none（API 明确返回错误）
+          // gpt-5.2-thinking: 支持 low, medium, high, xhigh（不支持 none）
+          // gpt-5.2-pro: 支持 medium, high, xhigh（不支持 none 和 low）
+          const supportsNone =
+            !isGPT5_2Pro && !isGPT5_2Thinking && !isGPT5_2ChatLatest;
+          const supportsLow = !isGPT5_2Pro;
+          const supportsXHigh = !isGPT5_2Thinking;
+
+          return (
+            <ListItem
+              title={Locale.Settings.ReasoningEffort.Title}
+              subTitle={Locale.Settings.ReasoningEffort.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ReasoningEffort.Title}
+                value={props.modelConfig.reasoningEffort ?? "auto"}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.reasoningEffort = e.currentTarget.value as
+                      | "auto"
+                      | "none"
+                      | "low"
+                      | "medium"
+                      | "high"
+                      | "xhigh";
+                  });
+                }}
+              >
+                <option value="auto">
+                  {Locale.Settings.ReasoningEffort.Options.Auto}
+                </option>
+                {supportsNone && (
+                  <option value="none">
+                    {Locale.Settings.ReasoningEffort.Options.None}
+                  </option>
+                )}
+                {supportsLow && (
+                  <option value="low">
+                    {Locale.Settings.ReasoningEffort.Options.Low}
+                  </option>
+                )}
+                <option value="medium">
+                  {Locale.Settings.ReasoningEffort.Options.Medium}
+                </option>
+                <option value="high">
+                  {Locale.Settings.ReasoningEffort.Options.High}
+                </option>
+                {supportsXHigh && (
+                  <option value="xhigh">
+                    {Locale.Settings.ReasoningEffort.Options.XHigh}
+                  </option>
+                )}
+              </Select>
+            </ListItem>
+          );
+        })()}
+
+      {/* GPT-5.2 系列模型内置工具配置 */}
+      {props.modelConfig.model.startsWith("gpt-5.2") && (
+        <>
+          {/* 网络搜索工具 */}
+          <ListItem
+            title={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
+            subTitle={Locale.Settings.GPT5Tools.EnableWebSearch.SubTitle}
+          >
+            <input
+              aria-label={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
+              type="checkbox"
+              checked={props.modelConfig.enableWebSearch ?? false}
+              onChange={(e) =>
+                props.updateConfig(
+                  (config) =>
+                    (config.enableWebSearch = e.currentTarget.checked),
+                )
+              }
+            ></input>
+          </ListItem>
+
+          {/* 代码解释器工具 */}
+          <ListItem
+            title={Locale.Settings.GPT5Tools.EnableCodeInterpreter.Title}
+            subTitle={Locale.Settings.GPT5Tools.EnableCodeInterpreter.SubTitle}
+          >
+            <input
+              aria-label={Locale.Settings.GPT5Tools.EnableCodeInterpreter.Title}
+              type="checkbox"
+              checked={props.modelConfig.enableCodeInterpreter ?? false}
+              onChange={(e) =>
+                props.updateConfig(
+                  (config) =>
+                    (config.enableCodeInterpreter = e.currentTarget.checked),
+                )
+              }
+            ></input>
+          </ListItem>
+
+          {/* 文件搜索工具 */}
+          <ListItem
+            title={Locale.Settings.GPT5Tools.EnableFileSearch.Title}
+            subTitle={Locale.Settings.GPT5Tools.EnableFileSearch.SubTitle}
+          >
+            <input
+              aria-label={Locale.Settings.GPT5Tools.EnableFileSearch.Title}
+              type="checkbox"
+              checked={props.modelConfig.enableFileSearch ?? false}
+              onChange={(e) =>
+                props.updateConfig(
+                  (config) =>
+                    (config.enableFileSearch = e.currentTarget.checked),
+                )
+              }
+            ></input>
+          </ListItem>
+
+          {/* 向量存储 ID（仅当启用文件搜索时显示） */}
+          {props.modelConfig.enableFileSearch && (
+            <ListItem
+              title={Locale.Settings.GPT5Tools.VectorStoreIds.Title}
+              subTitle={Locale.Settings.GPT5Tools.VectorStoreIds.SubTitle}
+            >
+              <input
+                aria-label={Locale.Settings.GPT5Tools.VectorStoreIds.Title}
+                type="text"
+                placeholder={
+                  Locale.Settings.GPT5Tools.VectorStoreIds.Placeholder
+                }
+                value={(props.modelConfig.vectorStoreIds ?? []).join(",")}
+                onChange={(e) =>
+                  props.updateConfig((config) => {
+                    const value = e.currentTarget.value.trim();
+                    config.vectorStoreIds = value
+                      ? value
+                          .split(",")
+                          .map((id) => id.trim())
+                          .filter((id) => id)
+                      : [];
+                  })
+                }
+              ></input>
+            </ListItem>
+          )}
+
+          {/* 图像背景设置 */}
+          <ListItem
+            title={Locale.Settings.GPT5Tools.ImageBackground.Title}
+            subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+          >
+            <Select
+              aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
+              value={props.modelConfig.imageBackground ?? "auto"}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.imageBackground = e.currentTarget.value as
+                    | "auto"
+                    | "transparent"
+                    | "opaque";
+                });
+              }}
+            >
+              <option value="auto">
+                {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
+              </option>
+              <option value="transparent">
+                {Locale.Settings.GPT5Tools.ImageBackground.Options.Transparent}
+              </option>
+              <option value="opaque">
+                {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
+              </option>
+            </Select>
+          </ListItem>
+
+          {/* 工具选择策略 */}
+          <ListItem
+            title={Locale.Settings.GPT5Tools.ToolChoice.Title}
+            subTitle={Locale.Settings.GPT5Tools.ToolChoice.SubTitle}
+          >
+            <Select
+              aria-label={Locale.Settings.GPT5Tools.ToolChoice.Title}
+              value={props.modelConfig.toolChoice ?? "auto"}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.toolChoice = e.currentTarget.value as
+                    | "auto"
+                    | "none"
+                    | "required";
+                });
+              }}
+            >
+              <option value="auto">
+                {Locale.Settings.GPT5Tools.ToolChoice.Options.Auto}
+              </option>
+              <option value="none">
+                {Locale.Settings.GPT5Tools.ToolChoice.Options.None}
+              </option>
+              <option value="required">
+                {Locale.Settings.GPT5Tools.ToolChoice.Options.Required}
+              </option>
+            </Select>
+          </ListItem>
+        </>
+      )}
+
       <ListItem
         title={Locale.Settings.Temperature.Title}
         subTitle={Locale.Settings.Temperature.SubTitle}
@@ -264,7 +478,8 @@ export function ModelConfigList(props: {
             .filter((v) => v.available)
             .map((v, i) => (
               <option value={`${v.name}@${v.provider?.providerName}`} key={i}>
-                {v.displayName}({formatProviderName(v.provider?.providerName || '')})
+                {v.displayName}(
+                {formatProviderName(v.provider?.providerName || "")})
               </option>
             ))}
         </Select>

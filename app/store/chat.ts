@@ -175,6 +175,14 @@ export type ChatMessage = RequestMessage & {
   // Architectural_Note (AR): 仅 Google 平台使用，其他平台忽略此字段
   // }}
   googleParts?: GoogleResponsePart[];
+  // {{CHENGQI:
+  // Action: Added - OpenAI Responses API response ID 存储字段
+  // Timestamp: 2025-12-21 Claude Opus 4.5
+  // Reason: 存储 OpenAI Responses API 的 response id，用于 previous_response_id 多轮对话
+  // Reference: https://platform.openai.com/docs/api-reference/responses
+  // Architectural_Note (AR): 仅 OpenAI Responses API 使用，其他平台忽略此字段
+  // }}
+  openaiResponseId?: string;
 };
 
 export function createMessage(override: Partial<ChatMessage>): ChatMessage {
@@ -551,6 +559,23 @@ export const useChatStore = createPersistStore(
         const sendMessages = recentMessages.concat(userMessage);
         const messageIndex = session.messages.length + 1;
 
+        // {{CHENGQI:
+        // Action: Added - 获取上一次 OpenAI Response ID 用于多轮对话
+        // Timestamp: 2025-12-21 Claude Opus 4.5
+        // Reason: 支持 OpenAI Responses API 的 previous_response_id 多轮对话
+        // Reference: https://platform.openai.com/docs/api-reference/responses
+        // Architectural_Note (AR): 从最后一条 assistant 消息获取 openaiResponseId
+        // }}
+        // 获取上一次的 OpenAI response id（用于 Responses API 多轮对话）
+        let previousOpenAIResponseId: string | undefined;
+        const lastAssistantMessage = session.messages
+          .slice()
+          .reverse()
+          .find((m) => m.role === "assistant" && m.openaiResponseId);
+        if (lastAssistantMessage?.openaiResponseId) {
+          previousOpenAIResponseId = lastAssistantMessage.openaiResponseId;
+        }
+
         // save user's and bot's message
         get().updateTargetSession(session, (session) => {
           const savedUserMessage = {
@@ -597,6 +622,8 @@ export const useChatStore = createPersistStore(
         api.llm.chat({
           messages: sendMessages,
           config: { ...modelConfig, stream: true },
+          // 传递 previous_response_id 用于 OpenAI Responses API 多轮对话
+          previousOpenAIResponseId,
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {
@@ -716,6 +743,22 @@ export const useChatStore = createPersistStore(
               get().onNewMessage(botMessage, session);
             }
             ChatControllerPool.remove(session.id, botMessage.id);
+          },
+          // {{CHENGQI:
+          // Action: Added - OpenAI Response ID 回调处理
+          // Timestamp: 2025-12-21 Claude Opus 4.5
+          // Reason: 存储 OpenAI Responses API 返回的 response id，用于多轮对话
+          // Reference: https://platform.openai.com/docs/api-reference/responses
+          // Architectural_Note (AR): 将 response id 存储到 botMessage，用于下次请求
+          // }}
+          onOpenAIResponseId(responseId: string) {
+            if (responseId) {
+              botMessage.openaiResponseId = responseId;
+              // 触发状态更新以保存 response id
+              get().updateTargetSession(session, (session) => {
+                session.messages = session.messages.concat();
+              });
+            }
           },
           onBeforeTool(tool: ChatMessageTool) {
             (botMessage.tools = botMessage?.tools || []).push(tool);

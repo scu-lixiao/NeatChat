@@ -515,7 +515,10 @@ export class GeminiProApi implements LLMApi {
           google_search: {},
         },
       ];
-    } else if (modelConfig.model === "gemini-3-pro-preview") {
+    } else if (
+      modelConfig.model === "gemini-3-pro-preview" ||
+      modelConfig.model === "gemini-3-flash-preview"
+    ) {
       // {{CHENGQI:
       // Action: Fixed - 修复 code_execution 不触发的问题
       // Timestamp: 2025-11-27 Claude Opus 4.5
@@ -553,7 +556,10 @@ export class GeminiProApi implements LLMApi {
         includeThoughts: true,
         thinkingBudget: 32768,
       };
-    } else if (modelConfig.model === "gemini-3-pro-preview") {
+    } else if (
+      modelConfig.model === "gemini-3-pro-preview" ||
+      modelConfig.model === "gemini-3-flash-preview"
+    ) {
       (requestPayload as any).generationConfig.thinkingConfig = {
         includeThoughts: true,
         thinking_level: "high",
@@ -573,7 +579,8 @@ export class GeminiProApi implements LLMApi {
     // }}
     if (
       modelConfig.model === "gemini-3-pro-preview" ||
-      modelConfig.model === "gemini-3-pro-image-preview"
+      modelConfig.model === "gemini-3-pro-image-preview" ||
+      modelConfig.model === "gemini-3-flash-preview"
     ) {
       (requestPayload as any).generationConfig = {
         ...(requestPayload as any).generationConfig, // 保留现有配置

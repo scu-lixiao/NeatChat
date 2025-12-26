@@ -118,6 +118,36 @@ export const DEFAULT_CONFIG = {
     size: "1024x1024" as ModelSize,
     quality: "standard" as DalleQuality,
     style: "vivid" as DalleStyle,
+    // GPT-5.2 系列推理级别配置
+    // "auto": 根据模型自动选择（默认）
+    // "none": 无推理（快速响应，支持 temperature/top_p）
+    // "low"/"medium"/"high"/"xhigh": 不同级别推理深度
+    reasoningEffort: "auto" as
+      | "auto"
+      | "none"
+      | "low"
+      | "medium"
+      | "high"
+      | "xhigh",
+    // GPT-5.2 内置工具配置
+    // enableWebSearch: 启用网络搜索工具，允许模型搜索最新信息
+    enableWebSearch: false,
+    // enableCodeInterpreter: 启用代码解释器工具，允许模型执行 Python 代码
+    enableCodeInterpreter: false,
+    // enableFileSearch: 启用文件搜索工具，允许模型在向量存储中搜索文档
+    enableFileSearch: false,
+    // vectorStoreIds: 文件搜索的向量存储 ID 列表（需要先在 OpenAI 创建 vector store）
+    vectorStoreIds: [] as string[],
+    // imageBackground: 图像生成背景配置
+    // "auto": 自动选择（默认）
+    // "transparent": 透明背景（适用于PNG/WebP）
+    // "opaque": 不透明背景
+    imageBackground: "auto" as "transparent" | "opaque" | "auto",
+    // toolChoice: 工具选择策略（GPT-5.2 系列）
+    // "auto": 模型自动决定何时使用工具（推荐）
+    // "none": 禁止模型调用任何工具
+    // "required": 强制模型必须调用工具
+    toolChoice: "auto" as "auto" | "none" | "required",
   },
 
   ttsConfig: {

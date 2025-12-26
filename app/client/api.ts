@@ -118,6 +118,20 @@ export interface ChatOptions {
   //   - 用于图片生成/编辑的多轮对话中保持签名
   // }}
   onGoogleParts?: (parts: GoogleResponsePart[]) => void;
+  // {{CHENGQI:
+  // Action: Added - OpenAI Response ID 回调接口
+  // Timestamp: 2025-12-21 Claude Opus 4.5
+  // Reason: 支持 OpenAI Responses API 的 previous_response_id 多轮对话功能
+  // Reference: https://platform.openai.com/docs/api-reference/responses
+  // Principle_Applied: SOLID - 接口分离，独立的 response id 传递
+  // Architectural_Note (AR): 仅 OpenAI Responses API 调用此回调
+  // Documentation_Note (DW):
+  //   - Response ID 用于 previous_response_id 参数实现高效多轮对话
+  //   - 可选使用，不传则回退到传统的完整 input 方式
+  // }}
+  onOpenAIResponseId?: (responseId: string) => void;
+  // 用于多轮对话的上一次 response id（仅 OpenAI Responses API 使用）
+  previousOpenAIResponseId?: string;
 }
 
 export interface LLMUsage {
