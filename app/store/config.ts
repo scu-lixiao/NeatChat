@@ -131,11 +131,13 @@ export const DEFAULT_CONFIG = {
       | "xhigh",
     // GPT-5.2 内置工具配置
     // enableWebSearch: 启用网络搜索工具，允许模型搜索最新信息
-    enableWebSearch: false,
+    enableWebSearch: true,
     // enableCodeInterpreter: 启用代码解释器工具，允许模型执行 Python 代码
-    enableCodeInterpreter: false,
+    enableCodeInterpreter: true,
     // enableFileSearch: 启用文件搜索工具，允许模型在向量存储中搜索文档
     enableFileSearch: false,
+    // enableImageGeneration: 启用图像生成工具，允许模型生成图像
+    enableImageGeneration: false,
     // vectorStoreIds: 文件搜索的向量存储 ID 列表（需要先在 OpenAI 创建 vector store）
     vectorStoreIds: [] as string[],
     // imageBackground: 图像生成背景配置

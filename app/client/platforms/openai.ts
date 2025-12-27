@@ -617,7 +617,8 @@ export class ChatGPTApi implements LLMApi {
     }
 
     // GPT-5.2 系列模型添加 image_generation 工具支持
-    if (isGPT5ImageGen) {
+    // 当启用 enableImageGeneration 时，模型可以生成图像
+    if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
       const imageGenTool: ResponsesImageGenerationTool = {
         type: "image_generation",
         quality:

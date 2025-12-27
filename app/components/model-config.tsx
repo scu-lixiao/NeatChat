@@ -204,34 +204,57 @@ export function ModelConfigList(props: {
             </ListItem>
           )}
 
-          {/* 图像背景设置 */}
+          {/* 图像生成工具 */}
           <ListItem
-            title={Locale.Settings.GPT5Tools.ImageBackground.Title}
-            subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+            title={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
+            subTitle={Locale.Settings.GPT5Tools.EnableImageGeneration.SubTitle}
           >
-            <Select
-              aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
-              value={props.modelConfig.imageBackground ?? "auto"}
-              onChange={(e) => {
-                props.updateConfig((config) => {
-                  config.imageBackground = e.currentTarget.value as
-                    | "auto"
-                    | "transparent"
-                    | "opaque";
-                });
-              }}
-            >
-              <option value="auto">
-                {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
-              </option>
-              <option value="transparent">
-                {Locale.Settings.GPT5Tools.ImageBackground.Options.Transparent}
-              </option>
-              <option value="opaque">
-                {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
-              </option>
-            </Select>
+            <input
+              aria-label={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
+              type="checkbox"
+              checked={props.modelConfig.enableImageGeneration ?? false}
+              onChange={(e) =>
+                props.updateConfig(
+                  (config) =>
+                    (config.enableImageGeneration = e.currentTarget.checked),
+                )
+              }
+            ></input>
           </ListItem>
+
+          {/* 图像背景设置（仅当启用图像生成时显示） */}
+          {props.modelConfig.enableImageGeneration && (
+            <ListItem
+              title={Locale.Settings.GPT5Tools.ImageBackground.Title}
+              subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
+                value={props.modelConfig.imageBackground ?? "auto"}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.imageBackground = e.currentTarget.value as
+                      | "auto"
+                      | "transparent"
+                      | "opaque";
+                  });
+                }}
+              >
+                <option value="auto">
+                  {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
+                </option>
+                <option value="transparent">
+                  {
+                    Locale.Settings.GPT5Tools.ImageBackground.Options
+                      .Transparent
+                  }
+                </option>
+                <option value="opaque">
+                  {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
+                </option>
+              </Select>
+            </ListItem>
+          )}
 
           {/* 工具选择策略 */}
           <ListItem

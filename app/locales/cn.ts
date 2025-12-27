@@ -611,6 +611,10 @@ const cn = {
         SubTitle: "用于文件搜索的 OpenAI Vector Store ID（多个用逗号分隔）",
         Placeholder: "vs_xxx,vs_yyy",
       },
+      EnableImageGeneration: {
+        Title: "图像生成",
+        SubTitle: "允许模型生成图像（仅限支持图像生成的模型）",
+      },
       ImageBackground: {
         Title: "图像背景",
         SubTitle: "控制生成图像的背景样式",

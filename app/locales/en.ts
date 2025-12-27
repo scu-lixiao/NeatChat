@@ -621,6 +621,11 @@ const en: LocaleType = {
         SubTitle: "OpenAI Vector Store IDs for file search (comma-separated)",
         Placeholder: "vs_xxx,vs_yyy",
       },
+      EnableImageGeneration: {
+        Title: "Image Generation",
+        SubTitle:
+          "Allow the model to generate images (only for models that support image generation)",
+      },
       ImageBackground: {
         Title: "Image Background",
         SubTitle: "Control the background style of generated images",
