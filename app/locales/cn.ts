@@ -598,6 +598,27 @@ const cn = {
         Title: "网络搜索",
         SubTitle: "允许模型搜索互联网获取最新信息，搜索结果将包含引用来源",
       },
+      WebSearchCountry: {
+        Title: "搜索位置",
+        SubTitle: "设置网络搜索的地理位置，用于优化本地化搜索结果",
+        Options: {
+          US: "美国",
+          CN: "中国",
+          GB: "英国",
+          JP: "日本",
+          DE: "德国",
+          FR: "法国",
+        },
+      },
+      WebSearchContextSize: {
+        Title: "搜索上下文",
+        SubTitle: "控制搜索时检索的网页内容量，越多信息越详细但响应越慢",
+        Options: {
+          Low: "低（快速）",
+          Medium: "中等（推荐）",
+          High: "高（详细）",
+        },
+      },
       EnableCodeInterpreter: {
         Title: "代码解释器",
         SubTitle: "允许模型执行 Python 代码进行计算和数据分析",

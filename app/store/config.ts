@@ -132,6 +132,14 @@ export const DEFAULT_CONFIG = {
     // GPT-5.2 内置工具配置
     // enableWebSearch: 启用网络搜索工具，允许模型搜索最新信息
     enableWebSearch: true,
+    // webSearchCountry: 网络搜索的用户位置国家代码（ISO 3166-1 alpha-2）
+    // 用于优化地理位置相关的搜索结果
+    webSearchCountry: "US" as string,
+    // webSearchContextSize: 网络搜索上下文大小
+    // "low": 快速响应，较少上下文
+    // "medium": 平衡模式（默认）
+    // "high": 更多上下文，更详细的信息
+    webSearchContextSize: "medium" as "low" | "medium" | "high",
     // enableCodeInterpreter: 启用代码解释器工具，允许模型执行 Python 代码
     enableCodeInterpreter: true,
     // enableFileSearch: 启用文件搜索工具，允许模型在向量存储中搜索文档

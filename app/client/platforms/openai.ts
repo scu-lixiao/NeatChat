@@ -77,6 +77,17 @@ export interface ResponsesInputItem {
   type?: "message";
 }
 
+// Responses API include 参数支持的值
+// 参考: https://platform.openai.com/docs/api-reference/responses
+export type ResponsesIncludable =
+  | "web_search_call.action.sources" // 包含网络搜索来源
+  | "code_interpreter_call.outputs" // 包含代码解释器输出
+  | "file_search_call.results" // 包含文件搜索结果
+  | "reasoning.encrypted_content" // 包含推理内容
+  | "computer_call_output.output.image_url" // 包含计算机调用的图像URL
+  | "message.input_image.image_url" // 包含输入消息的图像URL
+  | "message.output_text.logprobs"; // 包含输出文本的对数概率
+
 export interface ResponsesRequestPayload {
   model: string;
   input: ResponsesInputItem[] | string;
@@ -95,6 +106,17 @@ export interface ResponsesRequestPayload {
   reasoning?: {
     effort?: "none" | "low" | "medium" | "high" | "xhigh";
     summary?: "auto" | "none" | "concise" | "detailed";
+  };
+  // 指定响应中要包含的额外数据
+  include?: ResponsesIncludable[];
+  // 是否存储响应以便后续通过 API 检索
+  store?: boolean;
+  // 文本响应配置
+  text?: {
+    format?: {
+      type: "text" | "json_object" | "json_schema";
+    };
+    verbosity?: "low" | "medium" | "high";
   };
 }
 
@@ -120,7 +142,19 @@ export interface ResponsesImageGenerationTool {
 // 参考: https://platform.openai.com/docs/guides/tools-web-search
 export interface ResponsesWebSearchTool {
   type: "web_search";
-  // web_search 工具当前无额外配置参数
+  // 用户位置信息，用于地理位置相关搜索优化
+  user_location?: {
+    type: "approximate";
+    country?: string; // ISO 3166-1 alpha-2 国家代码，如 "US", "CN", "GB"
+    city?: string;
+    region?: string;
+    timezone?: string;
+  };
+  // 搜索上下文大小，控制检索的网页内容量
+  // "low": 快速响应，较少上下文
+  // "medium": 平衡模式（默认）
+  // "high": 更多上下文，更详细的信息
+  search_context_size?: "low" | "medium" | "high";
 }
 
 // OpenAI 内置 code_interpreter 工具类型
@@ -643,13 +677,23 @@ export class ChatGPTApi implements LLMApi {
     if (isGPT5_2 && modelConfig.enableWebSearch) {
       const webSearchTool: ResponsesWebSearchTool = {
         type: "web_search",
+        // 设置用户位置信息，优化地理位置相关搜索
+        user_location: {
+          type: "approximate",
+          country: modelConfig.webSearchCountry || "US",
+        },
+        // 设置搜索上下文大小，medium 为平衡模式
+        search_context_size: modelConfig.webSearchContextSize || "medium",
       };
 
       if (!requestPayload.tools) {
         requestPayload.tools = [];
       }
       requestPayload.tools.push(webSearchTool);
-      console.log("[GPT-5.2] Added web_search tool");
+      console.log(
+        "[GPT-5.2] Added web_search tool with config:",
+        webSearchTool,
+      );
     }
 
     // GPT-5.2 系列模型添加 code_interpreter 内置工具支持
@@ -689,22 +733,54 @@ export class ChatGPTApi implements LLMApi {
       );
     }
 
-    // GPT-5.2 系列模型设置 tool_choice 为 "auto"
-    // 当配置了任何工具时，设置 tool_choice 让模型自动决定何时使用工具
-    // tool_choice 可选值: "auto" | "none" | "required" | { type: "function"; name: string }
-    // - "auto": 模型自动决定是否调用工具（推荐用于内置工具）
-    // - "none": 禁止模型调用任何工具
-    // - "required": 强制模型必须调用工具
+    // GPT-5.2 系列模型工具配置
+    // 注意：根据 OpenAI 官方文档，GPT-5 系列模型在 Responses API 中
+    // 只支持 tool_choice: "auto"，其他值（如 "required"、"none"）会报错
+    // 因此不再显式设置 tool_choice，让 API 使用默认值 "auto"
+    // 参考: https://github.com/openai/openai-python/issues/2537
     if (isGPT5_2 && requestPayload.tools && requestPayload.tools.length > 0) {
-      // 使用用户配置的 toolChoice，默认为 "auto"
-      requestPayload.tool_choice = modelConfig.toolChoice || "auto";
       console.log(
-        "[GPT-5.2] Set tool_choice:",
-        requestPayload.tool_choice,
-        "for",
+        "[GPT-5.2] Configured",
         requestPayload.tools.length,
-        "tools",
+        "tools (tool_choice defaults to 'auto')",
       );
+    }
+
+    // GPT-5.2 系列模型添加 include 参数
+    // include 参数用于指定响应中要包含的额外数据，与工具配置分开处理
+    if (isGPT5_2) {
+      // 添加 include 参数以获取工具调用的详细输出
+      // 根据启用的工具类型和推理模式动态添加对应的 include 值
+      const includeItems: ResponsesIncludable[] = [];
+
+      if (modelConfig.enableWebSearch) {
+        includeItems.push("web_search_call.action.sources");
+      }
+      if (modelConfig.enableCodeInterpreter) {
+        includeItems.push("code_interpreter_call.outputs");
+      }
+      if (modelConfig.enableFileSearch && modelConfig.vectorStoreIds?.length) {
+        includeItems.push("file_search_call.results");
+      }
+      // 当启用推理模式时（reasoning effort 不为 "none"），添加推理内容
+      // 检查 requestPayload.reasoning?.effort 来确定是否处于推理模式
+      const hasReasoningEnabled =
+        requestPayload.reasoning?.effort &&
+        requestPayload.reasoning.effort !== "none";
+      if (hasReasoningEnabled) {
+        includeItems.push("reasoning.encrypted_content");
+        console.log(
+          "[GPT-5.2] Reasoning mode enabled, adding reasoning.encrypted_content",
+        );
+      }
+
+      if (includeItems.length > 0) {
+        requestPayload.include = includeItems;
+        console.log("[GPT-5.2] Added include items:", includeItems);
+      }
+
+      // 设置 store 为 true 以便后续检索响应
+      requestPayload.store = true;
     }
 
     // 开发者模式下输出完整请求体JSON

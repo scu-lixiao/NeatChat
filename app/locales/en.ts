@@ -606,6 +606,29 @@ const en: LocaleType = {
         SubTitle:
           "Allow the model to search the internet for latest information, results include citations",
       },
+      WebSearchCountry: {
+        Title: "Search Location",
+        SubTitle:
+          "Set the geographic location for web search to optimize localized results",
+        Options: {
+          US: "United States",
+          CN: "China",
+          GB: "United Kingdom",
+          JP: "Japan",
+          DE: "Germany",
+          FR: "France",
+        },
+      },
+      WebSearchContextSize: {
+        Title: "Search Context Size",
+        SubTitle:
+          "Control the amount of web content retrieved, more context provides detailed info but slower response",
+        Options: {
+          Low: "Low (Fast)",
+          Medium: "Medium (Recommended)",
+          High: "High (Detailed)",
+        },
+      },
       EnableCodeInterpreter: {
         Title: "Code Interpreter",
         SubTitle:

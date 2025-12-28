@@ -140,6 +140,85 @@ export function ModelConfigList(props: {
             ></input>
           </ListItem>
 
+          {/* 网络搜索配置（仅当启用时显示） */}
+          {props.modelConfig.enableWebSearch && (
+            <>
+              {/* 搜索位置国家 */}
+              <ListItem
+                title={Locale.Settings.GPT5Tools.WebSearchCountry.Title}
+                subTitle={Locale.Settings.GPT5Tools.WebSearchCountry.SubTitle}
+              >
+                <Select
+                  aria-label={Locale.Settings.GPT5Tools.WebSearchCountry.Title}
+                  value={props.modelConfig.webSearchCountry ?? "US"}
+                  onChange={(e) => {
+                    props.updateConfig((config) => {
+                      config.webSearchCountry = e.currentTarget.value;
+                    });
+                  }}
+                >
+                  <option value="US">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.US}
+                  </option>
+                  <option value="CN">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.CN}
+                  </option>
+                  <option value="GB">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.GB}
+                  </option>
+                  <option value="JP">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.JP}
+                  </option>
+                  <option value="DE">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.DE}
+                  </option>
+                  <option value="FR">
+                    {Locale.Settings.GPT5Tools.WebSearchCountry.Options.FR}
+                  </option>
+                </Select>
+              </ListItem>
+
+              {/* 搜索上下文大小 */}
+              <ListItem
+                title={Locale.Settings.GPT5Tools.WebSearchContextSize.Title}
+                subTitle={
+                  Locale.Settings.GPT5Tools.WebSearchContextSize.SubTitle
+                }
+              >
+                <Select
+                  aria-label={
+                    Locale.Settings.GPT5Tools.WebSearchContextSize.Title
+                  }
+                  value={props.modelConfig.webSearchContextSize ?? "medium"}
+                  onChange={(e) => {
+                    props.updateConfig((config) => {
+                      config.webSearchContextSize = e.currentTarget.value as
+                        | "low"
+                        | "medium"
+                        | "high";
+                    });
+                  }}
+                >
+                  <option value="low">
+                    {Locale.Settings.GPT5Tools.WebSearchContextSize.Options.Low}
+                  </option>
+                  <option value="medium">
+                    {
+                      Locale.Settings.GPT5Tools.WebSearchContextSize.Options
+                        .Medium
+                    }
+                  </option>
+                  <option value="high">
+                    {
+                      Locale.Settings.GPT5Tools.WebSearchContextSize.Options
+                        .High
+                    }
+                  </option>
+                </Select>
+              </ListItem>
+            </>
+          )}
+
           {/* 代码解释器工具 */}
           <ListItem
             title={Locale.Settings.GPT5Tools.EnableCodeInterpreter.Title}
