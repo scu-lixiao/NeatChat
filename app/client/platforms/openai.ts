@@ -415,8 +415,10 @@ export class ChatGPTApi implements LLMApi {
       options.config.model === "gpt-5-mini" ||
       options.config.model === "gpt-5.2-thinking";
 
-    // GPT-5.2 系列模型
-    const isGPT5_2 = options.config.model.startsWith("gpt-5.2");
+    // GPT-5.2/5.4 系列模型
+    const isGPT5_2 =
+      options.config.model.startsWith("gpt-5.2") ||
+      options.config.model.startsWith("gpt-5.4");
 
     // Azure 仍使用 Chat Completions API（Responses API 可能尚不完全支持）
     const isAzure = modelConfig.providerName === ServiceProvider.Azure;
@@ -451,8 +453,10 @@ export class ChatGPTApi implements LLMApi {
     const visionModel = isVisionModel(options.config.model);
     const isGPT5ImageGen = isGPT5ImageGenModel(options.config.model);
 
-    // 判断是否为 GPT-5.2 系列模型
-    const isGPT5_2 = options.config.model.startsWith("gpt-5.2");
+    // 判断是否为 GPT-5.2/5.4 系列模型
+    const isGPT5_2 =
+      options.config.model.startsWith("gpt-5.2") ||
+      options.config.model.startsWith("gpt-5.4");
     // GPT-5.2-thinking 和 gpt-5.2-pro 使用深度推理
     const isGPT5_2Thinking =
       options.config.model === "gpt-5.2-thinking" ||
@@ -538,8 +542,11 @@ export class ChatGPTApi implements LLMApi {
         } else if (options.config.model === "gpt-5.2-thinking") {
           // gpt-5.2-thinking 默认使用 "high"
           finalReasoningEffort = "high";
+        } else if (options.config.model === "gpt-5.4-mini") {
+          // gpt-5.4-mini 默认使用 "low"（轻量版本）
+          finalReasoningEffort = "low";
         } else {
-          // gpt-5.2 默认使用 "medium"
+          // gpt-5.2 / gpt-5.4 默认使用 "medium"
           finalReasoningEffort = "medium";
         }
         console.log(

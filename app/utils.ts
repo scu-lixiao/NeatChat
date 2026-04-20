@@ -304,6 +304,7 @@ export function isGPT5ImageGenModel(model: string): boolean {
   const lowerModel = model.toLowerCase();
   return (
     lowerModel.startsWith("gpt-5.2") ||
+    lowerModel.startsWith("gpt-5.4") ||
     lowerModel.startsWith("gpt-5.1") ||
     lowerModel === "gpt-5" ||
     lowerModel === "gpt-5-mini"
@@ -327,7 +328,8 @@ export function getTimeoutMSByModel(model: string) {
     model.includes("deepseek-r") ||
     model.includes("-thinking") ||
     model.includes("grok") || // XAI models with search and reasoning modes need extended timeout
-    model.startsWith("gpt-5.2") // GPT-5.2 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.2") || // GPT-5.2 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.4") // GPT-5.4 with thinking mode may need extended timeout
   )
     return REQUEST_TIMEOUT_MS_FOR_THINKING;
   return REQUEST_TIMEOUT_MS;

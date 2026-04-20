@@ -588,7 +588,7 @@ const en: LocaleType = {
     ReasoningEffort: {
       Title: "Reasoning Effort",
       SubTitle:
-        "Controls the depth of reasoning for GPT-5.2 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
+        "Controls the depth of reasoning for GPT-5.2/5.4 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
       Options: {
         Auto: "Auto (default)",
         None: "None (fast)",
@@ -599,8 +599,8 @@ const en: LocaleType = {
       },
     },
     GPT5Tools: {
-      Title: "GPT-5.2 Built-in Tools",
-      SubTitle: "Enable built-in tool features for GPT-5.2 series models",
+      Title: "GPT-5.2/5.4 Built-in Tools",
+      SubTitle: "Enable built-in tool features for GPT-5.2/5.4 series models",
       EnableWebSearch: {
         Title: "Web Search",
         SubTitle:

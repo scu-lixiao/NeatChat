@@ -366,6 +366,7 @@ export const VISION_MODEL_REGEXES = [
   /gpt-5/,
   /gpt-5\.1/,
   /gpt-5\.2/,
+  /gpt-5\.4/,
   /grok-4/,
   /grok-4-1/,
 ];
@@ -412,6 +413,8 @@ const openaiModels = [
   "gpt-5.2-chat-latest",
   "gpt-5.2-thinking",
   "gpt-5.2-pro",
+  "gpt-5.4",
+  "gpt-5.4-mini",
   "dall-e-3",
   "o1-mini",
   "o1-preview",
@@ -423,6 +426,7 @@ const openaiModels = [
 
 const googleModels = [
   "gemini-3-pro-preview",
+  "gemini-3.1-pro-preview",
   "gemini-3-pro-image-preview",
   "gemini-3-flash-preview",
   "gemini-2.5-pro",

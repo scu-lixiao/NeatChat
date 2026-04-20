@@ -581,7 +581,7 @@ const cn = {
     ReasoningEffort: {
       Title: "推理深度 (reasoning_effort)",
       SubTitle:
-        "控制 GPT-5.2 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
+        "控制 GPT-5.2/5.4 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
       Options: {
         Auto: "自动 (默认)",
         None: "无 (快速)",
@@ -592,8 +592,8 @@ const cn = {
       },
     },
     GPT5Tools: {
-      Title: "GPT-5.2 内置工具",
-      SubTitle: "启用 GPT-5.2 系列模型的内置工具功能",
+      Title: "GPT-5.2/5.4 内置工具",
+      SubTitle: "启用 GPT-5.2/5.4 系列模型的内置工具功能",
       EnableWebSearch: {
         Title: "网络搜索",
         SubTitle: "允许模型搜索互联网获取最新信息，搜索结果将包含引用来源",
