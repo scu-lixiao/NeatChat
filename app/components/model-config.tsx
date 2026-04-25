@@ -51,9 +51,10 @@ export function ModelConfigList(props: {
         </Select>
       </ListItem>
 
-      {/* GPT-5.2/5.4 系列模型推理级别配置 */}
+      {/* GPT-5.2/5.4/5.5 系列模型推理级别配置 */}
       {(props.modelConfig.model.startsWith("gpt-5.2") ||
-        props.modelConfig.model.startsWith("gpt-5.4")) &&
+        props.modelConfig.model.startsWith("gpt-5.4") ||
+        props.modelConfig.model.startsWith("gpt-5.5")) &&
         (() => {
           // 根据模型确定支持的推理级别
           const model = props.modelConfig.model;
@@ -120,9 +121,10 @@ export function ModelConfigList(props: {
           );
         })()}
 
-      {/* GPT-5.2/5.4 系列模型内置工具配置 */}
+      {/* GPT-5.2/5.4/5.5 系列模型内置工具配置 */}
       {(props.modelConfig.model.startsWith("gpt-5.2") ||
-        props.modelConfig.model.startsWith("gpt-5.4")) && (
+        props.modelConfig.model.startsWith("gpt-5.4") ||
+        props.modelConfig.model.startsWith("gpt-5.5")) && (
         <>
           {/* 网络搜索工具 */}
           <ListItem

@@ -415,6 +415,8 @@ const openaiModels = [
   "gpt-5.2-pro",
   "gpt-5.4",
   "gpt-5.4-mini",
+  "gpt-5.5",
+  "gpt-5.5-pro",
   "dall-e-3",
   "o1-mini",
   "o1-preview",

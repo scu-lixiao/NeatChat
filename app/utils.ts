@@ -298,13 +298,14 @@ export function isDalle3(model: string) {
 
 /**
  * 判断模型是否支持通过 Responses API 的 image_generation 工具生成图像
- * GPT-5.2 系列模型原生支持图像生成能力
+ * GPT-5.2/5.4/5.5 系列模型原生支持图像生成能力
  */
 export function isGPT5ImageGenModel(model: string): boolean {
   const lowerModel = model.toLowerCase();
   return (
     lowerModel.startsWith("gpt-5.2") ||
     lowerModel.startsWith("gpt-5.4") ||
+    lowerModel.startsWith("gpt-5.5") ||
     lowerModel.startsWith("gpt-5.1") ||
     lowerModel === "gpt-5" ||
     lowerModel === "gpt-5-mini"
@@ -329,7 +330,8 @@ export function getTimeoutMSByModel(model: string) {
     model.includes("-thinking") ||
     model.includes("grok") || // XAI models with search and reasoning modes need extended timeout
     model.startsWith("gpt-5.2") || // GPT-5.2 with thinking mode may need extended timeout
-    model.startsWith("gpt-5.4") // GPT-5.4 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.4") || // GPT-5.4 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.5") // GPT-5.5 with thinking mode may need extended timeout
   )
     return REQUEST_TIMEOUT_MS_FOR_THINKING;
   return REQUEST_TIMEOUT_MS;
@@ -339,9 +341,9 @@ export function getModelSizes(model: string): ModelSize[] {
   if (isDalle3(model)) {
     return ["1024x1024", "1792x1024", "1024x1792"];
   }
-  // GPT-5.2 系列支持的图像尺寸
+  // GPT-5.2/5.4/5.5 image_generation 工具支持的图像尺寸
   if (isGPT5ImageGenModel(model)) {
-    return ["1024x1024", "1792x1024", "1024x1792"];
+    return ["1024x1024", "1536x1024", "1024x1536"];
   }
   if (model.toLowerCase().includes("cogview")) {
     return [

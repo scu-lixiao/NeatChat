@@ -73,9 +73,39 @@ export interface RequestPayload {
 // OpenAI Responses API 类型定义
 export interface ResponsesInputItem {
   role: "user" | "assistant" | "developer" | "system";
-  content: string | MultimodalContent[];
+  content: string | ResponsesInputContentPart[];
   type?: "message";
 }
+
+export interface ResponsesInputTextPart {
+  type: "input_text";
+  text: string;
+}
+
+export interface ResponsesInputImagePart {
+  type: "input_image";
+  image_url?: string;
+  file_id?: string;
+  detail?: "auto" | "low" | "high";
+}
+
+export type ResponsesInputContentPart =
+  | ResponsesInputTextPart
+  | ResponsesInputImagePart;
+
+export type ResponsesImageGenerationSize =
+  | "1024x1024"
+  | "1024x1536"
+  | "1536x1024"
+  | "auto";
+
+export type ResponsesImageGenerationQuality =
+  | "low"
+  | "medium"
+  | "high"
+  | "auto";
+
+export type ResponsesImageGenerationOutputFormat = "png" | "webp" | "jpeg";
 
 // Responses API include 参数支持的值
 // 参考: https://platform.openai.com/docs/api-reference/responses
@@ -132,10 +162,19 @@ export interface ResponsesTool {
 // GPT-5.2 图像生成工具类型
 export interface ResponsesImageGenerationTool {
   type: "image_generation";
+  action?: "generate" | "edit" | "auto";
   // 可选配置参数
   background?: "transparent" | "opaque" | "auto";
-  quality?: "low" | "medium" | "high";
-  size?: ModelSize;
+  input_fidelity?: "low" | "high";
+  input_image_mask?: {
+    file_id?: string;
+    image_url?: string;
+  };
+  output_compression?: number;
+  output_format?: ResponsesImageGenerationOutputFormat;
+  partial_images?: number;
+  quality?: ResponsesImageGenerationQuality;
+  size?: ResponsesImageGenerationSize;
 }
 
 // OpenAI 内置 web_search 工具类型
@@ -284,6 +323,141 @@ export interface DalleRequestPayload {
   style: DalleStyle;
 }
 
+const RESPONSES_IMAGE_SIZE_MAP: Partial<
+  Record<ModelSize, ResponsesImageGenerationSize>
+> = {
+  "1024x1024": "1024x1024",
+  "1024x1536": "1024x1536",
+  "1536x1024": "1536x1024",
+  "1024x1792": "1024x1536",
+  "1792x1024": "1536x1024",
+};
+
+function normalizeResponsesInputContent(
+  content: string | MultimodalContent[],
+): {
+  content: string | ResponsesInputContentPart[];
+  imageCount: number;
+} {
+  if (typeof content === "string") {
+    return { content, imageCount: 0 };
+  }
+
+  let imageCount = 0;
+  const normalized = content.flatMap<ResponsesInputContentPart>((part) => {
+    if (part.type === "text") {
+      return part.text
+        ? [
+            {
+              type: "input_text",
+              text: part.text,
+            },
+          ]
+        : [];
+    }
+
+    if (part.type === "image_url" && part.image_url?.url) {
+      imageCount += 1;
+      return [
+        {
+          type: "input_image",
+          image_url: part.image_url.url,
+        },
+      ];
+    }
+
+    return [];
+  });
+
+  return {
+    content: normalized.length > 0 ? normalized : "",
+    imageCount,
+  };
+}
+
+function normalizeResponsesImageGenerationSize(
+  size?: ModelSize,
+): ResponsesImageGenerationSize {
+  if (size && RESPONSES_IMAGE_SIZE_MAP[size]) {
+    return RESPONSES_IMAGE_SIZE_MAP[size] as ResponsesImageGenerationSize;
+  }
+
+  return "1024x1024";
+}
+
+function normalizeResponsesImageGenerationQuality(
+  quality?: string,
+): ResponsesImageGenerationQuality {
+  switch (quality) {
+    case "low":
+    case "medium":
+    case "high":
+    case "auto":
+      return quality;
+    case "hd":
+      return "high";
+    case "standard":
+    default:
+      return "medium";
+  }
+}
+
+function collectResponsesOutputText(output?: ResponsesOutputItem[]): string[] {
+  const textParts: string[] = [];
+
+  if (!output || !Array.isArray(output)) {
+    return textParts;
+  }
+
+  for (const item of output) {
+    if (item.type !== "message" || !item.content) {
+      continue;
+    }
+
+    for (const part of item.content) {
+      if ((part.type === "text" || part.type === "output_text") && part.text) {
+        textParts.push(part.text);
+      }
+    }
+  }
+
+  return textParts;
+}
+
+function buildStreamedImageResult(
+  output?: ResponsesOutputItem[],
+): MultimodalContent[] | null {
+  if (!output || !Array.isArray(output)) {
+    return null;
+  }
+
+  const imageResults = output
+    .filter((item) => item.type === "image_generation_call" && !!item.result)
+    .map((item) => ({
+      type: "image_url" as const,
+      image_url: {
+        url: `data:image/png;base64,${item.result}`,
+      },
+    }));
+
+  if (imageResults.length === 0) {
+    return null;
+  }
+
+  const textParts = collectResponsesOutputText(output);
+  const result: MultimodalContent[] = [];
+
+  if (textParts.length > 0) {
+    result.push({
+      type: "text",
+      text: textParts.join(""),
+    });
+  }
+
+  result.push(...imageResults);
+  return result;
+}
+
 export class ChatGPTApi implements LLMApi {
   private disableListModels = true;
 
@@ -415,10 +589,11 @@ export class ChatGPTApi implements LLMApi {
       options.config.model === "gpt-5-mini" ||
       options.config.model === "gpt-5.2-thinking";
 
-    // GPT-5.2/5.4 系列模型
+    // GPT-5.2/5.4/5.5 系列模型
     const isGPT5_2 =
       options.config.model.startsWith("gpt-5.2") ||
-      options.config.model.startsWith("gpt-5.4");
+      options.config.model.startsWith("gpt-5.4") ||
+      options.config.model.startsWith("gpt-5.5");
 
     // Azure 仍使用 Chat Completions API（Responses API 可能尚不完全支持）
     const isAzure = modelConfig.providerName === ServiceProvider.Azure;
@@ -453,10 +628,11 @@ export class ChatGPTApi implements LLMApi {
     const visionModel = isVisionModel(options.config.model);
     const isGPT5ImageGen = isGPT5ImageGenModel(options.config.model);
 
-    // 判断是否为 GPT-5.2/5.4 系列模型
+    // 判断是否为 GPT-5.2/5.4/5.5 系列模型
     const isGPT5_2 =
       options.config.model.startsWith("gpt-5.2") ||
-      options.config.model.startsWith("gpt-5.4");
+      options.config.model.startsWith("gpt-5.4") ||
+      options.config.model.startsWith("gpt-5.5");
     // GPT-5.2-thinking 和 gpt-5.2-pro 使用深度推理
     const isGPT5_2Thinking =
       options.config.model === "gpt-5.2-thinking" ||
@@ -469,11 +645,14 @@ export class ChatGPTApi implements LLMApi {
     // 提取 system message 作为 instructions
     let instructions: string | undefined;
     const inputMessages: ResponsesInputItem[] = [];
+    let latestUserInputImageCount = 0;
 
     for (const v of options.messages) {
-      const content = visionModel
+      const rawContent = visionModel
         ? await preProcessImageContent(v.content)
         : getMessageTextContent(v);
+      const { content, imageCount } =
+        normalizeResponsesInputContent(rawContent);
 
       if (v.role === "system") {
         // 将 system message 提取为 instructions
@@ -485,6 +664,10 @@ export class ChatGPTApi implements LLMApi {
           role: v.role as "user" | "assistant",
           content,
         });
+
+        if (v.role === "user") {
+          latestUserInputImageCount = imageCount;
+        }
       }
     }
 
@@ -546,7 +729,7 @@ export class ChatGPTApi implements LLMApi {
           // gpt-5.4-mini 默认使用 "low"（轻量版本）
           finalReasoningEffort = "low";
         } else {
-          // gpt-5.2 / gpt-5.4 默认使用 "medium"
+          // gpt-5.2 / gpt-5.4 / gpt-5.5 默认使用 "medium"
           finalReasoningEffort = "medium";
         }
         console.log(
@@ -660,13 +843,17 @@ export class ChatGPTApi implements LLMApi {
     // GPT-5.2 系列模型添加 image_generation 工具支持
     // 当启用 enableImageGeneration 时，模型可以生成图像
     if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
+      const shouldEditImage = latestUserInputImageCount > 0;
       const imageGenTool: ResponsesImageGenerationTool = {
         type: "image_generation",
-        quality:
-          (options.config?.quality as "low" | "medium" | "high") || "high",
-        size: options.config?.size || "1024x1024",
+        action: shouldEditImage ? "edit" : "generate",
+        quality: normalizeResponsesImageGenerationQuality(
+          options.config?.quality,
+        ),
+        size: normalizeResponsesImageGenerationSize(options.config?.size),
         // 支持透明背景图像生成（根据模型配置）
         background: modelConfig.imageBackground || "auto",
+        output_format: "png",
       };
 
       if (!requestPayload.tools) {
@@ -967,6 +1154,19 @@ export class ChatGPTApi implements LLMApi {
                   options.onCitations(collectedCitations);
                 }
 
+                const streamedImageResult = buildStreamedImageResult(
+                  event.response.output,
+                );
+                if (streamedImageResult) {
+                  console.log(
+                    "[GPT-5.2] Returning streamed image generation result",
+                  );
+                  return {
+                    isThinking: false,
+                    content: streamedImageResult,
+                  };
+                }
+
                 return { isThinking: false, content: "" };
               }
 
@@ -1133,7 +1333,10 @@ export class ChatGPTApi implements LLMApi {
         // 处理文本消息
         if (item.type === "message" && item.content) {
           for (const part of item.content) {
-            if (part.type === "text" && part.text) {
+            if (
+              (part.type === "text" || part.type === "output_text") &&
+              part.text
+            ) {
               textParts.push(part.text);
             }
           }
