@@ -2,6 +2,8 @@
 // azure and openai, using same models. so using same LLMApi.
 import {
   ApiPath,
+  OPENAI_IMAGE_MODELS,
+  OPENAI_REASONING_MODELS,
   OPENAI_BASE_URL,
   DEFAULT_MODELS,
   OpenaiPath,
@@ -24,7 +26,12 @@ import {
   streamWithThink,
 } from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
-import { ModelSize, DalleQuality, DalleStyle } from "@/app/typing";
+import {
+  ModelSize,
+  DalleQuality,
+  DalleStyle,
+  ImageQuality,
+} from "@/app/typing";
 
 import {
   ChatOptions,
@@ -38,6 +45,7 @@ import {
 import Locale from "../../locales";
 import { getClientConfig } from "@/app/config/client";
 import {
+  getMessageImages,
   getMessageTextContent,
   isVisionModel,
   isDalle3 as _isDalle3,
@@ -45,6 +53,11 @@ import {
   isGPT5ImageGenModel,
 } from "@/app/utils";
 import { fetch } from "@/app/utils/stream";
+
+const allowedOpenAIModels = new Set<string>([
+  ...OPENAI_REASONING_MODELS,
+  ...OPENAI_IMAGE_MODELS,
+]);
 
 export interface OpenAIListModelResponse {
   object: string;
@@ -159,7 +172,7 @@ export interface ResponsesTool {
   };
 }
 
-// GPT-5.2 图像生成工具类型
+// GPT-5 图像生成工具类型
 export interface ResponsesImageGenerationTool {
   type: "image_generation";
   action?: "generate" | "edit" | "auto";
@@ -242,21 +255,58 @@ export type ResponsesStreamEventType =
   | "response.refusal.done"
   | "response.function_call_arguments.delta"
   | "response.function_call_arguments.done"
+  | "response.reasoning_summary_part.added"
+  | "response.reasoning_summary_part.done"
   | "response.reasoning_summary_text.delta"
   | "response.reasoning_summary_text.done"
+  | "response.reasoning_text.delta"
+  | "response.reasoning_text.done"
   | "response.image_generation_call.generating"
   | "response.image_generation_call.done"
   | "error";
 
+export interface ResponsesAnnotation {
+  type: "url_citation";
+  url: string;
+  title?: string;
+  start_index?: number;
+  end_index?: number;
+}
+
+export interface ResponsesTextContentPart {
+  type: "text" | "output_text" | "reasoning_text";
+  text?: string;
+  annotations?: ResponsesAnnotation[];
+}
+
+export interface ResponsesRefusalContentPart {
+  type: "refusal";
+  refusal?: string;
+  annotations?: ResponsesAnnotation[];
+}
+
+export interface ResponsesSummaryPart {
+  type: "summary_text";
+  text?: string;
+}
+
+export type ResponsesOutputContentPart =
+  | ResponsesTextContentPart
+  | ResponsesRefusalContentPart;
+
 export interface ResponsesStreamEvent {
   type: ResponsesStreamEventType;
   delta?: string;
+  text?: string;
   item_id?: string;
   output_index?: number;
   content_index?: number;
+  summary_index?: number;
   response?: ResponsesResponse;
+  item?: ResponsesOutputItem;
+  part?: ResponsesOutputContentPart | ResponsesSummaryPart;
   error?: { message: string; type: string; code?: string };
-  // GPT-5.2 图像生成相关
+  // GPT-5 图像生成相关
   result?: string; // base64 encoded image data for image_generation_call.done
 }
 
@@ -277,6 +327,7 @@ export interface ResponsesResponse {
 export interface ResponsesOutputItem {
   type:
     | "message"
+    | "reasoning"
     | "function_call"
     | "image_generation_call"
     | "web_search_call"
@@ -284,32 +335,21 @@ export interface ResponsesOutputItem {
     | "file_search_call";
   id?: string;
   role?: "assistant";
-  content?: Array<{
-    type: "text" | "refusal" | "output_text";
-    text?: string;
-    refusal?: string;
-    // web_search 返回的 annotations (url_citation)
-    annotations?: Array<{
-      type: "url_citation";
-      url: string;
-      title?: string;
-      start_index?: number;
-      end_index?: number;
-    }>;
-  }>;
+  content?: ResponsesOutputContentPart[];
+  summary?: ResponsesSummaryPart[];
   // function call 相关
   name?: string;
   call_id?: string;
   arguments?: string;
-  // image_generation_call 相关 - GPT-5.2 原生图像生成
+  // image_generation_call 相关 - GPT-5 原生图像生成
   result?: string; // base64 encoded image data
-  // web_search_call 相关 - GPT-5.2 网络搜索结果
+  // web_search_call 相关 - GPT-5 网络搜索结果
   // 搜索结果会直接包含在 output_text 中
-  // code_interpreter_call 相关 - GPT-5.2 代码执行结果
+  // code_interpreter_call 相关 - GPT-5 代码执行结果
   // 包含执行的代码和输出结果
   code?: string; // 执行的代码
   output?: string; // 代码执行输出
-  // file_search_call 相关 - GPT-5.2 文件搜索结果
+  // file_search_call 相关 - GPT-5 文件搜索结果
   // 搜索结果会包含文件引用和相关内容
 }
 
@@ -321,6 +361,36 @@ export interface DalleRequestPayload {
   size: ModelSize;
   quality: DalleQuality;
   style: DalleStyle;
+}
+
+export type OpenAIImagesApiSize = "1024x1024" | "1024x1536" | "1536x1024";
+export type OpenAIImagesApiQuality = Exclude<
+  ImageQuality,
+  DalleQuality | "auto"
+>;
+
+export interface OpenAIImageRequestPayload {
+  model: string;
+  prompt: string;
+  n: number;
+  size: OpenAIImagesApiSize;
+  quality?: OpenAIImagesApiQuality;
+  style?: DalleStyle;
+  background?: "transparent" | "opaque";
+  output_format?: ResponsesImageGenerationOutputFormat;
+}
+
+export interface OpenAIImageResponse {
+  created?: number;
+  data?: Array<{
+    url?: string;
+    b64_json?: string;
+    revised_prompt?: string;
+  }>;
+  background?: "transparent" | "opaque";
+  output_format?: ResponsesImageGenerationOutputFormat;
+  quality?: OpenAIImagesApiQuality;
+  size?: OpenAIImagesApiSize;
 }
 
 const RESPONSES_IMAGE_SIZE_MAP: Partial<
@@ -385,6 +455,56 @@ function normalizeResponsesImageGenerationSize(
   return "1024x1024";
 }
 
+function normalizeOpenAIImageApiSize(size?: ModelSize): OpenAIImagesApiSize {
+  switch (size) {
+    case "1024x1536":
+    case "1536x1024":
+      return size;
+    case "1024x1792":
+      return "1024x1536";
+    case "1792x1024":
+      return "1536x1024";
+    case "1024x1024":
+    default:
+      return "1024x1024";
+  }
+}
+
+function normalizeOpenAIImageApiQuality(
+  quality?: ImageQuality,
+): OpenAIImagesApiQuality {
+  switch (quality) {
+    case "low":
+    case "medium":
+    case "high":
+      return quality;
+    case "hd":
+    case "standard":
+    case "auto":
+    default:
+      return "high";
+  }
+}
+
+function normalizeOpenAIImageApiBackground(
+  background?: "transparent" | "opaque" | "auto",
+  model?: string,
+): "transparent" | "opaque" | undefined {
+  if (!background || background === "auto") {
+    return undefined;
+  }
+
+  if (model?.toLowerCase() === "gpt-image-2" && background === "transparent") {
+    return "opaque";
+  }
+
+  return background;
+}
+
+function normalizeDalleQuality(quality?: ImageQuality): DalleQuality {
+  return quality === "hd" ? "hd" : "standard";
+}
+
 function normalizeResponsesImageGenerationQuality(
   quality?: string,
 ): ResponsesImageGenerationQuality {
@@ -422,6 +542,269 @@ function collectResponsesOutputText(output?: ResponsesOutputItem[]): string[] {
   }
 
   return textParts;
+}
+
+function collectResponsesReasoningSummary(
+  output?: ResponsesOutputItem[],
+): string[] {
+  const summaryParts: string[] = [];
+
+  if (!output || !Array.isArray(output)) {
+    return summaryParts;
+  }
+
+  for (const item of output) {
+    if (item.type !== "reasoning" || !item.summary) {
+      continue;
+    }
+
+    for (const part of item.summary) {
+      if (part.type === "summary_text" && part.text) {
+        summaryParts.push(part.text);
+      }
+    }
+  }
+
+  return summaryParts;
+}
+
+function collectResponsesReasoningText(
+  output?: ResponsesOutputItem[],
+): string[] {
+  const reasoningParts: string[] = [];
+
+  if (!output || !Array.isArray(output)) {
+    return reasoningParts;
+  }
+
+  for (const item of output) {
+    if (item.type !== "reasoning" || !item.content) {
+      continue;
+    }
+
+    for (const part of item.content) {
+      if (part.type === "reasoning_text" && part.text) {
+        reasoningParts.push(part.text);
+      }
+    }
+  }
+
+  return reasoningParts;
+}
+
+function extractResponsesThinkingContent(
+  output?: ResponsesOutputItem[],
+  preferSummary = true,
+): string {
+  const summaryText = collectResponsesReasoningSummary(output)
+    .join("\n\n")
+    .trim();
+  const reasoningText = collectResponsesReasoningText(output)
+    .join("\n\n")
+    .trim();
+
+  if (preferSummary) {
+    return summaryText || reasoningText;
+  }
+
+  return reasoningText || summaryText;
+}
+
+class ResponsesReasoningNormalizer {
+  private readonly preferSummary: boolean;
+  private readonly summaryParts = new Map<string, string>();
+  private readonly reasoningParts = new Map<string, string>();
+  private emittedText = "";
+
+  constructor(preferSummary: boolean) {
+    this.preferSummary = preferSummary;
+  }
+
+  appendSummary(
+    event: Pick<
+      ResponsesStreamEvent,
+      "output_index" | "summary_index" | "item_id"
+    >,
+    text?: string,
+  ) {
+    return this.updatePart(this.summaryParts, event, text, "append", true);
+  }
+
+  replaceSummary(
+    event: Pick<
+      ResponsesStreamEvent,
+      "output_index" | "summary_index" | "item_id"
+    >,
+    text?: string,
+  ) {
+    return this.updatePart(this.summaryParts, event, text, "replace", true);
+  }
+
+  appendReasoning(
+    event: Pick<
+      ResponsesStreamEvent,
+      "output_index" | "content_index" | "item_id"
+    >,
+    text?: string,
+  ) {
+    return this.updatePart(
+      this.reasoningParts,
+      {
+        output_index: event.output_index,
+        summary_index: event.content_index,
+        item_id: event.item_id,
+      },
+      text,
+      "append",
+      !this.preferSummary,
+    );
+  }
+
+  replaceReasoning(
+    event: Pick<
+      ResponsesStreamEvent,
+      "output_index" | "content_index" | "item_id"
+    >,
+    text?: string,
+  ) {
+    return this.updatePart(
+      this.reasoningParts,
+      {
+        output_index: event.output_index,
+        summary_index: event.content_index,
+        item_id: event.item_id,
+      },
+      text,
+      "replace",
+      !this.preferSummary,
+    );
+  }
+
+  hydrateFromItem(item?: ResponsesOutputItem, outputIndex = 0) {
+    if (item?.type !== "reasoning") {
+      return "";
+    }
+
+    item.summary?.forEach((part, summaryIndex) => {
+      if (part.type === "summary_text") {
+        this.storeValue(
+          this.summaryParts,
+          this.makeKey(outputIndex, summaryIndex, item.id),
+          part.text,
+        );
+      }
+    });
+
+    item.content?.forEach((part, contentIndex) => {
+      if (part.type === "reasoning_text") {
+        this.storeValue(
+          this.reasoningParts,
+          this.makeKey(outputIndex, contentIndex, item.id),
+          part.text,
+        );
+      }
+    });
+
+    return this.consumePreferredDelta();
+  }
+
+  hydrateFromOutput(output?: ResponsesOutputItem[]) {
+    if (output && Array.isArray(output)) {
+      output.forEach((item, outputIndex) => {
+        this.hydrateFromItem(item, outputIndex);
+      });
+    }
+
+    return this.consumePreferredDelta();
+  }
+
+  private updatePart(
+    target: Map<string, string>,
+    event: Pick<
+      ResponsesStreamEvent,
+      "output_index" | "summary_index" | "item_id"
+    >,
+    text: string | undefined,
+    mode: "append" | "replace",
+    shouldEmit: boolean,
+  ) {
+    if (!text) {
+      return "";
+    }
+
+    const key = this.makeKey(
+      event.output_index,
+      event.summary_index,
+      event.item_id,
+    );
+    const current = target.get(key) ?? "";
+    const next = mode === "append" ? current + text : text;
+
+    if (current === next) {
+      return shouldEmit ? this.consumePreferredDelta() : "";
+    }
+
+    target.set(key, next);
+    return shouldEmit ? this.consumePreferredDelta() : "";
+  }
+
+  private storeValue(target: Map<string, string>, key: string, value?: string) {
+    if (!value) {
+      return;
+    }
+
+    target.set(key, value);
+  }
+
+  private consumePreferredDelta() {
+    const next = this.getPreferredText();
+
+    if (!next || next === this.emittedText) {
+      return "";
+    }
+
+    if (!this.emittedText) {
+      this.emittedText = next;
+      return next;
+    }
+
+    if (next.startsWith(this.emittedText)) {
+      const delta = next.slice(this.emittedText.length);
+      this.emittedText = next;
+      return delta;
+    }
+
+    console.warn(
+      "[Responses API] Reasoning summary changed non-monotonically; skipping duplicate append",
+    );
+    return "";
+  }
+
+  private getPreferredText() {
+    const summaryText = this.joinOrdered(this.summaryParts);
+    const reasoningText = this.joinOrdered(this.reasoningParts);
+
+    if (this.preferSummary) {
+      return summaryText || reasoningText;
+    }
+
+    return reasoningText || summaryText;
+  }
+
+  private joinOrdered(parts: Map<string, string>) {
+    return Array.from(parts.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, text]) => text)
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
+  }
+
+  private makeKey(outputIndex?: number, subIndex?: number, itemId?: string) {
+    return `${String(outputIndex ?? 0).padStart(6, "0")}:${String(
+      subIndex ?? 0,
+    ).padStart(6, "0")}:${itemId ?? ""}`;
+  }
 }
 
 function buildStreamedImageResult(
@@ -504,7 +887,7 @@ export class ChatGPTApi implements LLMApi {
     if (res.error) {
       return "```\n" + JSON.stringify(res, null, 4) + "\n```";
     }
-    // dalle3 model return url, using url create image message
+    // Images API returns either url or b64_json image payloads.
     if (res.data) {
       let url = res.data?.at(0)?.url ?? "";
       const b64_json = res.data?.at(0)?.b64_json ?? "";
@@ -577,70 +960,165 @@ export class ChatGPTApi implements LLMApi {
       },
     };
 
-    const isDalle3 = _isDalle3(options.config.model);
-    const isO1OrO3 =
-      options.config.model.startsWith("o1") ||
-      options.config.model.startsWith("o3") ||
-      options.config.model.startsWith("o4-mini");
-    // GPT-5/GPT-5-mini 需要非流式请求（Responses API 限制）
-    // GPT-5.2-thinking 也需要特殊处理（支持深度推理）
-    const isGPT5OrMini =
-      options.config.model === "gpt-5" ||
-      options.config.model === "gpt-5-mini" ||
-      options.config.model === "gpt-5.2-thinking";
-
-    // GPT-5.2/5.4/5.5 系列模型
-    const isGPT5_2 =
-      options.config.model.startsWith("gpt-5.2") ||
-      options.config.model.startsWith("gpt-5.4") ||
-      options.config.model.startsWith("gpt-5.5");
-
+    const lowerModel = options.config.model.toLowerCase();
+    const isModernOpenAIImageModel = OPENAI_IMAGE_MODELS.some(
+      (model) => model === lowerModel,
+    );
     // Azure 仍使用 Chat Completions API（Responses API 可能尚不完全支持）
     const isAzure = modelConfig.providerName === ServiceProvider.Azure;
-    // 使用 Responses API: 非Azure、非DALL-E图像生成
-    const useResponsesApi = !isAzure && !isDalle3;
+    const isDalle3 = _isDalle3(options.config.model);
 
-    if (useResponsesApi) {
-      return this.chatWithResponses(
-        options,
-        modelConfig,
-        isO1OrO3,
-        isGPT5OrMini,
-      );
+    if (!isAzure && isModernOpenAIImageModel) {
+      return this.chatWithImagesApi(options, modelConfig);
+    }
+
+    if (!isAzure && !isDalle3) {
+      return this.chatWithResponses(options, modelConfig);
     } else {
-      return this.chatWithCompletions(
-        options,
-        modelConfig,
-        isDalle3,
-        isO1OrO3,
-        isGPT5OrMini,
+      return this.chatWithCompletions(options, modelConfig, isDalle3);
+    }
+  }
+
+  private async imageUrlToFile(imageUrl: string, index: number): Promise<File> {
+    const res = await globalThis.fetch(imageUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to load input image: ${res.status}`);
+    }
+
+    const blob = await res.blob();
+    const type = blob.type || "image/png";
+    const extension = type.split("/")[1] || "png";
+
+    return new File([blob], `image-${index}.${extension}`, {
+      type,
+    });
+  }
+
+  private async chatWithImagesApi(options: ChatOptions, modelConfig: any) {
+    const latestUserMessage = [...options.messages]
+      .reverse()
+      .find((message) => message.role === "user");
+    const prompt = getMessageTextContent(
+      latestUserMessage ?? (options.messages.slice(-1)?.pop() as any),
+    );
+    const imageUrls = latestUserMessage
+      ? getMessageImages(latestUserMessage)
+      : [];
+    const isEditRequest = imageUrls.length > 0;
+
+    const controller = new AbortController();
+    options.onController?.(controller);
+    let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      const chatPath = this.path(
+        isEditRequest ? OpenaiPath.ImageEditPath : OpenaiPath.ImagePath,
       );
+      const size = normalizeOpenAIImageApiSize(options.config?.size);
+      const quality = normalizeOpenAIImageApiQuality(options.config?.quality);
+      const background = normalizeOpenAIImageApiBackground(
+        modelConfig.imageBackground,
+        options.config.model,
+      );
+
+      let chatPayload: RequestInit;
+
+      if (isEditRequest) {
+        const formData = new FormData();
+        formData.append("model", options.config.model);
+        formData.append("prompt", prompt);
+        formData.append("size", size);
+        formData.append("quality", quality);
+        formData.append("output_format", "png");
+
+        if (background) {
+          formData.append("background", background);
+        }
+
+        const imageFiles = await Promise.all(
+          imageUrls.map((imageUrl, index) =>
+            this.imageUrlToFile(imageUrl, index),
+          ),
+        );
+
+        imageFiles.forEach((imageFile) => {
+          formData.append("image[]", imageFile);
+        });
+
+        chatPayload = {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+          headers: getHeaders(true),
+        };
+      } else {
+        const requestPayload: OpenAIImageRequestPayload = {
+          model: options.config.model,
+          prompt,
+          n: 1,
+          size,
+          quality,
+          output_format: "png",
+        };
+
+        if (_isDalle3(options.config.model)) {
+          requestPayload.style = options.config?.style ?? "vivid";
+        }
+
+        if (background) {
+          requestPayload.background = background;
+        }
+
+        chatPayload = {
+          method: "POST",
+          body: JSON.stringify(requestPayload),
+          signal: controller.signal,
+          headers: getHeaders(),
+        };
+      }
+
+      console.log("[Request] openai images payload:", {
+        model: options.config.model,
+        size,
+        quality,
+        background,
+        isEditRequest,
+        imageCount: imageUrls.length,
+      });
+
+      requestTimeoutId = setTimeout(
+        () => controller.abort(),
+        getTimeoutMSByModel(options.config.model),
+      );
+
+      const res = await fetch(chatPath, chatPayload);
+      clearTimeout(requestTimeoutId);
+
+      const resJson = (await res.json()) as OpenAIImageResponse;
+      const message = await this.extractMessage(resJson);
+      options.onFinish(message, res);
+    } catch (e) {
+      console.log("[Request] failed to make an images request", e);
+      options.onError?.(e as Error);
+    } finally {
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+      }
     }
   }
 
   // 使用 OpenAI Responses API 进行对话
-  private async chatWithResponses(
-    options: ChatOptions,
-    modelConfig: any,
-    isO1OrO3: boolean,
-    isGPT5OrMini: boolean,
-  ) {
+  private async chatWithResponses(options: ChatOptions, modelConfig: any) {
     const visionModel = isVisionModel(options.config.model);
     const isGPT5ImageGen = isGPT5ImageGenModel(options.config.model);
 
-    // 判断是否为 GPT-5.2/5.4/5.5 系列模型
-    const isGPT5_2 =
-      options.config.model.startsWith("gpt-5.2") ||
+    // 判断是否为 GPT-5.4/5.5 推理模型
+    const isGPT5ReasoningModel =
       options.config.model.startsWith("gpt-5.4") ||
       options.config.model.startsWith("gpt-5.5");
-    // GPT-5.2-thinking 和 gpt-5.2-pro 使用深度推理
-    const isGPT5_2Thinking =
-      options.config.model === "gpt-5.2-thinking" ||
-      options.config.model === "gpt-5.2-pro";
-    // GPT-5.2-instant 使用快速模式（支持 "none" 推理）
-    const isGPT5_2Instant = options.config.model === "gpt-5.2-instant";
-    // GPT-5.2-chat-latest 是动态别名，不支持 "none" 推理
-    const isGPT5_2ChatLatest = options.config.model === "gpt-5.2-chat-latest";
+    const isGPT5Pro =
+      options.config.model === "gpt-5.4-pro" ||
+      options.config.model === "gpt-5.5-pro";
 
     // 提取 system message 作为 instructions
     let instructions: string | undefined;
@@ -675,7 +1153,7 @@ export class ChatGPTApi implements LLMApi {
     const requestPayload: ResponsesRequestPayload = {
       model: modelConfig.model,
       input: inputMessages,
-      stream: !isGPT5OrMini && options.config.stream,
+      stream: options.config.stream,
     };
 
     // 添加 previous_response_id 用于多轮对话（如果提供）
@@ -692,87 +1170,57 @@ export class ChatGPTApi implements LLMApi {
       requestPayload.instructions = instructions;
     }
 
-    // GPT-5.2 系列模型参数设置
+    // GPT-5.4/5.5 系列模型参数设置
     // 重要：temperature 和 top_p 只在 reasoning effort 为 "none" 时支持
-    if (isGPT5_2) {
+    if (isGPT5ReasoningModel) {
       // 设置 max_output_tokens
       requestPayload.max_output_tokens = modelConfig.max_tokens;
+      requestPayload.text = {
+        ...(requestPayload.text ?? {}),
+        verbosity: modelConfig.textVerbosity || "medium",
+      };
 
       // 获取用户配置的推理级别，默认为 "auto"
       const userReasoningEffort = modelConfig.reasoningEffort || "auto";
+      const reasoningSummary = modelConfig.reasoningSummary || "auto";
 
       // 根据用户配置或模型默认值确定最终的推理级别
       let finalReasoningEffort: "none" | "low" | "medium" | "high" | "xhigh";
 
       // 定义不同模型支持的推理级别
-      // gpt-5.2-instant: 支持 none, low, medium（快速模式）
-      // gpt-5.2-chat-latest: 不支持 none，支持 low, medium, high（动态别名）
-      // gpt-5.2: 支持 none, low, medium, high
-      // gpt-5.2-thinking: 支持 low, medium, high, xhigh
-      // gpt-5.2-pro: 支持 medium, high, xhigh
+      // gpt-5.4 / gpt-5.5: 支持 none, low, medium, high, xhigh
+      // gpt-5.4-pro / gpt-5.5-pro: 支持 medium, high, xhigh
 
       if (userReasoningEffort === "auto") {
         // 自动模式：根据模型类型选择默认值
-        if (isGPT5_2Instant) {
-          // gpt-5.2-instant 默认使用 "none"
-          finalReasoningEffort = "none";
-        } else if (isGPT5_2ChatLatest) {
-          // gpt-5.2-chat-latest 是动态别名，不支持 none，默认使用 "low"
-          finalReasoningEffort = "low";
-        } else if (options.config.model === "gpt-5.2-pro") {
-          // gpt-5.2-pro 默认使用 "xhigh"
-          finalReasoningEffort = "xhigh";
-        } else if (options.config.model === "gpt-5.2-thinking") {
-          // gpt-5.2-thinking 默认使用 "high"
-          finalReasoningEffort = "high";
-        } else if (options.config.model === "gpt-5.4-mini") {
+        if (options.config.model === "gpt-5.4-mini") {
           // gpt-5.4-mini 默认使用 "low"（轻量版本）
           finalReasoningEffort = "low";
         } else {
-          // gpt-5.2 / gpt-5.4 / gpt-5.5 默认使用 "medium"
+          // gpt-5.4 / gpt-5.5 默认使用 "medium"
           finalReasoningEffort = "medium";
         }
         console.log(
-          `[GPT-5.2] Auto reasoning effort for ${options.config.model}: ${finalReasoningEffort}`,
+          `[GPT-5] Auto reasoning effort for ${options.config.model}: ${finalReasoningEffort}`,
         );
       } else {
         // 用户明确指定了推理级别，需要验证是否支持
-        if (options.config.model === "gpt-5.2-pro") {
-          // gpt-5.2-pro 不支持 "none" 和 "low"
+        if (isGPT5Pro) {
+          // GPT-5 Pro 不支持 "none" 和 "low"
           if (userReasoningEffort === "none" || userReasoningEffort === "low") {
             finalReasoningEffort = "medium"; // 升级到 medium
             console.warn(
-              `[GPT-5.2 Pro] '${userReasoningEffort}' not supported, falling back to 'medium'`,
-            );
-          } else {
-            finalReasoningEffort = userReasoningEffort;
-          }
-        } else if (options.config.model === "gpt-5.2-thinking") {
-          // gpt-5.2-thinking 不支持 "none"
-          if (userReasoningEffort === "none") {
-            finalReasoningEffort = "low"; // 升级到 low
-            console.warn(
-              `[GPT-5.2 Thinking] 'none' not supported, falling back to 'low'`,
-            );
-          } else {
-            finalReasoningEffort = userReasoningEffort;
-          }
-        } else if (isGPT5_2ChatLatest) {
-          // gpt-5.2-chat-latest 不支持 "none"（API 明确返回错误）
-          if (userReasoningEffort === "none") {
-            finalReasoningEffort = "low"; // 升级到 low
-            console.warn(
-              `[GPT-5.2 Chat Latest] 'none' not supported, falling back to 'low'`,
+              `[GPT-5 Pro] '${userReasoningEffort}' not supported, falling back to 'medium'`,
             );
           } else {
             finalReasoningEffort = userReasoningEffort;
           }
         } else {
-          // 其他 GPT-5.2 模型支持所有级别
+          // 其他 GPT-5.4/5.5 模型支持所有级别
           finalReasoningEffort = userReasoningEffort;
         }
         console.log(
-          `[GPT-5.2] User specified reasoning effort: ${finalReasoningEffort}`,
+          `[GPT-5] User specified reasoning effort: ${finalReasoningEffort}`,
         );
       }
 
@@ -786,28 +1234,17 @@ export class ChatGPTApi implements LLMApi {
         requestPayload.temperature = modelConfig.temperature;
         requestPayload.top_p = modelConfig.top_p;
         console.log(
-          "[GPT-5.2] Reasoning effort 'none': temperature and top_p enabled",
+          "[GPT-5] Reasoning effort 'none': temperature and top_p enabled",
         );
       } else {
         // 非 "none" 级别添加 summary 并删除不支持的参数
-        requestPayload.reasoning.summary = "auto";
+        requestPayload.reasoning.summary = reasoningSummary;
         delete requestPayload.temperature;
         delete requestPayload.top_p;
         console.log(
-          `[GPT-5.2] Reasoning effort '${finalReasoningEffort}': temperature and top_p disabled`,
+          `[GPT-5] Reasoning effort '${finalReasoningEffort}' with summary '${reasoningSummary}': temperature and top_p disabled`,
         );
       }
-    }
-    // O1/O3 模型设置 reasoning 参数
-    else if (isO1OrO3) {
-      requestPayload.max_output_tokens = modelConfig.max_tokens;
-      requestPayload.reasoning = {
-        effort: "medium",
-        summary: "auto",
-      };
-      // O1/O3 不支持 temperature 和 top_p
-      delete requestPayload.temperature;
-      delete requestPayload.top_p;
     }
     // 其他模型（非推理模型）设置温度等参数
     else {
@@ -840,7 +1277,7 @@ export class ChatGPTApi implements LLMApi {
       }));
     }
 
-    // GPT-5.2 系列模型添加 image_generation 工具支持
+    // GPT-5.4/5.5 系列模型添加 image_generation 工具支持
     // 当启用 enableImageGeneration 时，模型可以生成图像
     if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
       const shouldEditImage = latestUserInputImageCount > 0;
@@ -861,14 +1298,14 @@ export class ChatGPTApi implements LLMApi {
       }
       requestPayload.tools.push(imageGenTool);
       console.log(
-        "[GPT-5.2] Added image_generation tool with config:",
+        "[GPT-5] Added image_generation tool with config:",
         imageGenTool,
       );
     }
 
-    // GPT-5.2 系列模型添加 web_search 内置工具支持
+    // GPT-5.4/5.5 系列模型添加 web_search 内置工具支持
     // 当启用 web_search 时，模型可以自动搜索网络获取最新信息
-    if (isGPT5_2 && modelConfig.enableWebSearch) {
+    if (isGPT5ReasoningModel && modelConfig.enableWebSearch) {
       const webSearchTool: ResponsesWebSearchTool = {
         type: "web_search",
         // 设置用户位置信息，优化地理位置相关搜索
@@ -884,15 +1321,12 @@ export class ChatGPTApi implements LLMApi {
         requestPayload.tools = [];
       }
       requestPayload.tools.push(webSearchTool);
-      console.log(
-        "[GPT-5.2] Added web_search tool with config:",
-        webSearchTool,
-      );
+      console.log("[GPT-5] Added web_search tool with config:", webSearchTool);
     }
 
-    // GPT-5.2 系列模型添加 code_interpreter 内置工具支持
+    // GPT-5.4/5.5 系列模型添加 code_interpreter 内置工具支持
     // 当启用 code_interpreter 时，模型可以执行 Python 代码进行计算和数据分析
-    if (isGPT5_2 && modelConfig.enableCodeInterpreter) {
+    if (isGPT5ReasoningModel && modelConfig.enableCodeInterpreter) {
       const codeInterpreterTool: ResponsesCodeInterpreterTool = {
         type: "code_interpreter",
       };
@@ -901,14 +1335,14 @@ export class ChatGPTApi implements LLMApi {
         requestPayload.tools = [];
       }
       requestPayload.tools.push(codeInterpreterTool);
-      console.log("[GPT-5.2] Added code_interpreter tool");
+      console.log("[GPT-5] Added code_interpreter tool");
     }
 
-    // GPT-5.2 系列模型添加 file_search 内置工具支持
+    // GPT-5.4/5.5 系列模型添加 file_search 内置工具支持
     // 当启用 file_search 时，模型可以在矢量存储中搜索文档
     // 注意: 需要先创建 vector store 并配置 vectorStoreIds
     if (
-      isGPT5_2 &&
+      isGPT5ReasoningModel &&
       modelConfig.enableFileSearch &&
       modelConfig.vectorStoreIds?.length
     ) {
@@ -922,27 +1356,31 @@ export class ChatGPTApi implements LLMApi {
       }
       requestPayload.tools.push(fileSearchTool);
       console.log(
-        "[GPT-5.2] Added file_search tool with vector stores:",
+        "[GPT-5] Added file_search tool with vector stores:",
         modelConfig.vectorStoreIds,
       );
     }
 
-    // GPT-5.2 系列模型工具配置
+    // GPT-5.4/5.5 系列模型工具配置
     // 注意：根据 OpenAI 官方文档，GPT-5 系列模型在 Responses API 中
     // 只支持 tool_choice: "auto"，其他值（如 "required"、"none"）会报错
     // 因此不再显式设置 tool_choice，让 API 使用默认值 "auto"
     // 参考: https://github.com/openai/openai-python/issues/2537
-    if (isGPT5_2 && requestPayload.tools && requestPayload.tools.length > 0) {
+    if (
+      isGPT5ReasoningModel &&
+      requestPayload.tools &&
+      requestPayload.tools.length > 0
+    ) {
       console.log(
-        "[GPT-5.2] Configured",
+        "[GPT-5] Configured",
         requestPayload.tools.length,
         "tools (tool_choice defaults to 'auto')",
       );
     }
 
-    // GPT-5.2 系列模型添加 include 参数
+    // GPT-5.4/5.5 系列模型添加 include 参数
     // include 参数用于指定响应中要包含的额外数据，与工具配置分开处理
-    if (isGPT5_2) {
+    if (isGPT5ReasoningModel) {
       // 添加 include 参数以获取工具调用的详细输出
       // 根据启用的工具类型和推理模式动态添加对应的 include 值
       const includeItems: ResponsesIncludable[] = [];
@@ -964,13 +1402,13 @@ export class ChatGPTApi implements LLMApi {
       if (hasReasoningEnabled) {
         includeItems.push("reasoning.encrypted_content");
         console.log(
-          "[GPT-5.2] Reasoning mode enabled, adding reasoning.encrypted_content",
+          "[GPT-5] Reasoning mode enabled, adding reasoning.encrypted_content",
         );
       }
 
       if (includeItems.length > 0) {
         requestPayload.include = includeItems;
-        console.log("[GPT-5.2] Added include items:", includeItems);
+        console.log("[GPT-5] Added include items:", includeItems);
       }
 
       // 设置 store 为 true 以便后续检索响应
@@ -985,7 +1423,11 @@ export class ChatGPTApi implements LLMApi {
       console.log("[Request] openai responses payload: ", requestPayload);
     }
 
-    const shouldStream = !isGPT5OrMini && !!options.config.stream;
+    const shouldStream = !!options.config.stream;
+    const shouldPreferReasoningSummary =
+      requestPayload.reasoning?.effort !== undefined &&
+      requestPayload.reasoning.effort !== "none" &&
+      requestPayload.reasoning.summary !== "none";
     const controller = new AbortController();
     options.onController?.(controller);
     let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -995,6 +1437,9 @@ export class ChatGPTApi implements LLMApi {
 
       if (shouldStream) {
         let toolIndex = -1;
+        const reasoningNormalizer = new ResponsesReasoningNormalizer(
+          shouldPreferReasoningSummary,
+        );
         // 使用 streamWithThink 处理流式响应
         streamWithThink(
           chatPath,
@@ -1016,12 +1461,59 @@ export class ChatGPTApi implements LLMApi {
                 };
               }
 
-              // 处理推理/思考内容增量
+              // 处理推理摘要增量
               if (event.type === "response.reasoning_summary_text.delta") {
-                return {
-                  isThinking: true,
-                  content: event.delta || "",
-                };
+                const content = reasoningNormalizer.appendSummary(
+                  event,
+                  event.delta,
+                );
+                return { isThinking: true, content };
+              }
+
+              // 处理推理摘要完成态
+              if (event.type === "response.reasoning_summary_text.done") {
+                const content = reasoningNormalizer.replaceSummary(
+                  event,
+                  event.text,
+                );
+                return { isThinking: true, content };
+              }
+
+              // 兼容 summary part 事件
+              if (
+                event.type === "response.reasoning_summary_part.added" ||
+                event.type === "response.reasoning_summary_part.done"
+              ) {
+                const content = reasoningNormalizer.replaceSummary(
+                  event,
+                  event.part?.type === "summary_text" ? event.part.text : "",
+                );
+                return { isThinking: true, content };
+              }
+
+              // 兼容 reasoning text 事件，作为 summary 不可用时的回退
+              if (event.type === "response.reasoning_text.delta") {
+                const content = reasoningNormalizer.appendReasoning(
+                  {
+                    output_index: event.output_index,
+                    content_index: event.content_index,
+                    item_id: event.item_id,
+                  },
+                  event.delta,
+                );
+                return { isThinking: true, content };
+              }
+
+              if (event.type === "response.reasoning_text.done") {
+                const content = reasoningNormalizer.replaceReasoning(
+                  {
+                    output_index: event.output_index,
+                    content_index: event.content_index,
+                    item_id: event.item_id,
+                  },
+                  event.text,
+                );
+                return { isThinking: true, content };
               }
 
               // 处理 function call 参数增量
@@ -1045,39 +1537,60 @@ export class ChatGPTApi implements LLMApi {
 
               // 处理 output item 完成（用于解析 function call 和 image_generation_call）
               if (event.type === "response.output_item.done") {
-                const response = event.response;
-                if (response?.output) {
-                  for (const item of response.output) {
-                    if (
-                      item.type === "function_call" &&
-                      item.name &&
-                      item.call_id
-                    ) {
-                      toolIndex += 1;
-                      runTools.push({
-                        id: item.call_id,
-                        type: "function",
-                        function: {
-                          name: item.name,
-                          arguments: item.arguments || "",
-                        },
-                      });
-                    }
-                    // 处理图像生成完成 - 在流式模式下也可能通过这里返回
-                    if (item.type === "image_generation_call" && item.result) {
-                      console.log(
-                        "[GPT-5.2] Image generation completed in stream",
-                      );
-                      // 图像将在 response.completed 时统一处理
-                    }
+                const item =
+                  event.item ??
+                  (typeof event.output_index === "number"
+                    ? event.response?.output?.[event.output_index]
+                    : undefined);
+                const chunks: Array<{
+                  isThinking: boolean;
+                  content: string | MultimodalContent[];
+                }> = [];
+
+                if (item?.type === "reasoning") {
+                  const content = reasoningNormalizer.hydrateFromItem(
+                    item,
+                    event.output_index,
+                  );
+                  if (content) {
+                    chunks.push({ isThinking: true, content });
                   }
                 }
+
+                if (
+                  item?.type === "function_call" &&
+                  item.name &&
+                  item.call_id
+                ) {
+                  toolIndex += 1;
+                  runTools.push({
+                    id: item.call_id,
+                    type: "function",
+                    function: {
+                      name: item.name,
+                      arguments: item.arguments || "",
+                    },
+                  });
+                }
+
+                if (item?.type === "image_generation_call" && item.result) {
+                  console.log("[GPT-5] Image generation completed in stream");
+                }
+
+                if (chunks.length === 1) {
+                  return chunks[0];
+                }
+
+                if (chunks.length > 1) {
+                  return chunks;
+                }
+
                 return { isThinking: false, content: "" };
               }
 
               // 处理图像生成进行中事件
               if (event.type === "response.image_generation_call.generating") {
-                console.log("[GPT-5.2] Image generation in progress...");
+                console.log("[GPT-5] Image generation in progress...");
                 return {
                   isThinking: false,
                   content: "\n🎨 正在生成图像...\n",
@@ -1089,7 +1602,7 @@ export class ChatGPTApi implements LLMApi {
                 event.type === "response.image_generation_call.done" &&
                 event.result
               ) {
-                console.log("[GPT-5.2] Image generation completed");
+                console.log("[GPT-5] Image generation completed");
                 // 返回标记，实际图像处理在 response.completed 中进行
                 return {
                   isThinking: false,
@@ -1148,10 +1661,25 @@ export class ChatGPTApi implements LLMApi {
                 // 如果有 citations，通过回调传递给 UI
                 if (collectedCitations.length > 0 && options.onCitations) {
                   console.log(
-                    "[GPT-5.2 web_search] Extracted citations:",
+                    "[GPT-5 web_search] Extracted citations:",
                     collectedCitations,
                   );
                   options.onCitations(collectedCitations);
+                }
+
+                const finalThinkingContent =
+                  reasoningNormalizer.hydrateFromOutput(event.response.output);
+
+                const completionChunks: Array<{
+                  isThinking: boolean;
+                  content: string | MultimodalContent[];
+                }> = [];
+
+                if (finalThinkingContent) {
+                  completionChunks.push({
+                    isThinking: true,
+                    content: finalThinkingContent,
+                  });
                 }
 
                 const streamedImageResult = buildStreamedImageResult(
@@ -1159,12 +1687,20 @@ export class ChatGPTApi implements LLMApi {
                 );
                 if (streamedImageResult) {
                   console.log(
-                    "[GPT-5.2] Returning streamed image generation result",
+                    "[GPT-5] Returning streamed image generation result",
                   );
-                  return {
+                  completionChunks.push({
                     isThinking: false,
                     content: streamedImageResult,
-                  };
+                  });
+                }
+
+                if (completionChunks.length === 1) {
+                  return completionChunks[0];
+                }
+
+                if (completionChunks.length > 1) {
+                  return completionChunks;
                 }
 
                 return { isThinking: false, content: "" };
@@ -1234,6 +1770,13 @@ export class ChatGPTApi implements LLMApi {
         clearTimeout(requestTimeoutId);
 
         const resJson = (await res.json()) as ResponsesResponse;
+        const thinkingContent = extractResponsesThinkingContent(
+          resJson.output,
+          shouldPreferReasoningSummary,
+        );
+        if (thinkingContent) {
+          options.onThinkingUpdate?.(thinkingContent, thinkingContent);
+        }
         // 非流式请求也要回调 response id
         if (resJson.id) {
           console.log("[Responses API] Non-stream response id:", resJson.id);
@@ -1271,7 +1814,7 @@ export class ChatGPTApi implements LLMApi {
         // 如果有 citations，通过回调传递给 UI
         if (collectedCitations.length > 0 && options.onCitations) {
           console.log(
-            "[GPT-5.2 web_search] Extracted citations (non-stream):",
+            "[GPT-5 web_search] Extracted citations (non-stream):",
             collectedCitations,
           );
           options.onCitations(collectedCitations);
@@ -1318,9 +1861,9 @@ export class ChatGPTApi implements LLMApi {
                 url: imageUrl,
               },
             });
-            console.log("[GPT-5.2] Image generated and uploaded:", imageUrl);
+            console.log("[GPT-5] Image generated and uploaded:", imageUrl);
           } catch (e) {
-            console.error("[GPT-5.2] Failed to process generated image:", e);
+            console.error("[GPT-5] Failed to process generated image:", e);
             // 如果上传失败，使用 data URL
             imageResults.push({
               type: "image_url",
@@ -1372,13 +1915,11 @@ export class ChatGPTApi implements LLMApi {
     return "";
   }
 
-  // 使用传统 Chat Completions API（用于 Azure 和 DALL-E）
+  // 使用传统 Chat Completions API（用于 Azure 文本对话和 Azure DALL-E）
   private async chatWithCompletions(
     options: ChatOptions,
     modelConfig: any,
     isDalle3: boolean,
-    isO1OrO3: boolean,
-    isGPT5OrMini: boolean,
   ) {
     let requestPayload: RequestPayload | DalleRequestPayload;
 
@@ -1392,7 +1933,7 @@ export class ChatGPTApi implements LLMApi {
         response_format: "b64_json",
         n: 1,
         size: options.config?.size ?? "1024x1024",
-        quality: options.config?.quality ?? "standard",
+        quality: normalizeDalleQuality(options.config?.quality),
         style: options.config?.style ?? "vivid",
       };
     } else {
@@ -1402,32 +1943,27 @@ export class ChatGPTApi implements LLMApi {
         const content = visionModel
           ? await preProcessImageContent(v.content)
           : getMessageTextContent(v);
-        if (!(isO1OrO3 && v.role === "system"))
-          messages.push({ role: v.role, content });
+        messages.push({ role: v.role, content });
       }
 
       requestPayload = {
         messages,
-        stream: !isGPT5OrMini && options.config.stream,
+        stream: options.config.stream,
         model: modelConfig.model,
-        temperature: !isO1OrO3 ? modelConfig.temperature : 1,
-        presence_penalty: !isO1OrO3 ? modelConfig.presence_penalty : 0,
-        frequency_penalty: !isO1OrO3 ? modelConfig.frequency_penalty : 0,
-        top_p: !isO1OrO3 ? modelConfig.top_p : 1,
+        temperature: modelConfig.temperature,
+        presence_penalty: modelConfig.presence_penalty,
+        frequency_penalty: modelConfig.frequency_penalty,
+        top_p: modelConfig.top_p,
       };
 
-      if (isO1OrO3) {
-        requestPayload["max_completion_tokens"] = modelConfig.max_tokens;
-      }
-
-      if (visionModel && !isO1OrO3) {
+      if (visionModel) {
         requestPayload["max_tokens"] = Math.max(modelConfig.max_tokens, 4000);
       }
     }
 
     console.log("[Request] openai completions payload: ", requestPayload);
 
-    const shouldStream = !isDalle3 && !isGPT5OrMini && !!options.config.stream;
+    const shouldStream = !isDalle3 && !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
     let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -1653,8 +2189,8 @@ export class ChatGPTApi implements LLMApi {
     });
 
     const resJson = (await res.json()) as OpenAIListModelResponse;
-    const chatModels = resJson.data?.filter(
-      (m) => m.id.startsWith("gpt-") || m.id.startsWith("chatgpt-"),
+    const chatModels = resJson.data?.filter((m) =>
+      allowedOpenAIModels.has(m.id),
     );
     console.log("[Models]", chatModels);
 
