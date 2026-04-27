@@ -588,7 +588,7 @@ const en: LocaleType = {
     ReasoningEffort: {
       Title: "Reasoning Effort",
       SubTitle:
-        "Controls the depth of reasoning for GPT-5.2/5.4/5.5 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
+        "Controls the depth of reasoning for GPT-5.4/5.5 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
       Options: {
         Auto: "Auto (default)",
         None: "None (fast)",
@@ -598,10 +598,30 @@ const en: LocaleType = {
         XHigh: "XHigh (deepest)",
       },
     },
-    GPT5Tools: {
-      Title: "GPT-5.2/5.4/5.5 Built-in Tools",
+    ReasoningSummary: {
+      Title: "Reasoning Summary",
       SubTitle:
-        "Enable built-in tool features for GPT-5.2/5.4/5.5 series models",
+        "Controls how GPT-5 reasoning summaries are shown in the thinking panel. Only applies when reasoning effort is not none.",
+      Options: {
+        Auto: "Auto",
+        None: "None",
+        Concise: "Concise",
+        Detailed: "Detailed",
+      },
+    },
+    TextVerbosity: {
+      Title: "Text Verbosity",
+      SubTitle:
+        "Controls how concise or detailed the final GPT-5 response should be.",
+      Options: {
+        Low: "Low",
+        Medium: "Medium",
+        High: "High",
+      },
+    },
+    GPT5Tools: {
+      Title: "GPT-5.4/5.5 Built-in Tools",
+      SubTitle: "Enable built-in tool features for GPT-5.4/5.5 series models",
       EnableWebSearch: {
         Title: "Web Search",
         SubTitle:
@@ -667,6 +687,34 @@ const en: LocaleType = {
           None: "Disabled",
           Required: "Required",
         },
+      },
+    },
+    ImageModel: {
+      Size: {
+        Title: "Image Size",
+        SubTitle: "Set the output size for image generation models",
+      },
+      Quality: {
+        Title: "Image Quality",
+        SubTitle: "Set the rendering quality for image generation models",
+      },
+      Style: {
+        Title: "Image Style",
+        SubTitle: "Only applies to DALL-E 3 style presets",
+      },
+      Background: {
+        Title: "Image Background",
+        SubTitle:
+          "Set the output background for gpt-image-2. Transparent output is currently unsupported.",
+        Options: {
+          Auto: "Auto",
+          Opaque: "Opaque",
+        },
+      },
+      Moderation: {
+        Title: "Moderation",
+        SubTitle:
+          "Control gpt-image-2 moderation strictness. auto is the official default; low is less restrictive.",
       },
     },
     TTS: {

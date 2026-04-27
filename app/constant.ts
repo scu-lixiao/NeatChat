@@ -175,6 +175,7 @@ export const OpenaiPath = {
   ResponsesPath: "v1/responses", // OpenAI Responses API - 推荐用于多轮对话
   SpeechPath: "v1/audio/speech",
   ImagePath: "v1/images/generations",
+  ImageEditPath: "v1/images/edits",
   UsagePath: "dashboard/billing/usage",
   SubsPath: "dashboard/billing/subscription",
   ListModelPath: "v1/models",
@@ -287,12 +288,28 @@ Latex block: $$e=mc^2$$
 
 // MCP模板常量已移除 - 生产环境清理
 
-export const SUMMARIZE_MODEL = "gpt-4o-mini";
+export const OPENAI_REASONING_MODELS = [
+  "gpt-5.4",
+  "gpt-5.4-mini",
+  "gpt-5.4-pro",
+  "gpt-5.5",
+  "gpt-5.5-pro",
+] as const;
+
+export const OPENAI_IMAGE_MODELS = ["gpt-image-2"] as const;
+
+export const DEFAULT_OPENAI_MODEL = OPENAI_REASONING_MODELS[0];
+export const SUMMARIZE_MODEL = OPENAI_REASONING_MODELS[1];
 export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";
 export const DEEPSEEK_SUMMARIZE_MODEL = "deepseek-chat";
 
 export const KnowledgeCutOffDate: Record<string, string> = {
   default: "2021-09",
+  "gpt-5.4": "2025-08",
+  "gpt-5.4-mini": "2025-08",
+  "gpt-5.4-pro": "2025-08",
+  "gpt-5.5": "2025-12",
+  "gpt-5.5-pro": "2025-12",
   "gpt-4-turbo": "2023-12",
   "gpt-4-turbo-2024-04-09": "2023-12",
   "gpt-4-turbo-preview": "2023-12",
@@ -309,8 +326,6 @@ export const KnowledgeCutOffDate: Record<string, string> = {
   "gpt-4o-2024-08-06": "2023-10",
   "gpt-4o-2024-11-20": "2023-10",
   "chatgpt-4o-latest": "2023-10",
-  "gpt-4o-mini": "2023-10",
-  "gpt-4o-mini-2024-07-18": "2023-10",
   "gpt-4-vision-preview": "2023-04",
   "o1-mini-2024-09-12": "2023-10",
   "o1-mini": "2023-10",
@@ -367,64 +382,15 @@ export const VISION_MODEL_REGEXES = [
   /gpt-5\.1/,
   /gpt-5\.2/,
   /gpt-5\.4/,
+  /^gpt-image-2$/,
   /grok-4/,
   /grok-4-1/,
 ];
 
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
 
-const openaiModels = [
-  // As of July 2024, gpt-4o-mini should be used in place of gpt-3.5-turbo,
-  // as it is cheaper, more capable, multimodal, and just as fast. gpt-3.5-turbo is still available for use in the API.
-  "gpt-3.5-turbo",
-  "gpt-3.5-turbo-1106",
-  "gpt-3.5-turbo-0125",
-  "gpt-4",
-  "gpt-4-0613",
-  "gpt-4-32k",
-  "gpt-4-32k-0613",
-  "gpt-4-turbo",
-  "gpt-4-turbo-preview",
-  "gpt-4.1",
-  "gpt-4.1-2025-04-14",
-  "gpt-4.1-mini",
-  "gpt-4.1-mini-2025-04-14",
-  "gpt-4.1-nano",
-  "gpt-4.1-nano-2025-04-14",
-  "gpt-4.5-preview",
-  "gpt-4.5-preview-2025-02-27",
-  "gpt-4o",
-  "gpt-4o-2024-05-13",
-  "gpt-4o-2024-08-06",
-  "gpt-4o-2024-11-20",
-  "chatgpt-4o-latest",
-  "gpt-4o-mini",
-  "gpt-4o-mini-2024-07-18",
-  "gpt-4-vision-preview",
-  "gpt-4-turbo-2024-04-09",
-  "gpt-4-1106-preview",
-  "gpt-5",
-  "gpt-5-mini",
-  "gpt-5-nano",
-  "gpt-5-chat-latest",
-  "gpt-5.1",
-  "gpt-5.2",
-  "gpt-5.2-instant",
-  "gpt-5.2-chat-latest",
-  "gpt-5.2-thinking",
-  "gpt-5.2-pro",
-  "gpt-5.4",
-  "gpt-5.4-mini",
-  "gpt-5.5",
-  "gpt-5.5-pro",
-  "dall-e-3",
-  "o1-mini",
-  "o1-preview",
-  "o3-mini",
-  "o3",
-  "o3-pro",
-  "o4-mini",
-];
+const openaiModels = [...OPENAI_REASONING_MODELS, ...OPENAI_IMAGE_MODELS];
+const azureModels = OPENAI_REASONING_MODELS;
 
 const googleModels = [
   "gemini-3-pro-preview",
@@ -500,7 +466,7 @@ export const DEFAULT_MODELS = [
       sorted: 1, // 这里是固定的，确保顺序与之前内置的版本一致
     },
   })),
-  ...openaiModels.map((name) => ({
+  ...azureModels.map((name) => ({
     name,
     available: true,
     sorted: seq++,

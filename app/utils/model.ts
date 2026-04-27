@@ -207,14 +207,13 @@ export function isModelAvailableInServer(
  * Check if the model name is a GPT-4 related model
  *
  * @param modelName The name of the model to check
- * @returns True if the model is a GPT-4 related model (excluding gpt-4o-mini)
+ * @returns True if the model belongs to the GPT-4 / 4o / o1 family
  */
 export function isGPT4Model(modelName: string): boolean {
   return (
-    (modelName.startsWith("gpt-4") ||
-      modelName.startsWith("chatgpt-4o") ||
-      modelName.startsWith("o1")) &&
-    !modelName.startsWith("gpt-4o-mini")
+    modelName.startsWith("gpt-4") ||
+    modelName.startsWith("chatgpt-4o") ||
+    modelName.startsWith("o1")
   );
 }
 

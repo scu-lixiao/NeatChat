@@ -1467,18 +1467,29 @@ export class ChatGPTApi implements LLMApi {
     // 当启用 enableImageGeneration 时，模型可以生成图像
     if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
       const shouldEditImage = latestUserInputImageCount > 0;
+      const imageGenerationQuality = normalizeResponsesImageGenerationQuality(
+        options.config?.quality,
+      );
+      const imageGenerationBackground = modelConfig.imageBackground || "auto";
+      const imageGenerationModeration = modelConfig.moderation || "auto";
       const imageGenTool: ResponsesImageGenerationTool = {
         type: "image_generation",
-        action: shouldEditImage ? "edit" : "auto",
-        moderation: modelConfig.moderation || "auto",
-        quality: normalizeResponsesImageGenerationQuality(
-          options.config?.quality,
-        ),
         size: normalizeResponsesImageGenerationSize(options.config?.size),
-        // 支持透明背景图像生成（根据模型配置）
-        background: modelConfig.imageBackground || "auto",
-        output_format: "png",
       };
+
+      if (shouldEditImage) {
+        imageGenTool.action = "edit";
+      }
+      if (imageGenerationModeration !== "auto") {
+        imageGenTool.moderation = imageGenerationModeration;
+      }
+      if (imageGenerationQuality !== "auto") {
+        imageGenTool.quality = imageGenerationQuality;
+      }
+      if (imageGenerationBackground !== "auto") {
+        // 仅在用户显式覆盖默认值时发送背景设置。
+        imageGenTool.background = imageGenerationBackground;
+      }
 
       if (!requestPayload.tools) {
         requestPayload.tools = [];
@@ -1588,15 +1599,18 @@ export class ChatGPTApi implements LLMApi {
       if (modelConfig.enableFileSearch && modelConfig.vectorStoreIds?.length) {
         includeItems.push("file_search_call.results");
       }
-      // 当启用推理模式时（reasoning effort 不为 "none"），添加推理内容
-      // 检查 requestPayload.reasoning?.effort 来确定是否处于推理模式
+      // 仅在无状态续传场景请求加密推理内容。
+      // OpenAI 官方文档将 reasoning.encrypted_content 定位为 store=false/ZDR
+      // 等 stateless handoff 场景下保留并回传推理内容的能力。
       const hasReasoningEnabled =
         requestPayload.reasoning?.effort &&
         requestPayload.reasoning.effort !== "none";
-      if (hasReasoningEnabled) {
+      const shouldIncludeEncryptedReasoning =
+        hasReasoningEnabled && requestPayload.store === false;
+      if (shouldIncludeEncryptedReasoning) {
         includeItems.push("reasoning.encrypted_content");
         console.log(
-          "[GPT-5] Reasoning mode enabled, adding reasoning.encrypted_content",
+          "[GPT-5] Stateless reasoning mode enabled, adding reasoning.encrypted_content",
         );
       }
 

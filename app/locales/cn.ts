@@ -581,7 +581,7 @@ const cn = {
     ReasoningEffort: {
       Title: "推理深度 (reasoning_effort)",
       SubTitle:
-        "控制 GPT-5.2/5.4/5.5 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
+        "控制 GPT-5.4/5.5 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
       Options: {
         Auto: "自动 (默认)",
         None: "无 (快速)",
@@ -591,9 +591,29 @@ const cn = {
         XHigh: "极高 (最深)",
       },
     },
+    ReasoningSummary: {
+      Title: "推理摘要 (reasoning.summary)",
+      SubTitle:
+        "控制 GPT-5 推理摘要在思考窗口中的输出方式。仅在推理深度不为 none 时生效。",
+      Options: {
+        Auto: "自动",
+        None: "关闭",
+        Concise: "简洁",
+        Detailed: "详细",
+      },
+    },
+    TextVerbosity: {
+      Title: "输出详略 (text.verbosity)",
+      SubTitle: "控制 GPT-5 最终文本回复的篇幅与展开程度。",
+      Options: {
+        Low: "简短",
+        Medium: "标准",
+        High: "详细",
+      },
+    },
     GPT5Tools: {
-      Title: "GPT-5.2/5.4/5.5 内置工具",
-      SubTitle: "启用 GPT-5.2/5.4/5.5 系列模型的内置工具功能",
+      Title: "GPT-5.4/5.5 内置工具",
+      SubTitle: "启用 GPT-5.4/5.5 系列模型的内置工具功能",
       EnableWebSearch: {
         Title: "网络搜索",
         SubTitle: "允许模型搜索互联网获取最新信息，搜索结果将包含引用来源",
@@ -653,6 +673,32 @@ const cn = {
           None: "禁用",
           Required: "强制使用",
         },
+      },
+    },
+    ImageModel: {
+      Size: {
+        Title: "图像尺寸",
+        SubTitle: "设置图像生成模型的输出尺寸",
+      },
+      Quality: {
+        Title: "图像质量",
+        SubTitle: "设置图像生成模型的渲染质量",
+      },
+      Style: {
+        Title: "图像风格",
+        SubTitle: "仅对 DALL-E 3 的风格预设生效",
+      },
+      Background: {
+        Title: "图像背景",
+        SubTitle: "设置 gpt-image-2 的输出背景，目前不支持透明背景。",
+        Options: {
+          Auto: "自动",
+          Opaque: "不透明",
+        },
+      },
+      Moderation: {
+        Title: "内容审核",
+        SubTitle: "控制 gpt-image-2 的审核强度。auto 为官方默认，low 更宽松。",
       },
     },
     TTS: {

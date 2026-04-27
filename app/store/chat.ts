@@ -1,6 +1,6 @@
 import {
   getMessageTextContent,
-  isDalle3,
+  isOpenAIImagesApiModel,
   safeLocalStorage,
   trimTopic,
 } from "../utils";
@@ -254,7 +254,7 @@ function getSummarizeModel(
   currentModel: string,
   providerName: string,
 ): string[] {
-  // if it is using gpt-* models, force to use 4o-mini to summarize
+  // For GPT conversations, prefer the dedicated lightweight summarize model.
   if (currentModel.startsWith("gpt") || currentModel.startsWith("chatgpt")) {
     const configStore = useAppConfig.getState();
     const accessStore = useAccessStore.getState();
@@ -998,8 +998,8 @@ export const useChatStore = createPersistStore(
         const config = useAppConfig.getState();
         const session = targetSession;
         const modelConfig = session.mask.modelConfig;
-        // skip summarize when using dalle3?
-        if (isDalle3(modelConfig.model)) {
+        // skip summarize for image-only models handled by the OpenAI Images API
+        if (isOpenAIImagesApiModel(modelConfig.model)) {
           return;
         }
 

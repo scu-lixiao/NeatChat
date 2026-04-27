@@ -79,6 +79,7 @@ import {
   getMessageImages,
   getMessageTextContent,
   isDalle3,
+  isOpenAIImagesApiModel,
   isVisionModel,
   safeLocalStorage,
   getModelSizes,
@@ -93,7 +94,12 @@ import { uploadImage as uploadImageRemote } from "@/app/utils/chat";
 import dynamic from "next/dynamic";
 
 import { ChatControllerPool } from "../client/controller";
-import { DalleQuality, DalleStyle, ModelSize } from "../typing";
+import {
+  DalleQuality,
+  DalleStyle,
+  ModelSize,
+  OpenAIImageQuality,
+} from "../typing";
 import { Prompt, usePromptStore } from "../store/prompt";
 import Locale from "../locales";
 
@@ -598,12 +604,39 @@ export function ChatActions(props: {
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+  const isLegacyDalle3 = isDalle3(currentModel);
+  const isOpenAIImageModel = isOpenAIImagesApiModel(currentModel);
+  const isGptImageModel = isOpenAIImageModel && !isLegacyDalle3;
   const modelSizes = getModelSizes(currentModel);
   const dalle3Qualitys: DalleQuality[] = ["standard", "hd"];
+  const gptImageQualitys: OpenAIImageQuality[] = [
+    "auto",
+    "low",
+    "medium",
+    "high",
+  ];
   const dalle3Styles: DalleStyle[] = ["vivid", "natural"];
+  const qualityOptions = isLegacyDalle3
+    ? dalle3Qualitys
+    : isGptImageModel
+    ? gptImageQualitys
+    : [];
   const currentSize =
     session.mask.modelConfig?.size ?? ("1024x1024" as ModelSize);
-  const currentQuality = session.mask.modelConfig?.quality ?? "standard";
+  const sizeOptions = modelSizes.includes(currentSize)
+    ? modelSizes
+    : [currentSize, ...modelSizes];
+  const currentQuality = isLegacyDalle3
+    ? session.mask.modelConfig?.quality === "hd"
+      ? "hd"
+      : "standard"
+    : isGptImageModel
+    ? gptImageQualitys.includes(
+        session.mask.modelConfig?.quality as OpenAIImageQuality,
+      )
+      ? (session.mask.modelConfig?.quality as OpenAIImageQuality)
+      : "auto"
+    : session.mask.modelConfig?.quality ?? "standard";
   const currentStyle = session.mask.modelConfig?.style ?? "vivid";
 
   const isMobileScreen = useMobileScreen();
@@ -777,7 +810,7 @@ export function ChatActions(props: {
         {showSizeSelector && (
           <Selector
             defaultSelectedValue={currentSize}
-            items={modelSizes.map((m) => ({
+            items={sizeOptions.map((m) => ({
               title: m,
               value: m,
             }))}
@@ -793,7 +826,7 @@ export function ChatActions(props: {
           />
         )}
 
-        {isDalle3(currentModel) && (
+        {qualityOptions.length > 0 && (
           <ChatAction
             onClick={() => setShowQualitySelector(true)}
             text={currentQuality}
@@ -804,7 +837,7 @@ export function ChatActions(props: {
         {showQualitySelector && (
           <Selector
             defaultSelectedValue={currentQuality}
-            items={dalle3Qualitys.map((m) => ({
+            items={qualityOptions.map((m) => ({
               title: m,
               value: m,
             }))}
@@ -820,7 +853,7 @@ export function ChatActions(props: {
           />
         )}
 
-        {isDalle3(currentModel) && (
+        {isLegacyDalle3 && (
           <ChatAction
             onClick={() => setShowStyleSelector(true)}
             text={currentStyle}

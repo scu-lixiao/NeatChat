@@ -1,27 +1,25 @@
 import { type OpenAIListModelResponse } from "@/app/client/platforms/openai";
-import { getServerSideConfig } from "@/app/config/server";
-import { ModelProvider, OpenaiPath } from "@/app/constant";
+import {
+  ModelProvider,
+  OPENAI_IMAGE_MODELS,
+  OpenaiPath,
+  OPENAI_REASONING_MODELS,
+} from "@/app/constant";
 import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./auth";
 import { requestOpenai } from "./common";
 
 const ALLOWED_PATH = new Set(Object.values(OpenaiPath));
+const allowedOpenAIModels = new Set<string>([
+  ...OPENAI_REASONING_MODELS,
+  ...OPENAI_IMAGE_MODELS,
+]);
 
 function getModels(remoteModelRes: OpenAIListModelResponse) {
-  const config = getServerSideConfig();
-
-  if (config.disableGPT4) {
-    remoteModelRes.data = remoteModelRes.data.filter(
-      (m) =>
-        !(
-          m.id.startsWith("gpt-4") ||
-          m.id.startsWith("chatgpt-4o") ||
-          m.id.startsWith("o1") ||
-          m.id.startsWith("o3")
-        ) || m.id.startsWith("gpt-4o-mini"),
-    );
-  }
+  remoteModelRes.data = remoteModelRes.data.filter((m) =>
+    allowedOpenAIModels.has(m.id),
+  );
 
   return remoteModelRes;
 }

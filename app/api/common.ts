@@ -90,11 +90,18 @@ export async function requestOpenai(req: NextRequest) {
 
   const fetchUrl = cloudflareAIGatewayUrl(`${baseUrl}/${path}`);
   console.log("fetchUrl", fetchUrl);
+  const contentType = req.headers.get("Content-Type") ?? "";
+  const accept = req.headers.get("Accept") ?? "";
   const fetchOptions: RequestInit = {
     headers: {
-      "Content-Type": "application/json",
       "Cache-Control": "no-store",
       [authHeaderName]: authValue,
+      ...(contentType && {
+        "Content-Type": contentType,
+      }),
+      ...(accept && {
+        Accept: accept,
+      }),
       ...(serverConfig.openaiOrgId && {
         "OpenAI-Organization": serverConfig.openaiOrgId,
       }),
@@ -109,7 +116,11 @@ export async function requestOpenai(req: NextRequest) {
   };
 
   // #1815 try to refuse gpt4 request
-  if (serverConfig.customModels && req.body) {
+  if (
+    serverConfig.customModels &&
+    req.body &&
+    contentType.includes("application/json")
+  ) {
     try {
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;
