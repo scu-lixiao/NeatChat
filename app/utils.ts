@@ -3,6 +3,7 @@ import { showToast } from "./components/ui-lib";
 import Locale from "./locales";
 import { RequestMessage } from "./client/api";
 import {
+  OPENAI_IMAGE_MODELS,
   REQUEST_TIMEOUT_MS,
   REQUEST_TIMEOUT_MS_FOR_THINKING,
   ServiceProvider,
@@ -12,6 +13,19 @@ import { fetch as tauriStreamFetch } from "./utils/stream";
 import { VISION_MODEL_REGEXES, EXCLUDE_VISION_MODEL_REGEXES } from "./constant";
 import { useAccessStore } from "./store";
 import { ModelSize } from "./typing";
+
+const GPT_IMAGE_SIZE_PRESETS: ModelSize[] = [
+  "auto",
+  "1024x1024",
+  "1536x1024",
+  "1024x1536",
+  "2048x2048",
+  "2560x1440",
+  "1440x2560",
+  "2880x2880",
+  "3840x2160",
+  "2160x3840",
+];
 
 export function trimTopic(topic: string) {
   // Fix an issue where double quotes still show in the Indonesian language
@@ -274,7 +288,10 @@ export function getMessageImages(message: RequestMessage): string[] {
   const urls: string[] = [];
   for (const c of message.content) {
     if (c.type === "image_url") {
-      urls.push(c.image_url?.url ?? "");
+      const url = c.image_url?.url?.trim();
+      if (url) {
+        urls.push(url);
+      }
     }
   }
   return urls;
@@ -296,27 +313,28 @@ export function isDalle3(model: string) {
   return "dall-e-3" === model;
 }
 
-/**
- * 判断模型是否支持通过 Responses API 的 image_generation 工具生成图像
- * GPT-5.2/5.4/5.5 系列模型原生支持图像生成能力
- */
-export function isGPT5ImageGenModel(model: string): boolean {
+export function isOpenAIImagesApiModel(model: string): boolean {
   const lowerModel = model.toLowerCase();
   return (
-    lowerModel.startsWith("gpt-5.2") ||
-    lowerModel.startsWith("gpt-5.4") ||
-    lowerModel.startsWith("gpt-5.5") ||
-    lowerModel.startsWith("gpt-5.1") ||
-    lowerModel === "gpt-5" ||
-    lowerModel === "gpt-5-mini"
+    isDalle3(lowerModel) ||
+    OPENAI_IMAGE_MODELS.some((imageModel) => imageModel === lowerModel)
   );
 }
 
 /**
- * 判断模型是否支持图像生成能力（包括 DALL-E 和 GPT-5.2 原生生成）
+ * 判断模型是否支持通过 Responses API 的 image_generation 工具生成图像
+ * 按 OpenAI 当前文档，仅部分 GPT-5 系列模型支持该原生工具。
+ */
+export function isGPT5ImageGenModel(model: string): boolean {
+  const lowerModel = model.toLowerCase();
+  return lowerModel === "gpt-5.4-mini" || lowerModel === "gpt-5.5";
+}
+
+/**
+ * 判断模型是否支持图像生成能力（包括 OpenAI Images API 和 GPT-5 原生生成）
  */
 export function supportsImageGeneration(model: string): boolean {
-  return isDalle3(model) || isGPT5ImageGenModel(model);
+  return isOpenAIImagesApiModel(model) || isGPT5ImageGenModel(model);
 }
 
 export function getTimeoutMSByModel(model: string) {
@@ -324,12 +342,12 @@ export function getTimeoutMSByModel(model: string) {
   if (
     model.startsWith("dall-e") ||
     model.startsWith("dalle") ||
+    model.startsWith("gpt-image") ||
     model.startsWith("o1") ||
     model.startsWith("o3") ||
     model.includes("deepseek-r") ||
     model.includes("-thinking") ||
     model.includes("grok") || // XAI models with search and reasoning modes need extended timeout
-    model.startsWith("gpt-5.2") || // GPT-5.2 with thinking mode may need extended timeout
     model.startsWith("gpt-5.4") || // GPT-5.4 with thinking mode may need extended timeout
     model.startsWith("gpt-5.5") // GPT-5.5 with thinking mode may need extended timeout
   )
@@ -341,9 +359,12 @@ export function getModelSizes(model: string): ModelSize[] {
   if (isDalle3(model)) {
     return ["1024x1024", "1792x1024", "1024x1792"];
   }
-  // GPT-5.2/5.4/5.5 image_generation 工具支持的图像尺寸
+  if (isOpenAIImagesApiModel(model)) {
+    return GPT_IMAGE_SIZE_PRESETS;
+  }
+  // GPT-5 原生 image_generation 工具支持的图像尺寸
   if (isGPT5ImageGenModel(model)) {
-    return ["1024x1024", "1536x1024", "1024x1536"];
+    return GPT_IMAGE_SIZE_PRESETS;
   }
   if (model.toLowerCase().includes("cogview")) {
     return [

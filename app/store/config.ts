@@ -1,7 +1,13 @@
 import { LLMModel } from "../client/api";
-import { DalleQuality, DalleStyle, ModelSize } from "../typing";
+import {
+  DalleStyle,
+  ImageModeration,
+  ImageQuality,
+  ModelSize,
+} from "../typing";
 import { getClientConfig } from "../config/client";
 import {
+  DEFAULT_OPENAI_MODEL,
   DEFAULT_INPUT_TEMPLATE,
   DEFAULT_MODELS,
   DEFAULT_SIDEBAR_WIDTH,
@@ -101,7 +107,7 @@ export const DEFAULT_CONFIG = {
   models: DEFAULT_MODELS as any as LLMModel[],
 
   modelConfig: {
-    model: "gpt-4o-mini" as ModelType,
+    model: DEFAULT_OPENAI_MODEL as ModelType,
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
@@ -116,20 +122,25 @@ export const DEFAULT_CONFIG = {
     enableInjectSystemPrompts: true,
     template: config?.template ?? DEFAULT_INPUT_TEMPLATE,
     size: "1024x1024" as ModelSize,
-    quality: "standard" as DalleQuality,
+    quality: "standard" as ImageQuality,
     style: "vivid" as DalleStyle,
-    // GPT-5.2 系列推理级别配置
+    // GPT-5.4/5.5 系列推理级别配置
     // "auto": 根据模型自动选择（默认）
     // "none": 无推理（快速响应，支持 temperature/top_p）
-    // "low"/"medium"/"high"/"xhigh": 不同级别推理深度
+    // "minimal"/"low"/"medium"/"high"/"xhigh": 不同级别推理深度
     reasoningEffort: "auto" as
       | "auto"
       | "none"
+      | "minimal"
       | "low"
       | "medium"
       | "high"
       | "xhigh",
-    // GPT-5.2 内置工具配置
+    // reasoningSummary: 控制 GPT-5 推理摘要的输出详细度
+    reasoningSummary: "auto" as "auto" | "none" | "concise" | "detailed",
+    // textVerbosity: 控制 GPT-5 最终输出的冗长程度
+    textVerbosity: "medium" as "low" | "medium" | "high",
+    // GPT-5.4/5.5 内置工具配置
     // enableWebSearch: 启用网络搜索工具，允许模型搜索最新信息
     enableWebSearch: true,
     // webSearchCountry: 网络搜索的用户位置国家代码（ISO 3166-1 alpha-2）
@@ -153,11 +164,10 @@ export const DEFAULT_CONFIG = {
     // "transparent": 透明背景（适用于PNG/WebP）
     // "opaque": 不透明背景
     imageBackground: "auto" as "transparent" | "opaque" | "auto",
-    // toolChoice: 工具选择策略（GPT-5.2 系列）
-    // "auto": 模型自动决定何时使用工具（推荐）
-    // "none": 禁止模型调用任何工具
-    // "required": 强制模型必须调用工具
-    toolChoice: "auto" as "auto" | "none" | "required",
+    // moderation: 图像内容审核强度
+    // "auto": 标准审核（OpenAI 默认）
+    // "low": 更宽松的审核
+    moderation: "auto" as ImageModeration,
   },
 
   ttsConfig: {

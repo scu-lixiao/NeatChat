@@ -1,5 +1,18 @@
 import { ServiceProvider } from "@/app/constant";
 import { ModalConfigValidator, ModelConfig } from "../store";
+import {
+  getModelSizes,
+  isDalle3,
+  isGPT5ImageGenModel,
+  isOpenAIImagesApiModel,
+} from "../utils";
+import {
+  DalleQuality,
+  DalleStyle,
+  ImageModeration,
+  ModelSize,
+  OpenAIImageQuality,
+} from "../typing";
 
 import Locale from "../locales";
 import { InputRange } from "./input-range";
@@ -19,6 +32,46 @@ export function ModelConfigList(props: {
     allModels.filter((v) => v.available),
     "provider.providerName",
   );
+  const currentModel = props.modelConfig.model;
+  const isLegacyDalle3 = isDalle3(currentModel);
+  const supportsGpt5NativeImageGeneration = isGPT5ImageGenModel(currentModel);
+  const isOpenAIImageModel = isOpenAIImagesApiModel(currentModel);
+  const isModernOpenAIImageModel = isOpenAIImageModel && !isLegacyDalle3;
+  const imageSizes = getModelSizes(currentModel);
+  const currentImageSize = props.modelConfig.size ?? ("1024x1024" as ModelSize);
+  const imageSizeOptions = imageSizes.includes(currentImageSize)
+    ? imageSizes
+    : [currentImageSize, ...imageSizes];
+  const dalleQualityOptions: DalleQuality[] = ["standard", "hd"];
+  const gptImageQualityOptions: OpenAIImageQuality[] = [
+    "auto",
+    "low",
+    "medium",
+    "high",
+  ];
+  const gptImageModerationOptions: ImageModeration[] = ["auto", "low"];
+  const imageQualityOptions = isLegacyDalle3
+    ? dalleQualityOptions
+    : isModernOpenAIImageModel
+    ? gptImageQualityOptions
+    : [];
+  const currentImageQuality = isLegacyDalle3
+    ? props.modelConfig.quality === "hd"
+      ? "hd"
+      : "standard"
+    : isModernOpenAIImageModel &&
+      gptImageQualityOptions.includes(
+        props.modelConfig.quality as OpenAIImageQuality,
+      )
+    ? (props.modelConfig.quality as OpenAIImageQuality)
+    : "auto";
+  const currentImageBackground =
+    props.modelConfig.imageBackground === "opaque" ? "opaque" : "auto";
+  const currentImageModeration = gptImageModerationOptions.includes(
+    props.modelConfig.moderation as ImageModeration,
+  )
+    ? (props.modelConfig.moderation as ImageModeration)
+    : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
 
@@ -51,26 +104,141 @@ export function ModelConfigList(props: {
         </Select>
       </ListItem>
 
-      {/* GPT-5.2/5.4/5.5 系列模型推理级别配置 */}
-      {(props.modelConfig.model.startsWith("gpt-5.2") ||
-        props.modelConfig.model.startsWith("gpt-5.4") ||
-        props.modelConfig.model.startsWith("gpt-5.5")) &&
+      {isOpenAIImageModel && (
+        <>
+          {imageSizes.length > 0 && (
+            <ListItem
+              title={Locale.Settings.ImageModel.Size.Title}
+              subTitle={Locale.Settings.ImageModel.Size.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ImageModel.Size.Title}
+                value={currentImageSize}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.size = e.currentTarget.value as ModelSize;
+                  });
+                }}
+              >
+                {imageSizeOptions.map((size) => (
+                  <option value={size} key={size}>
+                    {size}
+                  </option>
+                ))}
+              </Select>
+            </ListItem>
+          )}
+
+          {imageQualityOptions.length > 0 && (
+            <ListItem
+              title={Locale.Settings.ImageModel.Quality.Title}
+              subTitle={Locale.Settings.ImageModel.Quality.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ImageModel.Quality.Title}
+                value={currentImageQuality}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.quality = e.currentTarget.value as
+                      | DalleQuality
+                      | OpenAIImageQuality;
+                  });
+                }}
+              >
+                {imageQualityOptions.map((quality) => (
+                  <option value={quality} key={quality}>
+                    {quality}
+                  </option>
+                ))}
+              </Select>
+            </ListItem>
+          )}
+
+          {isLegacyDalle3 && (
+            <ListItem
+              title={Locale.Settings.ImageModel.Style.Title}
+              subTitle={Locale.Settings.ImageModel.Style.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ImageModel.Style.Title}
+                value={props.modelConfig.style ?? ("vivid" as DalleStyle)}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.style = e.currentTarget.value as DalleStyle;
+                  });
+                }}
+              >
+                <option value="vivid">vivid</option>
+                <option value="natural">natural</option>
+              </Select>
+            </ListItem>
+          )}
+
+          {isModernOpenAIImageModel && (
+            <ListItem
+              title={Locale.Settings.ImageModel.Background.Title}
+              subTitle={Locale.Settings.ImageModel.Background.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ImageModel.Background.Title}
+                value={currentImageBackground}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.imageBackground = e.currentTarget.value as
+                      | "auto"
+                      | "opaque";
+                  });
+                }}
+              >
+                <option value="auto">
+                  {Locale.Settings.ImageModel.Background.Options.Auto}
+                </option>
+                <option value="opaque">
+                  {Locale.Settings.ImageModel.Background.Options.Opaque}
+                </option>
+              </Select>
+            </ListItem>
+          )}
+
+          {isModernOpenAIImageModel && (
+            <ListItem
+              title={Locale.Settings.ImageModel.Moderation.Title}
+              subTitle={Locale.Settings.ImageModel.Moderation.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.ImageModel.Moderation.Title}
+                value={currentImageModeration}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.moderation = e.currentTarget
+                      .value as ImageModeration;
+                  });
+                }}
+              >
+                {gptImageModerationOptions.map((moderation) => (
+                  <option value={moderation} key={moderation}>
+                    {moderation}
+                  </option>
+                ))}
+              </Select>
+            </ListItem>
+          )}
+        </>
+      )}
+
+      {/* GPT-5.4/5.5 系列模型推理级别配置 */}
+      {(currentModel.startsWith("gpt-5.4") ||
+        currentModel.startsWith("gpt-5.5")) &&
         (() => {
           // 根据模型确定支持的推理级别
-          const model = props.modelConfig.model;
-          const isGPT5_2Pro = model === "gpt-5.2-pro";
-          const isGPT5_2Thinking = model === "gpt-5.2-thinking";
-          const isGPT5_2ChatLatest = model === "gpt-5.2-chat-latest";
+          const model = currentModel;
+          const isGPT5Pro = model === "gpt-5.4-pro" || model === "gpt-5.5-pro";
 
           // 动态生成支持的选项
-          // gpt-5.2-instant, gpt-5.2: 支持所有级别
-          // gpt-5.2-chat-latest: 不支持 none（API 明确返回错误）
-          // gpt-5.2-thinking: 支持 low, medium, high, xhigh（不支持 none）
-          // gpt-5.2-pro: 支持 medium, high, xhigh（不支持 none 和 low）
-          const supportsNone =
-            !isGPT5_2Pro && !isGPT5_2Thinking && !isGPT5_2ChatLatest;
-          const supportsLow = !isGPT5_2Pro;
-          const supportsXHigh = !isGPT5_2Thinking;
+          // GPT-5.4/5.5: 支持所有级别
+          // GPT-5 Pro: 支持 medium, high, xhigh（不支持 none 和 low）
+          const supportsNone = !isGPT5Pro;
+          const supportsLow = !isGPT5Pro;
 
           return (
             <ListItem
@@ -85,6 +253,7 @@ export function ModelConfigList(props: {
                     config.reasoningEffort = e.currentTarget.value as
                       | "auto"
                       | "none"
+                      | "minimal"
                       | "low"
                       | "medium"
                       | "high"
@@ -111,20 +280,82 @@ export function ModelConfigList(props: {
                 <option value="high">
                   {Locale.Settings.ReasoningEffort.Options.High}
                 </option>
-                {supportsXHigh && (
-                  <option value="xhigh">
-                    {Locale.Settings.ReasoningEffort.Options.XHigh}
-                  </option>
-                )}
+                <option value="xhigh">
+                  {Locale.Settings.ReasoningEffort.Options.XHigh}
+                </option>
               </Select>
             </ListItem>
           );
         })()}
 
-      {/* GPT-5.2/5.4/5.5 系列模型内置工具配置 */}
-      {(props.modelConfig.model.startsWith("gpt-5.2") ||
-        props.modelConfig.model.startsWith("gpt-5.4") ||
-        props.modelConfig.model.startsWith("gpt-5.5")) && (
+      {(currentModel.startsWith("gpt-5.4") ||
+        currentModel.startsWith("gpt-5.5")) && (
+        <>
+          <ListItem
+            title={Locale.Settings.ReasoningSummary.Title}
+            subTitle={Locale.Settings.ReasoningSummary.SubTitle}
+          >
+            <Select
+              aria-label={Locale.Settings.ReasoningSummary.Title}
+              value={props.modelConfig.reasoningSummary ?? "auto"}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.reasoningSummary = e.currentTarget.value as
+                    | "auto"
+                    | "none"
+                    | "concise"
+                    | "detailed";
+                });
+              }}
+            >
+              <option value="auto">
+                {Locale.Settings.ReasoningSummary.Options.Auto}
+              </option>
+              <option value="none">
+                {Locale.Settings.ReasoningSummary.Options.None}
+              </option>
+              <option value="concise">
+                {Locale.Settings.ReasoningSummary.Options.Concise}
+              </option>
+              <option value="detailed">
+                {Locale.Settings.ReasoningSummary.Options.Detailed}
+              </option>
+            </Select>
+          </ListItem>
+
+          <ListItem
+            title={Locale.Settings.TextVerbosity.Title}
+            subTitle={Locale.Settings.TextVerbosity.SubTitle}
+          >
+            <Select
+              aria-label={Locale.Settings.TextVerbosity.Title}
+              value={props.modelConfig.textVerbosity ?? "medium"}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.textVerbosity = e.currentTarget.value as
+                    | "low"
+                    | "medium"
+                    | "high";
+                });
+              }}
+            >
+              <option value="low">
+                {Locale.Settings.TextVerbosity.Options.Low}
+              </option>
+              <option value="medium">
+                {Locale.Settings.TextVerbosity.Options.Medium}
+              </option>
+              <option value="high">
+                {Locale.Settings.TextVerbosity.Options.High}
+              </option>
+            </Select>
+          </ListItem>
+        </>
+      )}
+
+      {/* GPT-5.4/5.5 系列模型内置工具配置 */}
+      {(currentModel.startsWith("gpt-5.4") ||
+        currentModel.startsWith("gpt-5.5")) && (
         <>
           {/* 网络搜索工具 */}
           <ListItem
@@ -288,85 +519,63 @@ export function ModelConfigList(props: {
           )}
 
           {/* 图像生成工具 */}
-          <ListItem
-            title={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
-            subTitle={Locale.Settings.GPT5Tools.EnableImageGeneration.SubTitle}
-          >
-            <input
-              aria-label={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
-              type="checkbox"
-              checked={props.modelConfig.enableImageGeneration ?? false}
-              onChange={(e) =>
-                props.updateConfig(
-                  (config) =>
-                    (config.enableImageGeneration = e.currentTarget.checked),
-                )
-              }
-            ></input>
-          </ListItem>
-
-          {/* 图像背景设置（仅当启用图像生成时显示） */}
-          {props.modelConfig.enableImageGeneration && (
+          {supportsGpt5NativeImageGeneration && (
             <ListItem
-              title={Locale.Settings.GPT5Tools.ImageBackground.Title}
-              subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+              title={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
+              subTitle={
+                Locale.Settings.GPT5Tools.EnableImageGeneration.SubTitle
+              }
             >
-              <Select
-                aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
-                value={props.modelConfig.imageBackground ?? "auto"}
-                onChange={(e) => {
-                  props.updateConfig((config) => {
-                    config.imageBackground = e.currentTarget.value as
-                      | "auto"
-                      | "transparent"
-                      | "opaque";
-                  });
-                }}
-              >
-                <option value="auto">
-                  {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
-                </option>
-                <option value="transparent">
-                  {
-                    Locale.Settings.GPT5Tools.ImageBackground.Options
-                      .Transparent
-                  }
-                </option>
-                <option value="opaque">
-                  {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
-                </option>
-              </Select>
+              <input
+                aria-label={
+                  Locale.Settings.GPT5Tools.EnableImageGeneration.Title
+                }
+                type="checkbox"
+                checked={props.modelConfig.enableImageGeneration ?? false}
+                onChange={(e) =>
+                  props.updateConfig(
+                    (config) =>
+                      (config.enableImageGeneration = e.currentTarget.checked),
+                  )
+                }
+              ></input>
             </ListItem>
           )}
 
-          {/* 工具选择策略 */}
-          <ListItem
-            title={Locale.Settings.GPT5Tools.ToolChoice.Title}
-            subTitle={Locale.Settings.GPT5Tools.ToolChoice.SubTitle}
-          >
-            <Select
-              aria-label={Locale.Settings.GPT5Tools.ToolChoice.Title}
-              value={props.modelConfig.toolChoice ?? "auto"}
-              onChange={(e) => {
-                props.updateConfig((config) => {
-                  config.toolChoice = e.currentTarget.value as
-                    | "auto"
-                    | "none"
-                    | "required";
-                });
-              }}
-            >
-              <option value="auto">
-                {Locale.Settings.GPT5Tools.ToolChoice.Options.Auto}
-              </option>
-              <option value="none">
-                {Locale.Settings.GPT5Tools.ToolChoice.Options.None}
-              </option>
-              <option value="required">
-                {Locale.Settings.GPT5Tools.ToolChoice.Options.Required}
-              </option>
-            </Select>
-          </ListItem>
+          {/* 图像背景设置（仅当启用图像生成时显示） */}
+          {supportsGpt5NativeImageGeneration &&
+            props.modelConfig.enableImageGeneration && (
+              <ListItem
+                title={Locale.Settings.GPT5Tools.ImageBackground.Title}
+                subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+              >
+                <Select
+                  aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
+                  value={props.modelConfig.imageBackground ?? "auto"}
+                  onChange={(e) => {
+                    props.updateConfig((config) => {
+                      config.imageBackground = e.currentTarget.value as
+                        | "auto"
+                        | "transparent"
+                        | "opaque";
+                    });
+                  }}
+                >
+                  <option value="auto">
+                    {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
+                  </option>
+                  <option value="transparent">
+                    {
+                      Locale.Settings.GPT5Tools.ImageBackground.Options
+                        .Transparent
+                    }
+                  </option>
+                  <option value="opaque">
+                    {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
+                  </option>
+                </Select>
+              </ListItem>
+            )}
         </>
       )}
 
