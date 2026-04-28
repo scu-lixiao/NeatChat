@@ -744,11 +744,13 @@ export function streamWithThink(
   ) =>
     | {
         isThinking: boolean;
-        content: string | any[] | undefined;
+        content: string | MultimodalContent[] | undefined;
+        isFinal?: boolean;
       }
     | Array<{
         isThinking: boolean;
-        content: string | any[] | undefined;
+        content: string | MultimodalContent[] | undefined;
+        isFinal?: boolean;
       }>,
   processToolMessage: (
     requestPayload: any,
@@ -765,6 +767,8 @@ export function streamWithThink(
   let responseRes: Response;
   let isInThinkingMode = false;
   let lastIsThinking = false;
+  let finalResponseContent: string | MultimodalContent[] | undefined;
+  let hasStructuredContent = false;
 
   // {{CHENGQI:
   // Action: Enhanced - Claude 4.0 sonnet 双流处理优化升级
@@ -815,7 +819,12 @@ export function streamWithThink(
       //   - 只要有任何内容(思考或正文)都应视为有效响应
       // Documentation_Note (DW): thinking mode 空响应检查修复
       // }}
-      if (responseText?.length === 0 && thinkingText?.length === 0) {
+      if (
+        responseText?.length === 0 &&
+        thinkingText?.length === 0 &&
+        !hasStructuredContent &&
+        !finalResponseContent
+      ) {
         options.onError?.(new Error("empty response from server"));
       }
       // Cancel animation frame if exists
@@ -981,6 +990,11 @@ export function streamWithThink(
         options.onThinkingUpdate?.(thinkingText, remainingThinking);
       }
 
+      if (finalResponseContent) {
+        options.onFinish(finalResponseContent, responseRes);
+        return;
+      }
+
       options.onFinish(responseText + remainingResponse, responseRes);
     }
   };
@@ -1128,9 +1142,36 @@ export function streamWithThink(
 
             // 如果是图片数据 (数组格式),直接调用 onFinish 并结束流式处理
             if (Array.isArray(chunk.content)) {
-              finished = true;
-              options.onFinish(chunk.content, responseRes);
-              return;
+              if (chunk.content.length > 0) {
+                hasStructuredContent = true;
+              }
+
+              const pendingResponse = responseBuffer.getAllRemaining();
+              if (pendingResponse) {
+                responseText += pendingResponse;
+                options.onUpdate?.(responseText, pendingResponse);
+              }
+
+              const hasTextPart = chunk.content.some(
+                (part) => part.type === "text" && !!part.text,
+              );
+              const mergedContent =
+                !chunk.isThinking && responseText && !hasTextPart
+                  ? ([
+                      {
+                        type: "text",
+                        text: responseText,
+                      },
+                      ...chunk.content,
+                    ] as MultimodalContent[])
+                  : chunk.content;
+
+              if (chunk.isFinal) {
+                finalResponseContent = mergedContent;
+              }
+
+              options.onUpdate?.(mergedContent, mergedContent);
+              continue;
             }
 
             if (chunk.isThinking) {

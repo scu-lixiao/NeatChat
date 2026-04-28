@@ -231,6 +231,79 @@ export const BOT_HELLO: ChatMessage = createMessage({
   content: Locale.Store.BotHello,
 });
 
+function getStreamingTextContent(content: ChatMessage["content"]): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content
+    .filter((part) => part.type === "text" && !!part.text)
+    .map((part) => part.text ?? "")
+    .join("");
+}
+
+function getStreamingImageParts(
+  content: ChatMessage["content"],
+): MultimodalContent[] {
+  if (typeof content === "string") {
+    return [];
+  }
+
+  return content.flatMap((part) => {
+    if (part.type !== "image_url" || !part.image_url?.url) {
+      return [];
+    }
+
+    return [
+      {
+        type: "image_url" as const,
+        image_url: {
+          url: part.image_url.url,
+        },
+      },
+    ];
+  });
+}
+
+function mergeStreamingMessageContent(
+  current: ChatMessage["content"],
+  next: ChatMessage["content"],
+): ChatMessage["content"] {
+  const currentText = getStreamingTextContent(current);
+  const currentImages = getStreamingImageParts(current);
+
+  if (typeof next === "string") {
+    if (currentImages.length === 0) {
+      return next;
+    }
+
+    const merged: MultimodalContent[] = [];
+    if (next) {
+      merged.push({ type: "text", text: next });
+    }
+    merged.push(...currentImages);
+    return merged;
+  }
+
+  const nextText = getStreamingTextContent(next);
+  const nextImages = getStreamingImageParts(next);
+  const mergedImages = nextImages.length > 0 ? nextImages : currentImages;
+
+  if (mergedImages.length === 0) {
+    return nextText || currentText;
+  }
+
+  const merged: MultimodalContent[] = [];
+  const mergedText = nextText || currentText;
+
+  if (mergedText) {
+    merged.push({ type: "text", text: mergedText });
+  }
+
+  merged.push(...mergedImages);
+  return merged;
+}
+
 function createEmptySession(): ChatSession {
   return {
     id: nanoid(),
@@ -626,8 +699,14 @@ export const useChatStore = createPersistStore(
           previousOpenAIResponseId,
           onUpdate(message) {
             botMessage.streaming = true;
-            if (message) {
-              botMessage.content = message;
+            if (
+              (typeof message === "string" && message.length > 0) ||
+              (Array.isArray(message) && message.length > 0)
+            ) {
+              botMessage.content = mergeStreamingMessageContent(
+                botMessage.content,
+                message,
+              );
             }
 
             // {{CHENGQI:
@@ -1113,7 +1192,9 @@ export const useChatStore = createPersistStore(
               providerName,
             },
             onUpdate(message) {
-              session.memoryPrompt = message;
+              if (typeof message === "string") {
+                session.memoryPrompt = message;
+              }
             },
             onFinish(message, responseRes) {
               if (responseRes?.status === 200) {

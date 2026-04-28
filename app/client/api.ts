@@ -47,6 +47,8 @@ export interface MultimodalContent {
   };
 }
 
+export type StreamMessage = string | MultimodalContent[];
+
 export interface MultimodalContentForAlibaba {
   text?: string;
   image?: string;
@@ -84,11 +86,8 @@ export interface ChatOptions {
   messages: RequestMessage[];
   config: LLMConfig;
 
-  onUpdate?: (message: string, chunk: string) => void;
-  onFinish: (
-    message: string | MultimodalContent[],
-    responseRes: Response,
-  ) => void;
+  onUpdate?: (message: StreamMessage, chunk: StreamMessage) => void;
+  onFinish: (message: StreamMessage, responseRes: Response) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
   onBeforeTool?: (tool: ChatMessageTool) => void;

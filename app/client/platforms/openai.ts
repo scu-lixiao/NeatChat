@@ -1,6 +1,10 @@
 "use client";
 // azure and openai, using same models. so using same LLMApi.
 import {
+  EventStreamContentType,
+  fetchEventSource,
+} from "@fortaine/fetch-event-source";
+import {
   ApiPath,
   OPENAI_IMAGE_MODELS,
   OPENAI_REASONING_MODELS,
@@ -53,7 +57,7 @@ import {
   getTimeoutMSByModel,
   isGPT5ImageGenModel,
 } from "@/app/utils";
-import { fetch } from "@/app/utils/stream";
+import { fetch as tauriFetch } from "@/app/utils/stream";
 
 const allowedOpenAIModels = new Set<string>([
   ...OPENAI_REASONING_MODELS,
@@ -271,6 +275,7 @@ export type ResponsesStreamEventType =
   | "response.reasoning_summary_text.done"
   | "response.reasoning_text.delta"
   | "response.reasoning_text.done"
+  | "response.image_generation_call.partial_image"
   | "response.image_generation_call.generating"
   | "response.image_generation_call.done"
   | "error";
@@ -318,6 +323,9 @@ export interface ResponsesStreamEvent {
   error?: { message: string; type: string; code?: string };
   // GPT-5 图像生成相关
   result?: string; // base64 encoded image data for image_generation_call.done
+  partial_image_b64?: string;
+  partial_image_index?: number;
+  output_format?: ResponsesImageGenerationOutputFormat;
 }
 
 export interface ResponsesResponse {
@@ -387,6 +395,8 @@ export interface OpenAIImageRequestPayload {
   style?: DalleStyle;
   background?: "transparent" | "opaque";
   output_format?: ResponsesImageGenerationOutputFormat;
+  stream?: boolean;
+  partial_images?: number;
 }
 
 export interface OpenAIImageResponse {
@@ -403,10 +413,26 @@ export interface OpenAIImageResponse {
   size?: OpenAIImagesApiSize;
 }
 
+export type OpenAIImageStreamEventType =
+  | "image_generation.partial_image"
+  | "image_generation.completed"
+  | "image_edit.partial_image"
+  | "image_edit.completed"
+  | "error";
+
+export interface OpenAIImageStreamEvent {
+  type: OpenAIImageStreamEventType;
+  b64_json?: string;
+  partial_image_index?: number;
+  output_format?: ResponsesImageGenerationOutputFormat;
+  error?: { message: string; type?: string; code?: string };
+}
+
 const OPENAI_IMAGE_MIN_PIXELS = 655_360;
 const OPENAI_IMAGE_MAX_PIXELS = 8_294_400;
 const OPENAI_IMAGE_MAX_EDGE = 3_840;
 const OPENAI_IMAGE_MAX_ASPECT_RATIO = 3;
+const OPENAI_STREAMED_PARTIAL_IMAGES = 2;
 
 function isValidOpenAIImageApiSize(size: string): size is OpenAIImagesApiSize {
   if (size === "auto") {
@@ -952,7 +978,7 @@ function buildStreamedImageResult(
     .map((item) => ({
       type: "image_url" as const,
       image_url: {
-        url: `data:image/png;base64,${item.result}`,
+        url: buildBase64ImageDataUrl(item.result as string),
       },
     }));
 
@@ -972,6 +998,41 @@ function buildStreamedImageResult(
 
   result.push(...imageResults);
   return result;
+}
+
+function getOpenAIImageMimeType(
+  outputFormat: ResponsesImageGenerationOutputFormat = "png",
+) {
+  if (outputFormat === "jpeg") {
+    return "image/jpeg";
+  }
+
+  if (outputFormat === "webp") {
+    return "image/webp";
+  }
+
+  return "image/png";
+}
+
+function buildBase64ImageDataUrl(
+  base64: string,
+  outputFormat: ResponsesImageGenerationOutputFormat = "png",
+) {
+  return `data:${getOpenAIImageMimeType(outputFormat)};base64,${base64}`;
+}
+
+function buildStreamedImageContent(
+  base64: string,
+  outputFormat: ResponsesImageGenerationOutputFormat = "png",
+): MultimodalContent[] {
+  return [
+    {
+      type: "image_url",
+      image_url: {
+        url: buildBase64ImageDataUrl(base64, outputFormat),
+      },
+    },
+  ];
 }
 
 export class ChatGPTApi implements LLMApi {
@@ -1144,6 +1205,135 @@ export class ChatGPTApi implements LLMApi {
     });
   }
 
+  private async streamImagesApi(
+    chatPath: string,
+    chatPayload: RequestInit,
+    options: ChatOptions,
+    controller: AbortController,
+  ) {
+    const { headers, ...requestInit } = chatPayload;
+    let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    let responseRes: Response | undefined;
+    let finalMessage: MultimodalContent[] | undefined;
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+
+        const finishResolve = () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          resolve();
+        };
+
+        const finishReject = (error: Error) => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          reject(error);
+        };
+
+        requestTimeoutId = setTimeout(
+          () => controller.abort(),
+          getTimeoutMSByModel(options.config.model),
+        );
+
+        fetchEventSource(chatPath, {
+          fetch: tauriFetch as any,
+          ...requestInit,
+          headers: headers as Record<string, string> | undefined,
+          async onopen(res) {
+            responseRes = res;
+            if (requestTimeoutId) {
+              clearTimeout(requestTimeoutId);
+              requestTimeoutId = undefined;
+            }
+
+            const contentType = res.headers.get("content-type");
+            console.log("[Request] image stream content type: ", contentType);
+
+            if (
+              !res.ok ||
+              !contentType?.startsWith(EventStreamContentType) ||
+              res.status !== 200
+            ) {
+              let extraInfo = await res.clone().text();
+              try {
+                extraInfo = JSON.stringify(await res.clone().json(), null, 2);
+              } catch {}
+
+              const error = new Error(
+                extraInfo || `Unexpected image stream response (${res.status})`,
+              );
+              finishReject(error);
+              throw error;
+            }
+          },
+          onmessage(msg) {
+            if (!msg.data || msg.data === "[DONE]") {
+              return;
+            }
+
+            const event = JSON.parse(msg.data) as OpenAIImageStreamEvent;
+
+            if (event.type === "error") {
+              const error = new Error(
+                event.error?.message || "Image stream failed",
+              );
+              finishReject(error);
+              throw error;
+            }
+
+            if (!event.b64_json) {
+              return;
+            }
+
+            const message = buildStreamedImageContent(
+              event.b64_json,
+              event.output_format,
+            );
+
+            if (
+              event.type === "image_generation.completed" ||
+              event.type === "image_edit.completed"
+            ) {
+              finalMessage = message;
+            }
+
+            options.onUpdate?.(message, message);
+          },
+          onclose() {
+            finishResolve();
+          },
+          onerror(error) {
+            const streamError =
+              error instanceof Error ? error : new Error(String(error));
+            finishReject(streamError);
+            throw streamError;
+          },
+          openWhenHidden: true,
+        });
+      });
+
+      if (!responseRes) {
+        throw new Error("No response received from image stream");
+      }
+
+      if (!finalMessage) {
+        throw new Error("No final image received from image stream");
+      }
+
+      options.onFinish(finalMessage, responseRes);
+    } finally {
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+      }
+    }
+  }
+
   private async chatWithImagesApi(options: ChatOptions, modelConfig: any) {
     const latestUserMessage = [...options.messages]
       .reverse()
@@ -1173,6 +1363,8 @@ export class ChatGPTApi implements LLMApi {
         modelConfig.imageBackground,
         options.config.model,
       );
+      const shouldStream = !!options.config.stream;
+      const partialImages = shouldStream ? OPENAI_STREAMED_PARTIAL_IMAGES : 0;
 
       let chatPayload: RequestInit;
 
@@ -1184,6 +1376,11 @@ export class ChatGPTApi implements LLMApi {
         formData.append("quality", quality);
         formData.append("moderation", moderation);
         formData.append("output_format", "png");
+
+        if (shouldStream) {
+          formData.append("stream", "true");
+          formData.append("partial_images", String(partialImages));
+        }
 
         if (background) {
           formData.append("background", background);
@@ -1216,6 +1413,11 @@ export class ChatGPTApi implements LLMApi {
           output_format: "png",
         };
 
+        if (shouldStream) {
+          requestPayload.stream = true;
+          requestPayload.partial_images = partialImages;
+        }
+
         if (_isDalle3(options.config.model)) {
           requestPayload.style = options.config?.style ?? "vivid";
         }
@@ -1238,16 +1440,23 @@ export class ChatGPTApi implements LLMApi {
         quality,
         moderation,
         background,
+        shouldStream,
+        partialImages,
         isEditRequest,
         imageCount: imageUrls.length,
       });
+
+      if (shouldStream) {
+        await this.streamImagesApi(chatPath, chatPayload, options, controller);
+        return;
+      }
 
       requestTimeoutId = setTimeout(
         () => controller.abort(),
         getTimeoutMSByModel(options.config.model),
       );
 
-      const res = await fetch(chatPath, chatPayload);
+      const res = await tauriFetch(chatPath, chatPayload);
       clearTimeout(requestTimeoutId);
 
       const resJson = (await res.json()) as OpenAIImageResponse;
@@ -1486,6 +1695,10 @@ export class ChatGPTApi implements LLMApi {
         type: "image_generation",
         size: normalizeResponsesImageGenerationSize(options.config?.size),
       };
+
+      if (options.config.stream) {
+        imageGenTool.partial_images = OPENAI_STREAMED_PARTIAL_IMAGES;
+      }
 
       if (shouldEditImage) {
         imageGenTool.action = "edit";
@@ -1763,6 +1976,7 @@ export class ChatGPTApi implements LLMApi {
                 const chunks: Array<{
                   isThinking: boolean;
                   content: string | MultimodalContent[];
+                  isFinal?: boolean;
                 }> = [];
 
                 if (item?.type === "reasoning") {
@@ -1806,12 +2020,28 @@ export class ChatGPTApi implements LLMApi {
                 return { isThinking: false, content: "" };
               }
 
+              if (
+                event.type === "response.image_generation_call.partial_image" &&
+                event.partial_image_b64
+              ) {
+                console.log("[GPT-5] Received partial image in stream", {
+                  partialImageIndex: event.partial_image_index,
+                });
+                return {
+                  isThinking: false,
+                  content: buildStreamedImageContent(
+                    event.partial_image_b64,
+                    event.output_format,
+                  ),
+                };
+              }
+
               // 处理图像生成进行中事件
               if (event.type === "response.image_generation_call.generating") {
                 console.log("[GPT-5] Image generation in progress...");
                 return {
                   isThinking: false,
-                  content: "\n🎨 正在生成图像...\n",
+                  content: "",
                 };
               }
 
@@ -1821,10 +2051,9 @@ export class ChatGPTApi implements LLMApi {
                 event.result
               ) {
                 console.log("[GPT-5] Image generation completed");
-                // 返回标记，实际图像处理在 response.completed 中进行
                 return {
                   isThinking: false,
-                  content: "\n✅ 图像生成完成\n",
+                  content: "",
                 };
               }
 
@@ -1904,6 +2133,7 @@ export class ChatGPTApi implements LLMApi {
                 const completionChunks: Array<{
                   isThinking: boolean;
                   content: string | MultimodalContent[];
+                  isFinal?: boolean;
                 }> = [];
 
                 if (finalThinkingContent) {
@@ -1923,6 +2153,7 @@ export class ChatGPTApi implements LLMApi {
                   completionChunks.push({
                     isThinking: false,
                     content: streamedImageResult,
+                    isFinal: true,
                   });
                 }
 
@@ -1995,7 +2226,7 @@ export class ChatGPTApi implements LLMApi {
           getTimeoutMSByModel(options.config.model),
         );
 
-        const res = await fetch(chatPath, chatPayload);
+        const res = await tauriFetch(chatPath, chatPayload);
         clearTimeout(requestTimeoutId);
 
         const resJson = (await res.json()) as ResponsesResponse;
@@ -2335,7 +2566,7 @@ export class ChatGPTApi implements LLMApi {
           getTimeoutMSByModel(options.config.model),
         );
 
-        const res = await fetch(chatPath, chatPayload);
+        const res = await tauriFetch(chatPath, chatPayload);
         clearTimeout(requestTimeoutId);
 
         const resJson = await res.json();
@@ -2364,7 +2595,7 @@ export class ChatGPTApi implements LLMApi {
     const endDate = formatDate(new Date(Date.now() + ONE_DAY));
 
     const [used, subs] = await Promise.all([
-      fetch(
+      tauriFetch(
         this.path(
           `${OpenaiPath.UsagePath}?start_date=${startDate}&end_date=${endDate}`,
         ),
@@ -2373,7 +2604,7 @@ export class ChatGPTApi implements LLMApi {
           headers: getHeaders(),
         },
       ),
-      fetch(this.path(OpenaiPath.SubsPath), {
+      tauriFetch(this.path(OpenaiPath.SubsPath), {
         method: "GET",
         headers: getHeaders(),
       }),
@@ -2422,7 +2653,7 @@ export class ChatGPTApi implements LLMApi {
       return DEFAULT_MODELS.slice();
     }
 
-    const res = await fetch(this.path(OpenaiPath.ListModelPath), {
+    const res = await tauriFetch(this.path(OpenaiPath.ListModelPath), {
       method: "GET",
       headers: {
         ...getHeaders(),
