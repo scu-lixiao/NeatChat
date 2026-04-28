@@ -108,6 +108,16 @@ export type ResponsesInputContentPart =
   | ResponsesInputTextPart
   | ResponsesInputImagePart;
 
+export interface ResponsesFunctionCallOutputItem {
+  type: "function_call_output";
+  call_id: string;
+  output: string | ResponsesInputContentPart[];
+}
+
+export type ResponsesInput =
+  | ResponsesInputItem
+  | ResponsesFunctionCallOutputItem;
+
 export type ResponsesImageGenerationSize = "auto" | `${number}x${number}`;
 
 export type ResponsesImageGenerationQuality =
@@ -131,7 +141,7 @@ export type ResponsesIncludable =
 
 export interface ResponsesRequestPayload {
   model: string;
-  input: ResponsesInputItem[] | string;
+  input: ResponsesInput[] | string;
   instructions?: string; // 替代 system message
   stream?: boolean;
   temperature?: number;
@@ -1957,15 +1967,13 @@ export class ChatGPTApi implements LLMApi {
           (payload: any, toolCallMessage: any, toolCallResult: any[]) => {
             toolIndex = -1;
             // Responses API 的工具调用结果需要通过 input 传递
-            // 将工具调用结果转换为 input 格式追加
-            const toolResults = toolCallResult.map((result: any) => ({
-              role: "user" as const,
-              content: JSON.stringify({
+            // 将工具调用结果转换为 function_call_output 输入项追加
+            const toolResults: ResponsesFunctionCallOutputItem[] =
+              toolCallResult.map((result: any) => ({
                 type: "function_call_output",
                 call_id: result.tool_call_id,
                 output: result.content,
-              }),
-            }));
+              }));
 
             if (payload.input && Array.isArray(payload.input)) {
               payload.input.push(...toolResults);

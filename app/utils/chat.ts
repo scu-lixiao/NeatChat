@@ -628,12 +628,19 @@ export function stream(
     requestPayload: any,
     tools: any,
   ) {
+    const outgoingPayload = { ...requestPayload };
+
+    if (
+      !Object.prototype.hasOwnProperty.call(outgoingPayload, "tools") &&
+      tools &&
+      tools.length
+    ) {
+      outgoingPayload.tools = tools;
+    }
+
     const chatPayload = {
       method: "POST",
-      body: JSON.stringify({
-        ...requestPayload,
-        tools: tools && tools.length ? tools : undefined,
-      }),
+      body: JSON.stringify(outgoingPayload),
       signal: controller.signal,
       headers,
     };
@@ -986,12 +993,19 @@ export function streamWithThink(
     requestPayload: any,
     tools: any,
   ) {
+    const outgoingPayload = { ...requestPayload };
+
+    if (
+      !Object.prototype.hasOwnProperty.call(outgoingPayload, "tools") &&
+      tools &&
+      tools.length
+    ) {
+      outgoingPayload.tools = tools;
+    }
+
     const chatPayload = {
       method: "POST",
-      body: JSON.stringify({
-        ...requestPayload,
-        tools: tools && tools.length ? tools : undefined,
-      }),
+      body: JSON.stringify(outgoingPayload),
       signal: controller.signal,
       headers,
     };
