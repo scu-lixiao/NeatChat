@@ -13,7 +13,11 @@ import {
   ChatMessageTool,
   usePluginStore,
 } from "@/app/store";
-import { preProcessImageContent, streamWithThink } from "@/app/utils/chat";
+import {
+  detectOpenAICompatibleStreamTermination,
+  preProcessImageContent,
+  streamWithThink,
+} from "@/app/utils/chat";
 import {
   ChatOptions,
   getHeaders,
@@ -230,6 +234,7 @@ export class SiliconflowApi implements LLMApi {
             );
           },
           options,
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);

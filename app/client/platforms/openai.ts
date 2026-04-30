@@ -27,6 +27,8 @@ import {
   preProcessImageContent,
   uploadImage,
   base64Image2Blob,
+  detectOpenAICompatibleStreamTermination,
+  detectResponsesStreamTermination,
   streamWithThink,
 } from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
@@ -2211,6 +2213,7 @@ export class ChatGPTApi implements LLMApi {
             }
           },
           options,
+          detectResponsesStreamTermination,
         );
       } else {
         // 非流式请求
@@ -2552,6 +2555,7 @@ export class ChatGPTApi implements LLMApi {
             );
           },
           options,
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         const chatPayload = {

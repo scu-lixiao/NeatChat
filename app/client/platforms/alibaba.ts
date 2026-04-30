@@ -8,6 +8,7 @@ import {
   usePluginStore,
 } from "@/app/store";
 import {
+  detectOpenAICompatibleStreamTermination,
   preProcessImageContentForAlibabaDashScope,
   streamWithThink,
 } from "@/app/utils/chat";
@@ -119,20 +120,19 @@ function normalizeTopP(topP: number): number {
 // Optimization: 避免重复逻辑，提高可维护性
 // }}
 function extractContentFromChoice(
-  content: string | null | MultimodalContentForAlibaba[]
+  content: string | null | MultimodalContentForAlibaba[],
 ): string {
   if (!content) return "";
-  
+
   if (Array.isArray(content)) {
     return content
       .map((item) => item.text || "")
       .filter(Boolean)
       .join("");
   }
-  
+
   return content;
 }
-
 
 export class QwenApi implements LLMApi {
   path(path: string): string {
@@ -254,7 +254,7 @@ export class QwenApi implements LLMApi {
           .getAsTools(
             useChatStore.getState().currentSession().mask?.plugin || [],
           );
-        
+
         // 流式响应处理
         return streamWithThink(
           chatPath,
@@ -307,7 +307,7 @@ export class QwenApi implements LLMApi {
                   // 增量更新已存在的工具
                   const existingTool = runTools[index];
                   if (existingTool?.function) {
-                    existingTool.function.arguments = 
+                    existingTool.function.arguments =
                       (existingTool.function.arguments || "") + args;
                   }
                 }
@@ -340,7 +340,12 @@ export class QwenApi implements LLMApi {
                 content: "",
               };
             } catch (parseError) {
-              console.error("[Alibaba] SSE parse error:", parseError, "Text:", text);
+              console.error(
+                "[Alibaba] SSE parse error:",
+                parseError,
+                "Text:",
+                text,
+              );
               return { isThinking: false, content: "" };
             }
           },
@@ -358,11 +363,12 @@ export class QwenApi implements LLMApi {
             );
           },
           options,
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         // 非流式响应
         const res = await fetch(chatPath, chatPayload);
-        
+
         if (requestTimeoutId) {
           clearTimeout(requestTimeoutId);
           requestTimeoutId = null;

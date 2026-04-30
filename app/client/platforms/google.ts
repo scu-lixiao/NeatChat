@@ -15,6 +15,7 @@ import {
   ChatMessageTool,
 } from "@/app/store";
 import {
+  detectGoogleStreamTermination,
   streamWithThink,
   parseGoogleResponse,
   wrapSVGInCodeBlock,
@@ -1268,6 +1269,7 @@ export class GeminiProApi implements LLMApi {
             },
             onThinkingUpdate: options.onThinkingUpdate,
           },
+          detectGoogleStreamTermination,
         );
       } else {
         // {{CHENGQI:

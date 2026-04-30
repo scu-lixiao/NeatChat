@@ -17,7 +17,10 @@ import {
   SpeechOptions,
 } from "../api";
 
-import { streamWithThink } from "@/app/utils/chat";
+import {
+  detectOpenAICompatibleStreamTermination,
+  streamWithThink,
+} from "@/app/utils/chat";
 import { getClientConfig } from "@/app/config/client";
 import { preProcessImageContent } from "@/app/utils/chat";
 import {
@@ -222,6 +225,7 @@ export class DoubaoApi implements LLMApi {
             );
           },
           options,
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);

@@ -8,7 +8,10 @@ import {
   ChatMessageTool,
   usePluginStore,
 } from "@/app/store";
-import { streamWithThink } from "@/app/utils/chat";
+import {
+  detectOpenAICompatibleStreamTermination,
+  streamWithThink,
+} from "@/app/utils/chat";
 import {
   ChatOptions,
   getHeaders,
@@ -314,6 +317,7 @@ export class XAIApi implements LLMApi {
             // }}
             onThinkingUpdate: options.onThinkingUpdate,
           },
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);

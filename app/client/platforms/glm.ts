@@ -7,7 +7,10 @@ import {
   ChatMessageTool,
   usePluginStore,
 } from "@/app/store";
-import { stream } from "@/app/utils/chat";
+import {
+  detectOpenAICompatibleStreamTermination,
+  stream,
+} from "@/app/utils/chat";
 import {
   ChatOptions,
   getHeaders,
@@ -264,6 +267,7 @@ export class ChatGLMApi implements LLMApi {
             );
           },
           options,
+          detectOpenAICompatibleStreamTermination,
         );
       } else {
         const res = await fetch(path, chatPayload);

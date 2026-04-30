@@ -33,7 +33,7 @@ import {
   UPLOAD_URL,
   REQUEST_TIMEOUT_MS,
 } from "@/app/constant";
-import { MultimodalContent, RequestMessage } from "@/app/client/api";
+import type { MultimodalContent, RequestMessage } from "@/app/client/api";
 import Locale from "@/app/locales";
 import {
   EventStreamContentType,
@@ -42,6 +42,135 @@ import {
 import { prettyObject } from "./format";
 import { fetch as tauriFetch } from "./stream";
 import { streamCleanupManager } from "./stream-cleanup-manager";
+
+export interface StreamTerminationState {
+  completed?: boolean;
+  failed?: boolean;
+  reason?: string;
+}
+
+export type StreamTerminationDetector = (
+  text: string,
+) => StreamTerminationState | undefined;
+
+export function detectOpenAICompatibleStreamTermination(
+  text: string,
+): StreamTerminationState | undefined {
+  try {
+    const parsed = JSON.parse(text);
+    const choices = parsed?.choices ?? parsed?.output?.choices;
+
+    if (!Array.isArray(choices) || choices.length === 0) {
+      if (parsed?.error) {
+        return {
+          failed: true,
+          reason:
+            parsed.error?.message ||
+            parsed.error?.code ||
+            "stream returned an error",
+        };
+      }
+      return undefined;
+    }
+
+    const completed = choices.some((choice: any) => {
+      const finishReason = choice?.finish_reason ?? choice?.finishReason;
+      return typeof finishReason === "string" && finishReason.length > 0;
+    });
+
+    return completed ? { completed: true } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function detectResponsesStreamTermination(
+  text: string,
+): StreamTerminationState | undefined {
+  try {
+    const parsed = JSON.parse(text);
+    const eventType = parsed?.type;
+
+    if (eventType === "response.completed") {
+      return { completed: true };
+    }
+
+    if (
+      eventType === "response.failed" ||
+      eventType === "response.cancelled" ||
+      eventType === "response.incomplete" ||
+      eventType === "error"
+    ) {
+      return {
+        failed: true,
+        reason:
+          parsed?.error?.message ||
+          parsed?.response?.status ||
+          eventType ||
+          "response stream failed",
+      };
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+export function detectAnthropicStreamTermination(
+  text: string,
+): StreamTerminationState | undefined {
+  try {
+    const parsed = JSON.parse(text);
+
+    if (parsed?.type === "message_stop") {
+      return { completed: true };
+    }
+
+    if (parsed?.type === "error" || parsed?.error) {
+      return {
+        failed: true,
+        reason:
+          parsed?.error?.message || parsed?.type || "anthropic stream failed",
+      };
+    }
+  } catch {
+    return undefined;
+  }
+
+  return undefined;
+}
+
+export function detectGoogleStreamTermination(
+  text: string,
+): StreamTerminationState | undefined {
+  try {
+    const parsed = JSON.parse(text);
+
+    if (parsed?.error) {
+      return {
+        failed: true,
+        reason: parsed.error?.message || "google stream failed",
+      };
+    }
+
+    if (parsed?.promptFeedback?.blockReason) {
+      return {
+        failed: true,
+        reason: `google prompt blocked: ${parsed.promptFeedback.blockReason}`,
+      };
+    }
+
+    const completed = parsed?.candidates?.some((candidate: any) => {
+      const finishReason = candidate?.finishReason ?? candidate?.finish_reason;
+      return typeof finishReason === "string" && finishReason.length > 0;
+    });
+
+    return completed ? { completed: true } : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export function compressImage(file: Blob, maxSize: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -452,12 +581,14 @@ export function stream(
     toolCallResult: any[],
   ) => void,
   options: any,
+  detectTermination?: StreamTerminationDetector,
 ) {
   let responseText = "";
   let finished = false;
   let running = false;
   let runTools: any[] = [];
   let responseRes: Response;
+  let protocolCompleted = false;
 
   // {{CHENGQI:
   // Action: Enhanced - Claude 4.0 sonnet 性能优化升级
@@ -542,6 +673,25 @@ export function stream(
   // start animation
   animateResponseText();
 
+  const flushBufferedResponse = () => {
+    const remainingText = textBuffer.getAllRemaining();
+    if (remainingText) {
+      responseText += remainingText;
+      options.onUpdate?.(responseText, remainingText);
+    }
+  };
+
+  const failStream = (error: Error) => {
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+    flushBufferedResponse();
+    cleanup();
+    options.onError?.(error);
+  };
+
   const finish = () => {
     if (!finished) {
       if (!running && runTools.length > 0) {
@@ -615,8 +765,8 @@ export function stream(
       console.debug("[ChatAPI] end");
       finished = true;
       // Get any remaining text from buffer before finishing
-      const remainingText = textBuffer.getAllRemaining();
-      options.onFinish(responseText + remainingText, responseRes); // 将res传递给onFinish
+      flushBufferedResponse();
+      options.onFinish(responseText, responseRes); // 将res传递给onFinish
     }
   };
 
@@ -690,7 +840,12 @@ export function stream(
         }
       },
       onmessage(msg) {
-        if (msg.data === "[DONE]" || finished) {
+        if (finished) {
+          return;
+        }
+
+        if (msg.data === "[DONE]") {
+          protocolCompleted = true;
           return finish();
         }
         const text = msg.data;
@@ -698,6 +853,19 @@ export function stream(
         if (!text || text.trim().length === 0) {
           return;
         }
+
+        const terminationState = detectTermination?.(text);
+        if (terminationState?.completed) {
+          protocolCompleted = true;
+        }
+        if (terminationState?.failed) {
+          return failStream(
+            new Error(
+              terminationState.reason || "stream terminated before completion",
+            ),
+          );
+        }
+
         try {
           const chunk = parseSSE(text, runTools);
           if (chunk) {
@@ -718,7 +886,12 @@ export function stream(
         }
       },
       onclose() {
-        finish();
+        if (!detectTermination || protocolCompleted) {
+          finish();
+          return;
+        }
+
+        failStream(new Error("stream closed before completion"));
       },
       onerror(e) {
         options?.onError?.(e);
@@ -758,6 +931,7 @@ export function streamWithThink(
     toolCallResult: any[],
   ) => void,
   options: any,
+  detectTermination?: StreamTerminationDetector,
 ) {
   let responseText = "";
   let thinkingText = "";
@@ -769,6 +943,7 @@ export function streamWithThink(
   let lastIsThinking = false;
   let finalResponseContent: string | MultimodalContent[] | undefined;
   let hasStructuredContent = false;
+  let protocolCompleted = false;
 
   // {{CHENGQI:
   // Action: Enhanced - Claude 4.0 sonnet 双流处理优化升级
@@ -899,6 +1074,32 @@ export function streamWithThink(
   // start unified animation
   animateContent();
 
+  const flushBufferedContent = () => {
+    const remainingResponse = responseBuffer.getAllRemaining();
+    const remainingThinking = thinkingBuffer.getAllRemaining();
+
+    if (remainingThinking) {
+      thinkingText += remainingThinking;
+      options.onThinkingUpdate?.(thinkingText, remainingThinking);
+    }
+
+    if (remainingResponse) {
+      responseText += remainingResponse;
+      options.onUpdate?.(responseText, remainingResponse);
+    }
+  };
+
+  const failStream = (error: Error) => {
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+    flushBufferedContent();
+    cleanup();
+    options.onError?.(error);
+  };
+
   const finish = () => {
     if (!finished) {
       if (!running && runTools.length > 0) {
@@ -981,21 +1182,14 @@ export function streamWithThink(
       //   - Completeness: 思考内容和响应内容都需要完整输出
       // }}
       // Get any remaining text from buffers before finishing
-      const remainingResponse = responseBuffer.getAllRemaining();
-      const remainingThinking = thinkingBuffer.getAllRemaining();
-
-      // 如果还有未消费的思考内容，先发送它
-      if (remainingThinking) {
-        thinkingText += remainingThinking;
-        options.onThinkingUpdate?.(thinkingText, remainingThinking);
-      }
+      flushBufferedContent();
 
       if (finalResponseContent) {
         options.onFinish(finalResponseContent, responseRes);
         return;
       }
 
-      options.onFinish(responseText + remainingResponse, responseRes);
+      options.onFinish(responseText, responseRes);
     }
   };
 
@@ -1069,13 +1263,30 @@ export function streamWithThink(
         }
       },
       onmessage(msg) {
-        if (msg.data === "[DONE]" || finished) {
+        if (finished) {
+          return;
+        }
+
+        if (msg.data === "[DONE]") {
+          protocolCompleted = true;
           return finish();
         }
         const text = msg.data;
         // Skip empty messages
         if (!text || text.trim().length === 0) {
           return;
+        }
+
+        const terminationState = detectTermination?.(text);
+        if (terminationState?.completed) {
+          protocolCompleted = true;
+        }
+        if (terminationState?.failed) {
+          return failStream(
+            new Error(
+              terminationState.reason || "stream terminated before completion",
+            ),
+          );
         }
 
         // {{CHENGQI:
@@ -1231,7 +1442,12 @@ export function streamWithThink(
             running,
           });
         }
-        finish();
+        if (!detectTermination || protocolCompleted) {
+          finish();
+          return;
+        }
+
+        failStream(new Error("stream closed before completion"));
       },
       onerror(e) {
         options?.onError?.(e);

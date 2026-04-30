@@ -10,7 +10,11 @@ import {
 import { getClientConfig } from "@/app/config/client";
 import { ANTHROPIC_BASE_URL } from "@/app/constant";
 import { getMessageTextContent, isVisionModel } from "@/app/utils";
-import { preProcessImageContent, streamWithThink } from "@/app/utils/chat";
+import {
+  detectAnthropicStreamTermination,
+  preProcessImageContent,
+  streamWithThink,
+} from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
@@ -195,8 +199,8 @@ export class ClaudeApi implements LLMApi {
       //top_k: 5,
       thinking: {
         type: "enabled",
-        budget_tokens: 10000
-      }
+        budget_tokens: 10000,
+      },
     };
 
     const path = this.path(Anthropic.ChatPath);
@@ -232,7 +236,13 @@ export class ClaudeApi implements LLMApi {
           let chunkJson:
             | undefined
             | {
-                type: "message_start" | "message_delta" | "message_stop" | "content_block_start" | "content_block_delta" | "content_block_stop";
+                type:
+                  | "message_start"
+                  | "message_delta"
+                  | "message_stop"
+                  | "content_block_start"
+                  | "content_block_delta"
+                  | "content_block_stop";
                 message?: {
                   id: string;
                   type: "message";
@@ -248,7 +258,11 @@ export class ClaudeApi implements LLMApi {
                   text?: string;
                 };
                 delta?: {
-                  type: "text_delta" | "input_json_delta" | "thinking_delta" | "signature_delta";
+                  type:
+                    | "text_delta"
+                    | "input_json_delta"
+                    | "thinking_delta"
+                    | "signature_delta";
                   text?: string;
                   thinking?: string;
                   partial_json?: string;
@@ -256,7 +270,7 @@ export class ClaudeApi implements LLMApi {
                 };
                 index?: number;
               };
-          
+
           try {
             chunkJson = JSON.parse(text);
           } catch (e) {
@@ -265,7 +279,11 @@ export class ClaudeApi implements LLMApi {
           }
 
           // Handle message-level events
-          if (chunkJson?.type === "message_start" || chunkJson?.type === "message_delta" || chunkJson?.type === "message_stop") {
+          if (
+            chunkJson?.type === "message_start" ||
+            chunkJson?.type === "message_delta" ||
+            chunkJson?.type === "message_stop"
+          ) {
             console.log(`[Anthropic] ${chunkJson.type} event`);
             return { isThinking: false, content: undefined };
           }
@@ -274,10 +292,16 @@ export class ClaudeApi implements LLMApi {
           if (chunkJson?.type === "content_block_start") {
             if (chunkJson?.content_block?.type === "thinking") {
               console.log("[Thinking] Content block started");
-              return { isThinking: true, content: chunkJson?.content_block?.thinking || "" };
+              return {
+                isThinking: true,
+                content: chunkJson?.content_block?.thinking || "",
+              };
             } else if (chunkJson?.content_block?.type === "text") {
               console.log("[Text] Content block started");
-              return { isThinking: false, content: chunkJson?.content_block?.text || "" };
+              return {
+                isThinking: false,
+                content: chunkJson?.content_block?.text || "",
+              };
             } else if (chunkJson?.content_block?.type === "tool_use") {
               // Handle tool use start
               index += 1;
@@ -298,35 +322,49 @@ export class ClaudeApi implements LLMApi {
 
           // Handle content block stop events
           if (chunkJson?.type === "content_block_stop") {
-            console.log("[Anthropic] Content block stopped, index:", chunkJson?.index);
+            console.log(
+              "[Anthropic] Content block stopped, index:",
+              chunkJson?.index,
+            );
             return { isThinking: false, content: undefined };
           }
 
           // Handle content block delta events
           if (chunkJson?.type === "content_block_delta" && chunkJson?.delta) {
             const delta = chunkJson.delta;
-            
+
             // Handle thinking delta
             if (delta.type === "thinking_delta" && delta.thinking) {
-              console.log("[Thinking] Delta received:", delta.thinking.substring(0, 50) + "...");
+              console.log(
+                "[Thinking] Delta received:",
+                delta.thinking.substring(0, 50) + "...",
+              );
               return { isThinking: true, content: delta.thinking };
             }
-            
+
             // Handle text delta
             if (delta.type === "text_delta" && delta.text) {
-              console.log("[Text] Delta received:", delta.text.substring(0, 50) + "...");
+              console.log(
+                "[Text] Delta received:",
+                delta.text.substring(0, 50) + "...",
+              );
               return { isThinking: false, content: delta.text };
             }
-            
+
             // Handle tool use input delta
-            if (delta.type === "input_json_delta" && delta.partial_json && runTools.length > 0) {
+            if (
+              delta.type === "input_json_delta" &&
+              delta.partial_json &&
+              runTools.length > 0
+            ) {
               const currentTool = runTools[runTools.length - 1];
               if (currentTool?.function) {
-                currentTool.function.arguments = (currentTool.function.arguments || "") + delta.partial_json;
+                currentTool.function.arguments =
+                  (currentTool.function.arguments || "") + delta.partial_json;
               }
               return { isThinking: false, content: undefined };
             }
-            
+
             // Handle signature delta (ignore for now)
             if (delta.type === "signature_delta") {
               console.log("[Signature] Delta received (ignored)");
@@ -378,6 +416,7 @@ export class ClaudeApi implements LLMApi {
           );
         },
         options,
+        detectAnthropicStreamTermination,
       );
     } else {
       const payload = {
