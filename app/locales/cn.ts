@@ -665,6 +665,66 @@ const cn = {
           Opaque: "不透明",
         },
       },
+      ImageGenerationModel: {
+        Title: "图像模型",
+        SubTitle: "选择 Responses image_generation 工具使用的图像模型",
+      },
+      ImageGenerationAction: {
+        Title: "生成模式",
+        SubTitle: "控制工具自动生成新图或基于输入图编辑",
+        Options: {
+          Auto: "自动",
+          Generate: "生成",
+          Edit: "编辑",
+        },
+      },
+      ImageGenerationSize: {
+        Title: "图像尺寸",
+        SubTitle: "设置原生 image_generation 工具的输出尺寸",
+      },
+      ImageGenerationQuality: {
+        Title: "图像质量",
+        SubTitle: "设置原生 image_generation 工具的渲染质量",
+      },
+      ImageGenerationModeration: {
+        Title: "内容审核",
+        SubTitle: "控制原生 image_generation 工具的审核强度",
+      },
+      ImageGenerationOutputFormat: {
+        Title: "输出格式",
+        SubTitle: "设置生成图像的文件格式",
+        Options: {
+          Png: "PNG",
+          Webp: "WebP",
+          Jpeg: "JPEG",
+        },
+      },
+      ImageGenerationOutputCompression: {
+        Title: "输出压缩",
+        SubTitle: "设置 JPEG 或 WebP 输出的压缩率，0 到 100",
+      },
+      ImageGenerationPartialImages: {
+        Title: "中间图像",
+        SubTitle: "流式输出时返回的中间图像数量，仅在开启流式响应时生效",
+      },
+      ImageGenerationInputFidelity: {
+        Title: "输入保真度",
+        SubTitle: "有参考图时控制模型匹配输入图风格与细节的力度",
+        Options: {
+          Low: "低",
+          High: "高",
+        },
+      },
+      ImageGenerationMaskFileId: {
+        Title: "蒙版文件 ID",
+        SubTitle: "可选，用于 inpainting 的 mask file_id",
+        Placeholder: "file-xxx",
+      },
+      ImageGenerationMaskImageUrl: {
+        Title: "蒙版图像",
+        SubTitle: "可选，用于 inpainting 的蒙版 data URL 或图像地址",
+        Placeholder: "data:image/png;base64,...",
+      },
       ToolChoice: {
         Title: "工具选择",
         SubTitle: "控制模型如何选择使用工具",

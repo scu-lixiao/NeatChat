@@ -126,6 +126,14 @@ export type ResponsesInput =
 
 export type ResponsesImageGenerationSize = "auto" | `${number}x${number}`;
 
+export type ResponsesImageGenerationToolModel =
+  | "gpt-image-2"
+  | "gpt-image-1"
+  | "gpt-image-1-mini"
+  | "gpt-image-1.5";
+
+export type ResponsesImageGenerationAction = "generate" | "edit" | "auto";
+
 export type ResponsesImageGenerationQuality =
   | "low"
   | "medium"
@@ -133,6 +141,7 @@ export type ResponsesImageGenerationQuality =
   | "auto";
 
 export type ResponsesImageGenerationOutputFormat = "png" | "webp" | "jpeg";
+export type ResponsesImageGenerationInputFidelity = "low" | "high";
 
 // Responses API include 参数支持的值
 // 参考: https://platform.openai.com/docs/api-reference/responses
@@ -190,14 +199,15 @@ export interface ResponsesTool {
 // GPT-5 图像生成工具类型
 export interface ResponsesImageGenerationTool {
   type: "image_generation";
-  action?: "generate" | "edit" | "auto";
+  action?: ResponsesImageGenerationAction;
   // 可选配置参数
   background?: "transparent" | "opaque" | "auto";
-  input_fidelity?: "low" | "high";
+  input_fidelity?: ResponsesImageGenerationInputFidelity;
   input_image_mask?: {
     file_id?: string;
     image_url?: string;
   };
+  model?: ResponsesImageGenerationToolModel;
   output_compression?: number;
   output_format?: ResponsesImageGenerationOutputFormat;
   partial_images?: number;
@@ -530,6 +540,34 @@ function normalizeResponsesImageGenerationSize(
   return "1024x1024";
 }
 
+function normalizeResponsesImageGenerationModel(
+  model?: string,
+): ResponsesImageGenerationToolModel {
+  switch (model) {
+    case "gpt-image-2":
+    case "gpt-image-1-mini":
+    case "gpt-image-1.5":
+      return model;
+    case "gpt-image-1":
+    default:
+      return "gpt-image-2";
+  }
+}
+
+function normalizeResponsesImageGenerationAction(
+  action?: string,
+  shouldEditImage?: boolean,
+): ResponsesImageGenerationAction | undefined {
+  switch (action) {
+    case "generate":
+    case "edit":
+      return action;
+    case "auto":
+    default:
+      return shouldEditImage ? "edit" : undefined;
+  }
+}
+
 function normalizeOpenAIImageApiSize(size?: ModelSize): OpenAIImagesApiSize {
   if (size && isValidOpenAIImageApiSize(size)) {
     return size;
@@ -594,6 +632,41 @@ function normalizeResponsesImageGenerationQuality(
     default:
       return "auto";
   }
+}
+
+function normalizeResponsesImageGenerationOutputFormat(
+  outputFormat?: string,
+): ResponsesImageGenerationOutputFormat {
+  switch (outputFormat) {
+    case "webp":
+    case "jpeg":
+      return outputFormat;
+    case "png":
+    default:
+      return "png";
+  }
+}
+
+function normalizeResponsesImageGenerationOutputCompression(
+  outputCompression?: number,
+): number {
+  const normalized = Math.round(outputCompression ?? 100);
+  return Math.min(100, Math.max(0, normalized));
+}
+
+function normalizeResponsesImageGenerationPartialImages(
+  partialImages?: number,
+): number {
+  const normalized = Math.round(
+    partialImages ?? OPENAI_STREAMED_PARTIAL_IMAGES,
+  );
+  return Math.min(3, Math.max(0, normalized));
+}
+
+function normalizeResponsesImageGenerationInputFidelity(
+  inputFidelity?: string,
+): ResponsesImageGenerationInputFidelity {
+  return inputFidelity === "high" ? "high" : "low";
 }
 
 function collectResponsesOutputText(output?: ResponsesOutputItem[]): string[] {
@@ -1688,22 +1761,43 @@ export class ChatGPTApi implements LLMApi {
     // 当启用 enableImageGeneration 时，模型可以生成图像
     if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
       const shouldEditImage = latestUserInputImageCount > 0;
+      const imageGenerationModel = normalizeResponsesImageGenerationModel(
+        modelConfig.imageGenerationModel,
+      );
+      const imageGenerationAction = normalizeResponsesImageGenerationAction(
+        modelConfig.imageGenerationAction,
+        shouldEditImage,
+      );
       const imageGenerationQuality = normalizeResponsesImageGenerationQuality(
         options.config?.quality,
       );
       const imageGenerationBackground = modelConfig.imageBackground || "auto";
       const imageGenerationModeration = modelConfig.moderation || "auto";
+      const imageGenerationOutputFormat =
+        normalizeResponsesImageGenerationOutputFormat(
+          modelConfig.imageGenerationOutputFormat,
+        );
+      const imageGenerationPartialImages =
+        normalizeResponsesImageGenerationPartialImages(
+          modelConfig.imageGenerationPartialImages,
+        );
+      const imageGenerationMaskFileId =
+        modelConfig.imageGenerationMaskFileId?.trim();
+      const imageGenerationMaskImageUrl =
+        modelConfig.imageGenerationMaskImageUrl?.trim();
       const imageGenTool: ResponsesImageGenerationTool = {
         type: "image_generation",
+        model: imageGenerationModel,
         size: normalizeResponsesImageGenerationSize(options.config?.size),
+        output_format: imageGenerationOutputFormat,
       };
 
-      if (options.config.stream) {
-        imageGenTool.partial_images = OPENAI_STREAMED_PARTIAL_IMAGES;
+      if (options.config.stream && imageGenerationPartialImages > 0) {
+        imageGenTool.partial_images = imageGenerationPartialImages;
       }
 
-      if (shouldEditImage) {
-        imageGenTool.action = "edit";
+      if (imageGenerationAction) {
+        imageGenTool.action = imageGenerationAction;
       }
       if (imageGenerationModeration !== "auto") {
         imageGenTool.moderation = imageGenerationModeration;
@@ -1714,6 +1808,27 @@ export class ChatGPTApi implements LLMApi {
       if (imageGenerationBackground !== "auto") {
         // 仅在用户显式覆盖默认值时发送背景设置。
         imageGenTool.background = imageGenerationBackground;
+      }
+      if (imageGenerationOutputFormat !== "png") {
+        imageGenTool.output_compression =
+          normalizeResponsesImageGenerationOutputCompression(
+            modelConfig.imageGenerationOutputCompression,
+          );
+      }
+      if (latestUserInputImageCount > 0) {
+        imageGenTool.input_fidelity =
+          normalizeResponsesImageGenerationInputFidelity(
+            modelConfig.imageGenerationInputFidelity,
+          );
+      }
+      if (imageGenerationMaskFileId || imageGenerationMaskImageUrl) {
+        imageGenTool.input_image_mask = {};
+        if (imageGenerationMaskFileId) {
+          imageGenTool.input_image_mask.file_id = imageGenerationMaskFileId;
+        }
+        if (imageGenerationMaskImageUrl) {
+          imageGenTool.input_image_mask.image_url = imageGenerationMaskImageUrl;
+        }
       }
 
       if (!requestPayload.tools) {

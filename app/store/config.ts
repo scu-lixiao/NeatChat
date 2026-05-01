@@ -159,6 +159,14 @@ export const DEFAULT_CONFIG = {
     enableImageGeneration: false,
     // vectorStoreIds: 文件搜索的向量存储 ID 列表（需要先在 OpenAI 创建 vector store）
     vectorStoreIds: [] as string[],
+    // imageGenerationModel: Responses image_generation 工具使用的图像模型
+    imageGenerationModel: "gpt-image-2" as
+      | "gpt-image-2"
+      | "gpt-image-1"
+      | "gpt-image-1-mini"
+      | "gpt-image-1.5",
+    // imageGenerationAction: 控制工具生成新图或编辑输入图
+    imageGenerationAction: "auto" as "auto" | "generate" | "edit",
     // imageBackground: 图像生成背景配置
     // "auto": 自动选择（默认）
     // "transparent": 透明背景（适用于PNG/WebP）
@@ -168,6 +176,18 @@ export const DEFAULT_CONFIG = {
     // "auto": 标准审核（OpenAI 默认）
     // "low": 更宽松的审核
     moderation: "auto" as ImageModeration,
+    // imageGenerationOutputFormat: Responses image_generation 工具输出格式
+    imageGenerationOutputFormat: "png" as "png" | "webp" | "jpeg",
+    // imageGenerationOutputCompression: JPEG/WebP 输出压缩率，取值 0-100
+    imageGenerationOutputCompression: 100,
+    // imageGenerationPartialImages: 流式返回的中间图像数量，取值 0-3
+    imageGenerationPartialImages: 0,
+    // imageGenerationInputFidelity: 参考图输入保真度
+    imageGenerationInputFidelity: "low" as "low" | "high",
+    // imageGenerationMaskFileId: 可选的蒙版 file_id
+    imageGenerationMaskFileId: "",
+    // imageGenerationMaskImageUrl: 可选的蒙版 image_url/data URL
+    imageGenerationMaskImageUrl: "",
   },
 
   ttsConfig: {

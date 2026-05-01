@@ -56,28 +56,78 @@ export function ModelConfigList(props: {
     "high",
   ];
   const gptImageModerationOptions: ImageModeration[] = ["auto", "low"];
+  const gpt5ImageGenerationModelOptions = [
+    "gpt-image-2",
+    "gpt-image-1",
+    "gpt-image-1-mini",
+    "gpt-image-1.5",
+  ] as const;
+  const gpt5ImageGenerationActionOptions = [
+    "auto",
+    "generate",
+    "edit",
+  ] as const;
+  const gpt5ImageGenerationOutputFormatOptions = [
+    "png",
+    "webp",
+    "jpeg",
+  ] as const;
+  const gpt5ImageGenerationInputFidelityOptions = ["low", "high"] as const;
   const imageQualityOptions = isLegacyDalle3
     ? dalleQualityOptions
     : isModernOpenAIImageModel
     ? gptImageQualityOptions
     : [];
+  const currentOpenAIImageQuality = gptImageQualityOptions.includes(
+    props.modelConfig.quality as OpenAIImageQuality,
+  )
+    ? (props.modelConfig.quality as OpenAIImageQuality)
+    : "auto";
   const currentImageQuality = isLegacyDalle3
     ? props.modelConfig.quality === "hd"
       ? "hd"
       : "standard"
-    : isModernOpenAIImageModel &&
-      gptImageQualityOptions.includes(
-        props.modelConfig.quality as OpenAIImageQuality,
-      )
-    ? (props.modelConfig.quality as OpenAIImageQuality)
-    : "auto";
+    : currentOpenAIImageQuality;
   const currentImageBackground =
-    props.modelConfig.imageBackground === "opaque" ? "opaque" : "auto";
+    props.modelConfig.imageBackground === "transparent" ||
+    props.modelConfig.imageBackground === "opaque"
+      ? props.modelConfig.imageBackground
+      : "auto";
+  const currentImageBackgroundForImageModel =
+    currentImageBackground === "opaque" ? "opaque" : "auto";
   const currentImageModeration = gptImageModerationOptions.includes(
     props.modelConfig.moderation as ImageModeration,
   )
     ? (props.modelConfig.moderation as ImageModeration)
     : "auto";
+  const currentGpt5ImageGenerationModel =
+    props.modelConfig.imageGenerationModel === "gpt-image-2" ||
+    props.modelConfig.imageGenerationModel === "gpt-image-1-mini" ||
+    props.modelConfig.imageGenerationModel === "gpt-image-1.5"
+      ? props.modelConfig.imageGenerationModel
+      : props.modelConfig.imageGenerationModel === "gpt-image-1"
+      ? "gpt-image-1"
+      : "gpt-image-2";
+  const currentGpt5ImageGenerationAction =
+    props.modelConfig.imageGenerationAction === "generate" ||
+    props.modelConfig.imageGenerationAction === "edit"
+      ? props.modelConfig.imageGenerationAction
+      : "auto";
+  const currentGpt5ImageGenerationOutputFormat =
+    props.modelConfig.imageGenerationOutputFormat === "webp" ||
+    props.modelConfig.imageGenerationOutputFormat === "jpeg"
+      ? props.modelConfig.imageGenerationOutputFormat
+      : "png";
+  const currentGpt5ImageGenerationOutputCompression = Math.min(
+    100,
+    Math.max(0, props.modelConfig.imageGenerationOutputCompression ?? 100),
+  );
+  const currentGpt5ImageGenerationPartialImages = Math.min(
+    3,
+    Math.max(0, props.modelConfig.imageGenerationPartialImages ?? 0),
+  );
+  const currentGpt5ImageGenerationInputFidelity =
+    props.modelConfig.imageGenerationInputFidelity === "high" ? "high" : "low";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
 
@@ -187,7 +237,7 @@ export function ModelConfigList(props: {
             >
               <Select
                 aria-label={Locale.Settings.ImageModel.Background.Title}
-                value={currentImageBackground}
+                value={currentImageBackgroundForImageModel}
                 onChange={(e) => {
                   props.updateConfig((config) => {
                     config.imageBackground = e.currentTarget.value as
@@ -548,36 +598,375 @@ export function ModelConfigList(props: {
           {/* 图像背景设置（仅当启用图像生成时显示） */}
           {supportsGpt5NativeImageGeneration &&
             props.modelConfig.enableImageGeneration && (
-              <ListItem
-                title={Locale.Settings.GPT5Tools.ImageBackground.Title}
-                subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
-              >
-                <Select
-                  aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
-                  value={props.modelConfig.imageBackground ?? "auto"}
-                  onChange={(e) => {
-                    props.updateConfig((config) => {
-                      config.imageBackground = e.currentTarget.value as
-                        | "auto"
-                        | "transparent"
-                        | "opaque";
-                    });
-                  }}
+              <>
+                <ListItem
+                  title={Locale.Settings.GPT5Tools.ImageGenerationModel.Title}
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationModel.SubTitle
+                  }
                 >
-                  <option value="auto">
-                    {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
-                  </option>
-                  <option value="transparent">
-                    {
-                      Locale.Settings.GPT5Tools.ImageBackground.Options
-                        .Transparent
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationModel.Title
                     }
-                  </option>
-                  <option value="opaque">
-                    {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
-                  </option>
-                </Select>
-              </ListItem>
+                    value={currentGpt5ImageGenerationModel}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationModel = e.currentTarget.value as
+                          | "gpt-image-2"
+                          | "gpt-image-1"
+                          | "gpt-image-1-mini"
+                          | "gpt-image-1.5";
+                      });
+                    }}
+                  >
+                    {gpt5ImageGenerationModelOptions.map((model) => (
+                      <option value={model} key={model}>
+                        {model}
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={Locale.Settings.GPT5Tools.ImageGenerationAction.Title}
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationAction.SubTitle
+                  }
+                >
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationAction.Title
+                    }
+                    value={currentGpt5ImageGenerationAction}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationAction = e.currentTarget.value as
+                          | "auto"
+                          | "generate"
+                          | "edit";
+                      });
+                    }}
+                  >
+                    {gpt5ImageGenerationActionOptions.map((action) => (
+                      <option value={action} key={action}>
+                        {
+                          Locale.Settings.GPT5Tools.ImageGenerationAction
+                            .Options[
+                            action === "auto"
+                              ? "Auto"
+                              : action === "generate"
+                              ? "Generate"
+                              : "Edit"
+                          ]
+                        }
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                {imageSizes.length > 0 && (
+                  <ListItem
+                    title={Locale.Settings.GPT5Tools.ImageGenerationSize.Title}
+                    subTitle={
+                      Locale.Settings.GPT5Tools.ImageGenerationSize.SubTitle
+                    }
+                  >
+                    <Select
+                      aria-label={
+                        Locale.Settings.GPT5Tools.ImageGenerationSize.Title
+                      }
+                      value={currentImageSize}
+                      onChange={(e) => {
+                        props.updateConfig((config) => {
+                          config.size = e.currentTarget.value as ModelSize;
+                        });
+                      }}
+                    >
+                      {imageSizeOptions.map((size) => (
+                        <option value={size} key={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </Select>
+                  </ListItem>
+                )}
+
+                <ListItem
+                  title={Locale.Settings.GPT5Tools.ImageGenerationQuality.Title}
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationQuality.SubTitle
+                  }
+                >
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationQuality.Title
+                    }
+                    value={currentOpenAIImageQuality}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.quality = e.currentTarget.value as
+                          | DalleQuality
+                          | OpenAIImageQuality;
+                      });
+                    }}
+                  >
+                    {gptImageQualityOptions.map((quality) => (
+                      <option value={quality} key={quality}>
+                        {quality}
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationModeration.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationModeration.SubTitle
+                  }
+                >
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationModeration.Title
+                    }
+                    value={currentImageModeration}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.moderation = e.currentTarget
+                          .value as ImageModeration;
+                      });
+                    }}
+                  >
+                    {gptImageModerationOptions.map((moderation) => (
+                      <option value={moderation} key={moderation}>
+                        {moderation}
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={Locale.Settings.GPT5Tools.ImageBackground.Title}
+                  subTitle={Locale.Settings.GPT5Tools.ImageBackground.SubTitle}
+                >
+                  <Select
+                    aria-label={Locale.Settings.GPT5Tools.ImageBackground.Title}
+                    value={currentImageBackground}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageBackground = e.currentTarget.value as
+                          | "auto"
+                          | "transparent"
+                          | "opaque";
+                      });
+                    }}
+                  >
+                    <option value="auto">
+                      {Locale.Settings.GPT5Tools.ImageBackground.Options.Auto}
+                    </option>
+                    <option value="transparent">
+                      {
+                        Locale.Settings.GPT5Tools.ImageBackground.Options
+                          .Transparent
+                      }
+                    </option>
+                    <option value="opaque">
+                      {Locale.Settings.GPT5Tools.ImageBackground.Options.Opaque}
+                    </option>
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationOutputFormat.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationOutputFormat
+                      .SubTitle
+                  }
+                >
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationOutputFormat
+                        .Title
+                    }
+                    value={currentGpt5ImageGenerationOutputFormat}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationOutputFormat = e.currentTarget
+                          .value as "png" | "webp" | "jpeg";
+                      });
+                    }}
+                  >
+                    {gpt5ImageGenerationOutputFormatOptions.map((format) => (
+                      <option value={format} key={format}>
+                        {
+                          Locale.Settings.GPT5Tools.ImageGenerationOutputFormat
+                            .Options[
+                            format === "png"
+                              ? "Png"
+                              : format === "webp"
+                              ? "Webp"
+                              : "Jpeg"
+                          ]
+                        }
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationOutputCompression
+                      .Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationOutputCompression
+                      .SubTitle
+                  }
+                >
+                  <InputRange
+                    aria={
+                      Locale.Settings.GPT5Tools.ImageGenerationOutputCompression
+                        .Title
+                    }
+                    title={String(currentGpt5ImageGenerationOutputCompression)}
+                    value={currentGpt5ImageGenerationOutputCompression}
+                    min="0"
+                    max="100"
+                    step="1"
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationOutputCompression = Math.min(
+                          100,
+                          Math.max(0, e.currentTarget.valueAsNumber),
+                        );
+                      });
+                    }}
+                  ></InputRange>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationPartialImages.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationPartialImages
+                      .SubTitle
+                  }
+                >
+                  <InputRange
+                    aria={
+                      Locale.Settings.GPT5Tools.ImageGenerationPartialImages
+                        .Title
+                    }
+                    title={String(currentGpt5ImageGenerationPartialImages)}
+                    value={currentGpt5ImageGenerationPartialImages}
+                    min="0"
+                    max="3"
+                    step="1"
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationPartialImages = Math.min(
+                          3,
+                          Math.max(0, e.currentTarget.valueAsNumber),
+                        );
+                      });
+                    }}
+                  ></InputRange>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationInputFidelity.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationInputFidelity
+                      .SubTitle
+                  }
+                >
+                  <Select
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationInputFidelity
+                        .Title
+                    }
+                    value={currentGpt5ImageGenerationInputFidelity}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationInputFidelity = e.currentTarget
+                          .value as "low" | "high";
+                      });
+                    }}
+                  >
+                    {gpt5ImageGenerationInputFidelityOptions.map((fidelity) => (
+                      <option value={fidelity} key={fidelity}>
+                        {
+                          Locale.Settings.GPT5Tools.ImageGenerationInputFidelity
+                            .Options[fidelity === "high" ? "High" : "Low"]
+                        }
+                      </option>
+                    ))}
+                  </Select>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationMaskFileId.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationMaskFileId.SubTitle
+                  }
+                >
+                  <input
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationMaskFileId.Title
+                    }
+                    type="text"
+                    placeholder={
+                      Locale.Settings.GPT5Tools.ImageGenerationMaskFileId
+                        .Placeholder
+                    }
+                    value={props.modelConfig.imageGenerationMaskFileId ?? ""}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationMaskFileId =
+                          e.currentTarget.value;
+                      });
+                    }}
+                  ></input>
+                </ListItem>
+
+                <ListItem
+                  title={
+                    Locale.Settings.GPT5Tools.ImageGenerationMaskImageUrl.Title
+                  }
+                  subTitle={
+                    Locale.Settings.GPT5Tools.ImageGenerationMaskImageUrl
+                      .SubTitle
+                  }
+                >
+                  <input
+                    aria-label={
+                      Locale.Settings.GPT5Tools.ImageGenerationMaskImageUrl
+                        .Title
+                    }
+                    type="text"
+                    placeholder={
+                      Locale.Settings.GPT5Tools.ImageGenerationMaskImageUrl
+                        .Placeholder
+                    }
+                    value={props.modelConfig.imageGenerationMaskImageUrl ?? ""}
+                    onChange={(e) => {
+                      props.updateConfig((config) => {
+                        config.imageGenerationMaskImageUrl =
+                          e.currentTarget.value;
+                      });
+                    }}
+                  ></input>
+                </ListItem>
+              </>
             )}
         </>
       )}

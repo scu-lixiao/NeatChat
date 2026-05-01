@@ -679,6 +679,72 @@ const en: LocaleType = {
           Opaque: "Opaque",
         },
       },
+      ImageGenerationModel: {
+        Title: "Image Model",
+        SubTitle:
+          "Select the image model used by the Responses image_generation tool",
+      },
+      ImageGenerationAction: {
+        Title: "Generation Mode",
+        SubTitle:
+          "Control whether the tool generates a new image or edits the input image",
+        Options: {
+          Auto: "Auto",
+          Generate: "Generate",
+          Edit: "Edit",
+        },
+      },
+      ImageGenerationSize: {
+        Title: "Image Size",
+        SubTitle: "Set the output size for the native image_generation tool",
+      },
+      ImageGenerationQuality: {
+        Title: "Image Quality",
+        SubTitle:
+          "Set the rendering quality for the native image_generation tool",
+      },
+      ImageGenerationModeration: {
+        Title: "Moderation",
+        SubTitle:
+          "Control moderation strictness for the native image_generation tool",
+      },
+      ImageGenerationOutputFormat: {
+        Title: "Output Format",
+        SubTitle: "Set the file format for generated images",
+        Options: {
+          Png: "PNG",
+          Webp: "WebP",
+          Jpeg: "JPEG",
+        },
+      },
+      ImageGenerationOutputCompression: {
+        Title: "Output Compression",
+        SubTitle: "Set JPEG or WebP compression from 0 to 100",
+      },
+      ImageGenerationPartialImages: {
+        Title: "Partial Images",
+        SubTitle:
+          "How many intermediate images to return while streaming, only applies when stream is enabled",
+      },
+      ImageGenerationInputFidelity: {
+        Title: "Input Fidelity",
+        SubTitle:
+          "When reference images are present, control how closely the model matches their style and details",
+        Options: {
+          Low: "Low",
+          High: "High",
+        },
+      },
+      ImageGenerationMaskFileId: {
+        Title: "Mask File ID",
+        SubTitle: "Optional file_id for inpainting masks",
+        Placeholder: "file-xxx",
+      },
+      ImageGenerationMaskImageUrl: {
+        Title: "Mask Image",
+        SubTitle: "Optional data URL or image URL for inpainting masks",
+        Placeholder: "data:image/png;base64,...",
+      },
       ToolChoice: {
         Title: "Tool Choice",
         SubTitle: "Control how the model chooses to use tools",
