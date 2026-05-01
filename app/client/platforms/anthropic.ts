@@ -34,6 +34,36 @@ export type AnthropicMessage = {
   content: string | MultiBlockContent[];
 };
 
+type AnthropicThinkingDisplay = "summarized" | "omitted";
+
+type AnthropicAdaptiveThinking = {
+  type: "adaptive";
+  display?: AnthropicThinkingDisplay;
+};
+
+type AnthropicEnabledThinking = {
+  type: "enabled";
+  budget_tokens: number;
+  display?: AnthropicThinkingDisplay;
+};
+
+type AnthropicDisabledThinking = {
+  type: "disabled";
+};
+
+type AnthropicThinkingConfig =
+  | AnthropicAdaptiveThinking
+  | AnthropicEnabledThinking
+  | AnthropicDisabledThinking;
+
+type AnthropicOutputEffort = "low" | "medium" | "high" | "xhigh" | "max";
+
+type AnthropicReasoningEffort =
+  | "auto"
+  | "none"
+  | "minimal"
+  | AnthropicOutputEffort;
+
 export interface AnthropicChatRequest {
   model: string; // The model that will complete your prompt.
   messages: AnthropicMessage[]; // The prompt that you want Claude to complete.
@@ -44,10 +74,10 @@ export interface AnthropicChatRequest {
   top_k?: number; // Only sample from the top K options for each subsequent token.
   metadata?: object; // An object describing metadata about the request.
   stream?: boolean; // Whether to incrementally stream the response using server-sent events.
-  thinking?: {
-    type: "enabled";
-    budget_tokens: number;
-  }; // Enable thinking mode with token budget
+  thinking?: AnthropicThinkingConfig;
+  output_config?: {
+    effort?: AnthropicOutputEffort;
+  };
 }
 
 export interface ChatRequest {
@@ -80,6 +110,130 @@ const ClaudeMapper = {
 } as const;
 
 const keys = ["claude-2, claude-instant-1"];
+const ANTHROPIC_MIN_THINKING_BUDGET = 1024;
+
+function normalizeAnthropicModel(model: string) {
+  return model.trim().toLowerCase();
+}
+
+function supportsAnthropicAdaptiveThinking(model: string) {
+  const normalizedModel = normalizeAnthropicModel(model);
+
+  return (
+    normalizedModel === "claude-opus-4-7" ||
+    normalizedModel === "claude-opus-4-6" ||
+    normalizedModel === "claude-sonnet-4-6"
+  );
+}
+
+function supportsAnthropicThinking(model: string) {
+  const normalizedModel = normalizeAnthropicModel(model);
+
+  if (supportsAnthropicAdaptiveThinking(normalizedModel)) {
+    return true;
+  }
+
+  return (
+    /^claude-3-7-sonnet-20250219(?:-thinking)?$/.test(normalizedModel) ||
+    /^claude-(?:opus|sonnet)-4(?:-|$)/.test(normalizedModel) ||
+    /^claude-haiku-4-5(?:-|$)/.test(normalizedModel)
+  );
+}
+
+function resolveAnthropicAdaptiveEffort(
+  model: string,
+  reasoningEffort: Exclude<AnthropicReasoningEffort, "none">,
+): AnthropicOutputEffort {
+  const normalizedModel = normalizeAnthropicModel(model);
+
+  if (reasoningEffort === "auto") {
+    return "high";
+  }
+
+  if (reasoningEffort === "minimal") {
+    return "low";
+  }
+
+  if (reasoningEffort === "xhigh" && normalizedModel !== "claude-opus-4-7") {
+    console.warn(
+      `[Anthropic] Effort 'xhigh' is only supported on claude-opus-4-7, falling back to 'high' for ${model}`,
+    );
+    return "high";
+  }
+
+  return reasoningEffort;
+}
+
+function resolveAnthropicManualThinkingBudget(
+  maxTokens: number,
+  reasoningEffort: AnthropicReasoningEffort,
+) {
+  if (maxTokens <= ANTHROPIC_MIN_THINKING_BUDGET) {
+    console.warn(
+      `[Anthropic] max_tokens=${maxTokens} is too small for manual thinking; skipping thinking configuration`,
+    );
+    return undefined;
+  }
+
+  const budgetRatioByEffort: Record<AnthropicReasoningEffort, number> = {
+    auto: 0.5,
+    none: 0,
+    minimal: 0.25,
+    low: 0.25,
+    medium: 0.5,
+    high: 0.75,
+    xhigh: 0.9,
+    max: 0.95,
+  };
+
+  const budgetTokens = Math.floor(
+    maxTokens * budgetRatioByEffort[reasoningEffort],
+  );
+
+  return Math.min(
+    Math.max(budgetTokens, ANTHROPIC_MIN_THINKING_BUDGET),
+    maxTokens - 1,
+  );
+}
+
+function buildAnthropicThinkingConfig(
+  model: string,
+  maxTokens: number,
+  reasoningEffort: AnthropicReasoningEffort,
+): Pick<AnthropicChatRequest, "thinking" | "output_config"> {
+  if (reasoningEffort === "none" || !supportsAnthropicThinking(model)) {
+    return {};
+  }
+
+  if (supportsAnthropicAdaptiveThinking(model)) {
+    return {
+      thinking: {
+        type: "adaptive",
+        display: "summarized",
+      },
+      output_config: {
+        effort: resolveAnthropicAdaptiveEffort(model, reasoningEffort),
+      },
+    };
+  }
+
+  const budgetTokens = resolveAnthropicManualThinkingBudget(
+    maxTokens,
+    reasoningEffort,
+  );
+
+  if (!budgetTokens) {
+    return {};
+  }
+
+  return {
+    thinking: {
+      type: "enabled",
+      budget_tokens: budgetTokens,
+      display: "summarized",
+    },
+  };
+}
 
 export class ClaudeApi implements LLMApi {
   speech(options: SpeechOptions): Promise<ArrayBuffer> {
@@ -89,7 +243,9 @@ export class ClaudeApi implements LLMApi {
   extractMessage(res: any) {
     console.log("[Response] claude response: ", res);
 
-    return res?.content?.[0]?.text;
+    return (
+      res?.content?.find((block: any) => block?.type === "text")?.text ?? ""
+    );
   }
   async chat(options: ChatOptions): Promise<void> {
     const visionModel = isVisionModel(options.config.model);
@@ -187,6 +343,12 @@ export class ClaudeApi implements LLMApi {
       });
     }
 
+    const anthropicThinkingConfig = buildAnthropicThinkingConfig(
+      modelConfig.model,
+      modelConfig.max_tokens,
+      (modelConfig.reasoningEffort ?? "auto") as AnthropicReasoningEffort,
+    );
+
     const requestBody: AnthropicChatRequest = {
       messages: prompt,
       stream: shouldStream,
@@ -197,10 +359,7 @@ export class ClaudeApi implements LLMApi {
       //top_p: modelConfig.top_p,
       // top_k: modelConfig.top_k,
       //top_k: 5,
-      thinking: {
-        type: "enabled",
-        budget_tokens: 10000,
-      },
+      ...anthropicThinkingConfig,
     };
 
     const path = this.path(Anthropic.ChatPath);

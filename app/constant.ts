@@ -362,6 +362,7 @@ export const VISION_MODEL_REGEXES = [
   /gpt-4o/,
   /gpt-4\.1/,
   /claude-3/,
+  /claude-(?:opus|sonnet|haiku)-4/,
   /claude-4/,
   /claude-4\.5/,
   /gemini-1\.5/,
@@ -414,8 +415,12 @@ const anthropicModels = [
   "claude-3-7-sonnet-20250219",
   "claude-3-7-sonnet-20250219-thinking",
   "claude-opus-4-20250514",
+  "claude-opus-4-6",
+  "claude-opus-4-7",
   "claude-sonnet-4-20250514",
   "claude-sonnet-4-5-20250929",
+  "claude-sonnet-4-6",
+  "claude-haiku-4-5-20251001",
 ];
 
 const baiduModels = ["ernie-tiny-8k"];

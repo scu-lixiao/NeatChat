@@ -588,7 +588,7 @@ const en: LocaleType = {
     ReasoningEffort: {
       Title: "Reasoning Effort",
       SubTitle:
-        "Controls the depth of reasoning for GPT-5.4/5.5 models. Auto uses model defaults. None is fastest, xhigh is deepest.",
+        "Controls reasoning depth for supported GPT-5 and Anthropic Claude models. Auto uses model defaults. None is fastest, and xhigh is only available on some models.",
       Options: {
         Auto: "Auto (default)",
         None: "None (fast)",

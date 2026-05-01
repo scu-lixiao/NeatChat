@@ -33,6 +33,12 @@ export function ModelConfigList(props: {
     "provider.providerName",
   );
   const currentModel = props.modelConfig.model;
+  const isGpt5ReasoningModel =
+    currentModel.startsWith("gpt-5.4") || currentModel.startsWith("gpt-5.5");
+  const isAnthropicReasoningModel =
+    /^claude-3-7-sonnet-20250219(?:-thinking)?$/.test(currentModel) ||
+    /^claude-(?:opus|sonnet)-4(?:-|$)/.test(currentModel) ||
+    /^claude-haiku-4-5(?:-|$)/.test(currentModel);
   const isLegacyDalle3 = isDalle3(currentModel);
   const supportsGpt5NativeImageGeneration = isGPT5ImageGenModel(currentModel);
   const isOpenAIImageModel = isOpenAIImagesApiModel(currentModel);
@@ -226,19 +232,15 @@ export function ModelConfigList(props: {
         </>
       )}
 
-      {/* GPT-5.4/5.5 系列模型推理级别配置 */}
-      {(currentModel.startsWith("gpt-5.4") ||
-        currentModel.startsWith("gpt-5.5")) &&
+      {/* GPT-5.4/5.5 与 Anthropic Claude reasoning 模型推理级别配置 */}
+      {(isGpt5ReasoningModel || isAnthropicReasoningModel) &&
         (() => {
-          // 根据模型确定支持的推理级别
           const model = currentModel;
           const isGPT5Pro = model === "gpt-5.4-pro" || model === "gpt-5.5-pro";
-
-          // 动态生成支持的选项
-          // GPT-5.4/5.5: 支持所有级别
-          // GPT-5 Pro: 支持 medium, high, xhigh（不支持 none 和 low）
-          const supportsNone = !isGPT5Pro;
-          const supportsLow = !isGPT5Pro;
+          const supportsNone = !isGpt5ReasoningModel || !isGPT5Pro;
+          const supportsLow = !isGpt5ReasoningModel || !isGPT5Pro;
+          const supportsXHigh =
+            isGpt5ReasoningModel || model === "claude-opus-4-7";
 
           return (
             <ListItem
@@ -280,16 +282,17 @@ export function ModelConfigList(props: {
                 <option value="high">
                   {Locale.Settings.ReasoningEffort.Options.High}
                 </option>
-                <option value="xhigh">
-                  {Locale.Settings.ReasoningEffort.Options.XHigh}
-                </option>
+                {supportsXHigh && (
+                  <option value="xhigh">
+                    {Locale.Settings.ReasoningEffort.Options.XHigh}
+                  </option>
+                )}
               </Select>
             </ListItem>
           );
         })()}
 
-      {(currentModel.startsWith("gpt-5.4") ||
-        currentModel.startsWith("gpt-5.5")) && (
+      {isGpt5ReasoningModel && (
         <>
           <ListItem
             title={Locale.Settings.ReasoningSummary.Title}

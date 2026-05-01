@@ -581,7 +581,7 @@ const cn = {
     ReasoningEffort: {
       Title: "推理深度 (reasoning_effort)",
       SubTitle:
-        "控制 GPT-5.4/5.5 系列模型的推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 表示最深推理。",
+        "控制支持该能力的 GPT-5 与 Anthropic Claude 模型推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 仅在部分模型上可用。",
       Options: {
         Auto: "自动 (默认)",
         None: "无 (快速)",
