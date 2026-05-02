@@ -33,6 +33,11 @@ export function ModelConfigList(props: {
     "provider.providerName",
   );
   const currentModel = props.modelConfig.model;
+  const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
+  const isXaiMultiAgentModel =
+    isXAIProvider && currentModel.includes("multi-agent");
+  const isXaiGrok43Model = isXAIProvider && currentModel.startsWith("grok-4.3");
+  const supportsXaiToolControls = isXaiGrok43Model || isXaiMultiAgentModel;
   const isGpt5ReasoningModel =
     currentModel.startsWith("gpt-5.4") || currentModel.startsWith("gpt-5.5");
   const isAnthropicReasoningModel =
@@ -128,6 +133,14 @@ export function ModelConfigList(props: {
   );
   const currentGpt5ImageGenerationInputFidelity =
     props.modelConfig.imageGenerationInputFidelity === "high" ? "high" : "low";
+  const currentReasoningEffort = props.modelConfig.reasoningEffort ?? "auto";
+  const normalizedXaiReasoningEffort =
+    currentReasoningEffort === "low" ||
+    currentReasoningEffort === "medium" ||
+    currentReasoningEffort === "high" ||
+    currentReasoningEffort === "xhigh"
+      ? currentReasoningEffort
+      : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
 
@@ -282,24 +295,37 @@ export function ModelConfigList(props: {
         </>
       )}
 
-      {/* GPT-5.4/5.5 与 Anthropic Claude reasoning 模型推理级别配置 */}
-      {(isGpt5ReasoningModel || isAnthropicReasoningModel) &&
+      {/* 推理模型推理级别配置 */}
+      {(isGpt5ReasoningModel ||
+        isAnthropicReasoningModel ||
+        isXaiMultiAgentModel) &&
         (() => {
           const model = currentModel;
           const isGPT5Pro = model === "gpt-5.4-pro" || model === "gpt-5.5-pro";
-          const supportsNone = !isGpt5ReasoningModel || !isGPT5Pro;
-          const supportsLow = !isGpt5ReasoningModel || !isGPT5Pro;
-          const supportsXHigh =
-            isGpt5ReasoningModel || model === "claude-opus-4-7";
+          const supportsNone = isXaiMultiAgentModel
+            ? false
+            : !isGpt5ReasoningModel || !isGPT5Pro;
+          const supportsLow = isXaiMultiAgentModel
+            ? true
+            : !isGpt5ReasoningModel || !isGPT5Pro;
+          const supportsXHigh = isXaiMultiAgentModel
+            ? true
+            : isGpt5ReasoningModel || model === "claude-opus-4-7";
+          const reasoningEffortValue = isXaiMultiAgentModel
+            ? normalizedXaiReasoningEffort
+            : currentReasoningEffort;
+          const reasoningEffortSubTitle = isXaiMultiAgentModel
+            ? Locale.Settings.ReasoningEffort.XAIMultiAgentSubTitle
+            : Locale.Settings.ReasoningEffort.SubTitle;
 
           return (
             <ListItem
               title={Locale.Settings.ReasoningEffort.Title}
-              subTitle={Locale.Settings.ReasoningEffort.SubTitle}
+              subTitle={reasoningEffortSubTitle}
             >
               <Select
                 aria-label={Locale.Settings.ReasoningEffort.Title}
-                value={props.modelConfig.reasoningEffort ?? "auto"}
+                value={reasoningEffortValue}
                 onChange={(e) => {
                   props.updateConfig((config) => {
                     config.reasoningEffort = e.currentTarget.value as
@@ -406,9 +432,10 @@ export function ModelConfigList(props: {
         </>
       )}
 
-      {/* GPT-5.4/5.5 系列模型内置工具配置 */}
+      {/* Responses API 内置工具配置 */}
       {(currentModel.startsWith("gpt-5.4") ||
-        currentModel.startsWith("gpt-5.5")) && (
+        currentModel.startsWith("gpt-5.5") ||
+        supportsXaiToolControls) && (
         <>
           {/* 网络搜索工具 */}
           <ListItem
@@ -429,7 +456,7 @@ export function ModelConfigList(props: {
           </ListItem>
 
           {/* 网络搜索配置（仅当启用时显示） */}
-          {props.modelConfig.enableWebSearch && (
+          {isGpt5ReasoningModel && props.modelConfig.enableWebSearch && (
             <>
               {/* 搜索位置国家 */}
               <ListItem
@@ -572,7 +599,7 @@ export function ModelConfigList(props: {
           )}
 
           {/* 图像生成工具 */}
-          {supportsGpt5NativeImageGeneration && (
+          {isGpt5ReasoningModel && supportsGpt5NativeImageGeneration && (
             <ListItem
               title={Locale.Settings.GPT5Tools.EnableImageGeneration.Title}
               subTitle={
@@ -596,7 +623,8 @@ export function ModelConfigList(props: {
           )}
 
           {/* 图像背景设置（仅当启用图像生成时显示） */}
-          {supportsGpt5NativeImageGeneration &&
+          {isGpt5ReasoningModel &&
+            supportsGpt5NativeImageGeneration &&
             props.modelConfig.enableImageGeneration && (
               <>
                 <ListItem

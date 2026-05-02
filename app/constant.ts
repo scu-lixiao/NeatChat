@@ -253,6 +253,7 @@ export const DeepSeek = {
 export const XAI = {
   ExampleEndpoint: XAI_BASE_URL,
   ChatPath: "v1/chat/completions",
+  ResponsesPath: "v1/responses",
 };
 
 export const ChatGLM = {
@@ -439,6 +440,7 @@ const deepseekModels = ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"];
 
 const xAIModes = [
   "grok-4-0709",
+  "grok-4.3",
   "grok-3-latest",
   "grok-3-fast-latest",
   "grok-3-mini-latest",
@@ -447,6 +449,7 @@ const xAIModes = [
   "grok-4-fast-non-reasoning-latest",
   "grok-4-1-fast-reasoning",
   "grok-4-1-fast-non-reasoning",
+  "grok-4.20-multi-agent-0309",
 ];
 
 const chatglmModels = [

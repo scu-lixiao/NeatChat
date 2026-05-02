@@ -581,7 +581,9 @@ const cn = {
     ReasoningEffort: {
       Title: "推理深度 (reasoning_effort)",
       SubTitle:
-        "控制支持该能力的 GPT-5 与 Anthropic Claude 模型推理深度。自动表示使用模型默认值。无表示最快响应，xhigh 仅在部分模型上可用。",
+        "控制支持该能力的推理模型的推理深度。自动表示使用模型默认值；不同模型支持的档位可能不同，xhigh 仅在部分模型上可用。",
+      XAIMultiAgentSubTitle:
+        "Grok 多代理模型中，low 和 medium 使用 4 个代理，high 和 xhigh 使用 16 个代理；自动表示沿用模型默认设置。",
       Options: {
         Auto: "自动 (默认)",
         None: "无 (快速)",

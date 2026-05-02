@@ -8,22 +8,331 @@ import {
   ChatMessageTool,
   usePluginStore,
 } from "@/app/store";
-import {
-  detectOpenAICompatibleStreamTermination,
-  streamWithThink,
-} from "@/app/utils/chat";
+import { streamWithThink } from "@/app/utils/chat";
 import {
   ChatOptions,
   getHeaders,
   LLMApi,
   LLMModel,
+  MultimodalContent,
   SpeechOptions,
 } from "../api";
 import { getClientConfig } from "@/app/config/client";
 import { getTimeoutMSByModel } from "@/app/utils";
-import { preProcessImageContent } from "@/app/utils/chat";
-import { RequestPayload } from "./openai";
+import {
+  detectResponsesStreamTermination,
+  preProcessImageContent,
+} from "@/app/utils/chat";
+import {
+  ResponsesBuiltinTool,
+  ResponsesFunctionCallOutputItem,
+  ResponsesInput,
+  ResponsesInputContentPart,
+  ResponsesOutputItem,
+  ResponsesRequestPayload,
+  ResponsesStreamEvent,
+  ResponsesTool,
+} from "./openai";
 import { fetch } from "@/app/utils/stream";
+
+interface Citation {
+  title: string;
+  url: string;
+}
+
+type XAISearchTool = { type: "x_search" };
+type XAITool = ResponsesTool | ResponsesBuiltinTool | XAISearchTool;
+
+class ResponsesReasoningAccumulator {
+  private readonly summaryParts = new Map<string, string>();
+  private readonly reasoningParts = new Map<string, string>();
+  private emittedText = "";
+
+  appendSummary(event: ResponsesStreamEvent, text?: string) {
+    return this.updatePart(
+      this.summaryParts,
+      event.output_index,
+      event.summary_index,
+      event.item_id,
+      text,
+      "append",
+    );
+  }
+
+  replaceSummary(event: ResponsesStreamEvent, text?: string) {
+    return this.updatePart(
+      this.summaryParts,
+      event.output_index,
+      event.summary_index,
+      event.item_id,
+      text,
+      "replace",
+    );
+  }
+
+  appendReasoning(event: ResponsesStreamEvent, text?: string) {
+    return this.updatePart(
+      this.reasoningParts,
+      event.output_index,
+      event.content_index,
+      event.item_id,
+      text,
+      "append",
+    );
+  }
+
+  replaceReasoning(event: ResponsesStreamEvent, text?: string) {
+    return this.updatePart(
+      this.reasoningParts,
+      event.output_index,
+      event.content_index,
+      event.item_id,
+      text,
+      "replace",
+    );
+  }
+
+  hydrateFromOutput(output?: ResponsesOutputItem[]) {
+    if (!output || !Array.isArray(output)) {
+      return "";
+    }
+
+    output.forEach((item, outputIndex) => {
+      if (item.type !== "reasoning") {
+        return;
+      }
+
+      item.summary?.forEach((part, summaryIndex) => {
+        if (part.type === "summary_text" && part.text) {
+          this.summaryParts.set(
+            this.makeKey(outputIndex, summaryIndex, item.id),
+            part.text,
+          );
+        }
+      });
+
+      item.content?.forEach((part, contentIndex) => {
+        if (part.type === "reasoning_text" && part.text) {
+          this.reasoningParts.set(
+            this.makeKey(outputIndex, contentIndex, item.id),
+            part.text,
+          );
+        }
+      });
+    });
+
+    return this.consumePreferredDelta();
+  }
+
+  private updatePart(
+    target: Map<string, string>,
+    outputIndex: number | undefined,
+    subIndex: number | undefined,
+    itemId: string | undefined,
+    text: string | undefined,
+    mode: "append" | "replace",
+  ) {
+    if (!text) {
+      return "";
+    }
+
+    const key = this.makeKey(outputIndex, subIndex, itemId);
+    const current = target.get(key) ?? "";
+    const next = mode === "append" ? current + text : text;
+
+    if (current === next) {
+      return "";
+    }
+
+    target.set(key, next);
+    return this.consumePreferredDelta();
+  }
+
+  private consumePreferredDelta() {
+    const next = this.getPreferredText();
+
+    if (!next || next === this.emittedText) {
+      return "";
+    }
+
+    if (!this.emittedText) {
+      this.emittedText = next;
+      return next;
+    }
+
+    if (next.startsWith(this.emittedText)) {
+      const delta = next.slice(this.emittedText.length);
+      this.emittedText = next;
+      return delta;
+    }
+
+    this.emittedText = next;
+    return next;
+  }
+
+  private getPreferredText() {
+    const summaryText = this.joinOrdered(this.summaryParts);
+    const reasoningText = this.joinOrdered(this.reasoningParts);
+    return summaryText || reasoningText;
+  }
+
+  private joinOrdered(parts: Map<string, string>) {
+    return Array.from(parts.entries())
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, text]) => text)
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
+  }
+
+  private makeKey(outputIndex?: number, subIndex?: number, itemId?: string) {
+    return `${String(outputIndex ?? 0).padStart(6, "0")}:${String(
+      subIndex ?? 0,
+    ).padStart(6, "0")}:${itemId ?? ""}`;
+  }
+}
+
+function buildResponsesInputContent(
+  content: string | MultimodalContent[],
+): string | ResponsesInputContentPart[] {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content
+    .map((part) => {
+      if (part.type === "text" && part.text) {
+        return {
+          type: "input_text",
+          text: part.text,
+        } satisfies ResponsesInputContentPart;
+      }
+
+      if (part.type === "image_url" && part.image_url?.url) {
+        return {
+          type: "input_image",
+          image_url: part.image_url.url,
+        } satisfies ResponsesInputContentPart;
+      }
+
+      return null;
+    })
+    .filter(Boolean) as ResponsesInputContentPart[];
+}
+
+function extractResponseText(output?: ResponsesOutputItem[]) {
+  if (!output || !Array.isArray(output)) {
+    return "";
+  }
+
+  return output
+    .filter((item) => item.type === "message")
+    .flatMap((item) => item.content ?? [])
+    .map((part) => {
+      if ((part.type === "output_text" || part.type === "text") && part.text) {
+        return part.text;
+      }
+
+      if (part.type === "refusal" && part.refusal) {
+        return part.refusal;
+      }
+
+      return "";
+    })
+    .join("");
+}
+
+function collectCitations(output?: ResponsesOutputItem[]) {
+  if (!output || !Array.isArray(output)) {
+    return [] as Citation[];
+  }
+
+  const citations: Citation[] = [];
+
+  output.forEach((item) => {
+    if (item.type !== "message" || !item.content) {
+      return;
+    }
+
+    item.content.forEach((part) => {
+      part.annotations?.forEach((annotation) => {
+        if (
+          annotation.type === "url_citation" &&
+          annotation.url &&
+          !citations.some((citation) => citation.url === annotation.url)
+        ) {
+          citations.push({
+            title: annotation.title || annotation.url,
+            url: annotation.url,
+          });
+        }
+      });
+    });
+  });
+
+  return citations;
+}
+
+function isMultiAgentModel(model: string) {
+  return model.includes("multi-agent");
+}
+
+function supportsConfigurableXAIReasoning(model: string) {
+  return isMultiAgentModel(model);
+}
+
+function resolveXAIReasoningEffort(
+  model: string,
+  reasoningEffort?:
+    | "auto"
+    | "none"
+    | "minimal"
+    | "low"
+    | "medium"
+    | "high"
+    | "xhigh",
+) {
+  if (!supportsConfigurableXAIReasoning(model)) {
+    return undefined;
+  }
+
+  if (
+    reasoningEffort === "low" ||
+    reasoningEffort === "medium" ||
+    reasoningEffort === "high" ||
+    reasoningEffort === "xhigh"
+  ) {
+    return reasoningEffort;
+  }
+
+  return undefined;
+}
+
+function buildBuiltinTools(modelConfig: {
+  enableWebSearch?: boolean;
+  enableCodeInterpreter?: boolean;
+  enableFileSearch?: boolean;
+  vectorStoreIds?: string[];
+}) {
+  const tools: XAITool[] = [];
+
+  if (modelConfig.enableWebSearch) {
+    tools.push({ type: "web_search" }, { type: "x_search" });
+  }
+
+  if (modelConfig.enableCodeInterpreter) {
+    tools.push({ type: "code_interpreter" });
+  }
+
+  if (modelConfig.enableFileSearch && modelConfig.vectorStoreIds?.length) {
+    tools.push({
+      type: "file_search",
+      vector_store_ids: modelConfig.vectorStoreIds,
+    });
+  }
+
+  return tools;
+}
 
 export class XAIApi implements LLMApi {
   private disableListModels = true;
@@ -56,7 +365,15 @@ export class XAIApi implements LLMApi {
   }
 
   extractMessage(res: any) {
-    return res.choices?.at(0)?.message?.content ?? "";
+    if (res.error) {
+      return "```\n" + JSON.stringify(res, null, 4) + "\n```";
+    }
+
+    if (typeof res.output_text === "string" && res.output_text.length > 0) {
+      return res.output_text;
+    }
+
+    return extractResponseText(res.output);
   }
 
   speech(options: SpeechOptions): Promise<ArrayBuffer> {
@@ -64,10 +381,13 @@ export class XAIApi implements LLMApi {
   }
 
   async chat(options: ChatOptions) {
-    const messages: ChatOptions["messages"] = [];
+    const input: ResponsesInput[] = [];
     for (const v of options.messages) {
       const content = await preProcessImageContent(v.content);
-      messages.push({ role: v.role, content });
+      input.push({
+        role: v.role,
+        content: buildResponsesInputContent(content),
+      });
     }
 
     const modelConfig = {
@@ -79,45 +399,54 @@ export class XAIApi implements LLMApi {
       },
     };
 
-    const requestPayload: RequestPayload = {
-      messages,
+    const [pluginToolsRaw, funcs] = usePluginStore
+      .getState()
+      .getAsTools(useChatStore.getState().currentSession().mask?.plugin || []);
+    const pluginTools = Array.isArray(pluginToolsRaw) ? pluginToolsRaw : [];
+    const disableCustomTools = isMultiAgentModel(modelConfig.model);
+    const requestTools = buildBuiltinTools(modelConfig);
+
+    if (!disableCustomTools && pluginTools.length > 0) {
+      requestTools.push(...(pluginTools as ResponsesTool[]));
+    }
+
+    const requestPayload: ResponsesRequestPayload = {
+      input,
       stream: options.config.stream,
       model: modelConfig.model,
       temperature: modelConfig.temperature,
-      presence_penalty: modelConfig.presence_penalty,
-      frequency_penalty: modelConfig.frequency_penalty,
       top_p: modelConfig.top_p,
+      text: {
+        format: {
+          type: "text",
+        },
+      },
     };
 
-    // {{CHENGQI:
-    // Action: Added - XAI思考模式配置
-    // Timestamp: 2025-01-02 12:00:00 +08:00
-    // Reason: 启用XAI的思考模式和搜索功能
-    // Principle_Applied: YAGNI - 仅添加当前需要的功能
-    // Optimization: 为特定模型启用高质量推理
-    // }}
-    // 删除 presence_penalty
-    delete (requestPayload as any).presence_penalty;
-    delete (requestPayload as any).frequency_penalty;
+    if (requestTools.length > 0) {
+      requestPayload.tools = requestTools as any;
+      requestPayload.include = [];
 
-    // 动态添加 search_parameters
-    (requestPayload as any).search_parameters = {
-      mode: "on",
-      max_search_results: 30,
-      return_citations: true,
-      sources: [
-        { type: "web", safe_search: false },
-        { type: "x" },
-        { type: "news", safe_search: false },
-      ],
-    };
+      if (modelConfig.enableWebSearch) {
+        requestPayload.include.push("web_search_call.action.sources");
+      }
 
-    if (
-      modelConfig.model === "grok-3-mini-latest" ||
-      modelConfig.model === "grok-3-mini"
-    ) {
-      delete (requestPayload as any).frequency_penalty;
-      (requestPayload as any).reasoning_effort = "high";
+      if (modelConfig.enableFileSearch && modelConfig.vectorStoreIds?.length) {
+        requestPayload.include.push("file_search_call.results");
+      }
+
+      if (requestPayload.include.length === 0) {
+        delete requestPayload.include;
+      }
+    }
+
+    const resolvedReasoningEffort = resolveXAIReasoningEffort(
+      modelConfig.model,
+      modelConfig.reasoningEffort,
+    );
+
+    if (resolvedReasoningEffort) {
+      requestPayload.reasoning = { effort: resolvedReasoningEffort };
     }
 
     console.log("[Request] xai payload: ", requestPayload);
@@ -127,7 +456,7 @@ export class XAIApi implements LLMApi {
     options.onController?.(controller);
 
     try {
-      const chatPath = this.path(XAI.ChatPath);
+      const chatPath = this.path(XAI.ResponsesPath);
       const chatPayload = {
         method: "POST",
         body: JSON.stringify(requestPayload),
@@ -142,188 +471,175 @@ export class XAIApi implements LLMApi {
       );
 
       if (shouldStream) {
-        const [tools, funcs] = usePluginStore
-          .getState()
-          .getAsTools(
-            useChatStore.getState().currentSession().mask?.plugin || [],
-          );
-
-        // {{CHENGQI:
-        // Action: Added - Citations数据收集变量
-        // Timestamp: 2025-01-02 16:15:00 +08:00
-        // Reason: 为XAI平台添加citations数据收集和处理功能
-        // Principle_Applied: SOLID - 单一职责的citations数据管理
-        // Optimization: 收集所有citations，去重后一次性传递给UI
-        // Architectural_Note (AR): Citations数据与现有流式系统集成
-        // Documentation_Note (DW): Citations数据的收集和处理逻辑
-        // }}
-        let collectedCitations: any[] = [];
+        let toolIndex = -1;
+        const reasoningAccumulator = new ResponsesReasoningAccumulator();
 
         return streamWithThink(
           chatPath,
           requestPayload,
           getHeaders(),
-          tools as any,
-          funcs,
+          disableCustomTools ? [] : (pluginTools as any),
+          disableCustomTools ? {} : funcs,
           controller,
-          // parseSSE
           (text: string, runTools: ChatMessageTool[]) => {
-            // console.log("parseSSE", text, runTools);
-            const json = JSON.parse(text);
+            const event = JSON.parse(text) as ResponsesStreamEvent;
 
-            // {{CHENGQI:
-            // Action: Added - Citations数据处理
-            // Timestamp: 2025-01-02 16:15:00 +08:00
-            // Reason: 解析XAI返回的citations数据，转换为标准格式
-            // Principle_Applied: SOLID - 数据转换的单一职责
-            // Optimization: 自动生成title，支持去重
-            // Architectural_Note (AR): Citations数据标准化处理
-            // Documentation_Note (DW): Citations数据的解析和格式化逻辑
-            // }}
-            // Process citations if present
-            if (json.citations && Array.isArray(json.citations)) {
-              const newCitations = json.citations
-                .map((citation: any) => {
-                  // Handle different citation formats
-                  let url = "";
-                  let title = "";
-
-                  if (typeof citation === "string") {
-                    url = citation;
-                    title = citation;
-                  } else if (citation.url) {
-                    url = citation.url;
-                    title = citation.title || citation.url;
-                  } else {
-                    // Skip invalid citations
-                    return null;
-                  }
-
-                  return url ? { title, url } : null;
-                })
-                .filter(Boolean);
-
-              // Add new citations, avoiding duplicates
-              newCitations.forEach((newCitation: any) => {
-                if (
-                  !collectedCitations.some(
-                    (existing) => existing.url === newCitation.url,
-                  )
-                ) {
-                  collectedCitations.push(newCitation);
-                }
-              });
-            }
-
-            const choices = json.choices as Array<{
-              delta: {
-                content: string | null;
-                tool_calls: ChatMessageTool[];
-                reasoning_content?: string | null;
-              };
-            }>;
-            const tool_calls = choices[0]?.delta?.tool_calls;
-            if (tool_calls?.length > 0) {
-              const index = tool_calls[0]?.index;
-              const id = tool_calls[0]?.id;
-              const args = tool_calls[0]?.function?.arguments;
-              if (id) {
-                runTools.push({
-                  id,
-                  type: tool_calls[0]?.type,
-                  function: {
-                    name: tool_calls[0]?.function?.name as string,
-                    arguments: args,
-                  },
-                });
-              } else {
-                // @ts-ignore
-                runTools[index]["function"]["arguments"] += args;
-              }
-            }
-
-            const reasoning = choices[0]?.delta?.reasoning_content;
-            const content = choices[0]?.delta?.content;
-
-            // Skip if both content and reasoning_content are empty or null
-            if (
-              (!reasoning || reasoning.length === 0) &&
-              (!content || content.length === 0)
-            ) {
+            if (event.type === "response.output_text.delta") {
               return {
                 isThinking: false,
-                content: "",
+                content: event.delta || "",
               };
             }
 
-            if (reasoning && reasoning.length > 0) {
+            if (event.type === "response.reasoning_summary_text.delta") {
               return {
                 isThinking: true,
-                content: reasoning,
-              };
-            } else if (content && content.length > 0) {
-              return {
-                isThinking: false,
-                content: content,
+                content: reasoningAccumulator.appendSummary(event, event.delta),
               };
             }
 
-            return {
-              isThinking: false,
-              content: "",
-            };
+            if (event.type === "response.reasoning_summary_text.done") {
+              return {
+                isThinking: true,
+                content: reasoningAccumulator.replaceSummary(event, event.text),
+              };
+            }
+
+            if (
+              event.type === "response.reasoning_summary_part.added" ||
+              event.type === "response.reasoning_summary_part.done"
+            ) {
+              return {
+                isThinking: true,
+                content: reasoningAccumulator.replaceSummary(
+                  event,
+                  event.part?.type === "summary_text" ? event.part.text : "",
+                ),
+              };
+            }
+
+            if (event.type === "response.reasoning_text.delta") {
+              return {
+                isThinking: true,
+                content: reasoningAccumulator.appendReasoning(
+                  event,
+                  event.delta,
+                ),
+              };
+            }
+
+            if (event.type === "response.reasoning_text.done") {
+              return {
+                isThinking: true,
+                content: reasoningAccumulator.replaceReasoning(
+                  event,
+                  event.text,
+                ),
+              };
+            }
+
+            if (event.type === "response.function_call_arguments.delta") {
+              if (runTools.length > 0 && toolIndex >= 0) {
+                const currentTool = runTools[toolIndex];
+                if (currentTool?.function) {
+                  currentTool.function.arguments =
+                    (currentTool.function.arguments || "") +
+                    (event.delta || "");
+                }
+              }
+
+              return { isThinking: false, content: "" };
+            }
+
+            if (event.type === "response.output_item.done") {
+              const item =
+                event.item ??
+                (typeof event.output_index === "number"
+                  ? event.response?.output?.[event.output_index]
+                  : undefined);
+
+              if (
+                item?.type === "function_call" &&
+                item.name &&
+                item.call_id &&
+                !disableCustomTools
+              ) {
+                toolIndex += 1;
+                runTools.push({
+                  id: item.call_id,
+                  type: "function",
+                  function: {
+                    name: item.name,
+                    arguments: item.arguments || "",
+                  },
+                });
+              }
+
+              if (item?.type === "reasoning") {
+                return {
+                  isThinking: true,
+                  content: reasoningAccumulator.hydrateFromOutput([item]),
+                };
+              }
+
+              return { isThinking: false, content: "" };
+            }
+
+            if (event.type === "response.completed") {
+              const citations = collectCitations(event.response?.output);
+              if (citations.length > 0 && options.onCitations) {
+                options.onCitations(citations);
+              }
+
+              const finalThinking = reasoningAccumulator.hydrateFromOutput(
+                event.response?.output,
+              );
+
+              if (finalThinking) {
+                return {
+                  isThinking: true,
+                  content: finalThinking,
+                };
+              }
+
+              return { isThinking: false, content: "" };
+            }
+
+            return { isThinking: false, content: "" };
           },
-          // processToolMessage, include tool_calls message and tool call results
           (
-            requestPayload: RequestPayload,
-            toolCallMessage: any,
+            payload: ResponsesRequestPayload,
+            _toolCallMessage: any,
             toolCallResult: any[],
           ) => {
-            // @ts-ignore
-            requestPayload?.messages?.splice(
-              // @ts-ignore
-              requestPayload?.messages?.length,
-              0,
-              toolCallMessage,
-              ...toolCallResult,
-            );
+            toolIndex = -1;
+
+            const toolResults: ResponsesFunctionCallOutputItem[] =
+              toolCallResult.map((result: any) => ({
+                type: "function_call_output",
+                call_id: result.tool_call_id,
+                output: result.content,
+              }));
+
+            if (Array.isArray(payload.input)) {
+              payload.input.push(...toolResults);
+            }
           },
           {
             ...options,
-            // {{CHENGQI:
-            // Action: Modified - 添加citations回调处理
-            // Timestamp: 2025-01-02 16:15:00 +08:00
-            // Reason: 在响应完成时传递citations数据给UI组件
-            // Principle_Applied: SOLID - 数据传递的职责分离
-            // Optimization: 在完成时一次性传递所有citations
-            // Architectural_Note (AR): Citations数据通过回调系统传递
-            // Documentation_Note (DW): Citations数据的回调传递机制
-            // }}
-            onFinish: (message: string, res: Response) => {
-              // Pass citations to the callback if available
-              if (collectedCitations.length > 0 && options.onCitations) {
-                options.onCitations(collectedCitations);
-              }
-              options.onFinish(message, res);
-            },
-            // {{CHENGQI:
-            // Action: Added - 思考内容回调传递
-            // Timestamp: 2025-06-12 08:49:57 +08:00
-            // Reason: P1-LD-006任务 - 确保XAI平台正确传递onThinkingUpdate回调
-            // Principle_Applied: SOLID - 责任传递，保持回调链的完整性
-            // Optimization: 思考内容的实时流式更新支持
-            // Architectural_Note (AR): XAI平台与思考窗口系统的集成
-            // Documentation_Note (DW): 思考内容通过onThinkingUpdate回调实时传递给UI
-            // }}
             onThinkingUpdate: options.onThinkingUpdate,
           },
-          detectOpenAICompatibleStreamTermination,
+          detectResponsesStreamTermination,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
         clearTimeout(requestTimeoutId);
 
         const resJson = await res.json();
+        const citations = collectCitations(resJson.output);
+        if (citations.length > 0 && options.onCitations) {
+          options.onCitations(citations);
+        }
         const message = this.extractMessage(resJson);
         options.onFinish(message, res);
       }

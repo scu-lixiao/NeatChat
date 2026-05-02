@@ -588,7 +588,9 @@ const en: LocaleType = {
     ReasoningEffort: {
       Title: "Reasoning Effort",
       SubTitle:
-        "Controls reasoning depth for supported GPT-5 and Anthropic Claude models. Auto uses model defaults. None is fastest, and xhigh is only available on some models.",
+        "Controls reasoning depth for supported reasoning models. Auto uses model defaults, available levels vary by model, and xhigh is only available on some models.",
+      XAIMultiAgentSubTitle:
+        "For Grok multi-agent, low and medium use 4 agents, while high and xhigh use 16 agents. Auto keeps the model default.",
       Options: {
         Auto: "Auto (default)",
         None: "None (fast)",
