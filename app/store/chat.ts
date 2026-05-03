@@ -1,6 +1,6 @@
 import {
   getMessageTextContent,
-  isOpenAIImagesApiModel,
+  isPureImageGenerationModel,
   safeLocalStorage,
   trimTopic,
 } from "../utils";
@@ -183,6 +183,8 @@ export type ChatMessage = RequestMessage & {
   // Architectural_Note (AR): 仅 OpenAI Responses API 使用，其他平台忽略此字段
   // }}
   openaiResponseId?: string;
+  // xAI Responses API response ID 存储字段
+  xaiResponseId?: string;
 };
 
 export function createMessage(override: Partial<ChatMessage>): ChatMessage {
@@ -639,14 +641,24 @@ export const useChatStore = createPersistStore(
         // Reference: https://platform.openai.com/docs/api-reference/responses
         // Architectural_Note (AR): 从最后一条 assistant 消息获取 openaiResponseId
         // }}
-        // 获取上一次的 OpenAI response id（用于 Responses API 多轮对话）
+        // 获取上一次的 OpenAI / xAI response id（用于 Responses API 多轮对话）
         let previousOpenAIResponseId: string | undefined;
+        let previousXAIResponseId: string | undefined;
         const lastAssistantMessage = session.messages
           .slice()
           .reverse()
-          .find((m) => m.role === "assistant" && m.openaiResponseId);
-        if (lastAssistantMessage?.openaiResponseId) {
+          .find((m) => m.role === "assistant");
+        if (
+          modelConfig.providerName === ServiceProvider.OpenAI &&
+          lastAssistantMessage?.openaiResponseId
+        ) {
           previousOpenAIResponseId = lastAssistantMessage.openaiResponseId;
+        }
+        if (
+          modelConfig.providerName === ServiceProvider.XAI &&
+          lastAssistantMessage?.xaiResponseId
+        ) {
+          previousXAIResponseId = lastAssistantMessage.xaiResponseId;
         }
 
         // save user's and bot's message
@@ -697,6 +709,8 @@ export const useChatStore = createPersistStore(
           config: { ...modelConfig, stream: true },
           // 传递 previous_response_id 用于 OpenAI Responses API 多轮对话
           previousOpenAIResponseId,
+          // 传递 previous_response_id 用于 xAI Responses API 多轮对话
+          previousXAIResponseId,
           onUpdate(message) {
             botMessage.streaming = true;
             if (
@@ -834,6 +848,14 @@ export const useChatStore = createPersistStore(
             if (responseId) {
               botMessage.openaiResponseId = responseId;
               // 触发状态更新以保存 response id
+              get().updateTargetSession(session, (session) => {
+                session.messages = session.messages.concat();
+              });
+            }
+          },
+          onXAIResponseId(responseId: string) {
+            if (responseId) {
+              botMessage.xaiResponseId = responseId;
               get().updateTargetSession(session, (session) => {
                 session.messages = session.messages.concat();
               });
@@ -1078,7 +1100,7 @@ export const useChatStore = createPersistStore(
         const session = targetSession;
         const modelConfig = session.mask.modelConfig;
         // skip summarize for image-only models handled by the OpenAI Images API
-        if (isOpenAIImagesApiModel(modelConfig.model)) {
+        if (isPureImageGenerationModel(modelConfig.model)) {
           return;
         }
 

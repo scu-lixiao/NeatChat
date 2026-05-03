@@ -254,6 +254,8 @@ export const XAI = {
   ExampleEndpoint: XAI_BASE_URL,
   ChatPath: "v1/chat/completions",
   ResponsesPath: "v1/responses",
+  ImagePath: "v1/images/generations",
+  ImageEditPath: "v1/images/edits",
 };
 
 export const ChatGLM = {
@@ -298,6 +300,7 @@ export const OPENAI_REASONING_MODELS = [
 ] as const;
 
 export const OPENAI_IMAGE_MODELS = ["gpt-image-2"] as const;
+export const XAI_IMAGE_MODELS = ["grok-imagine-image"] as const;
 
 export const DEFAULT_OPENAI_MODEL = OPENAI_REASONING_MODELS[0];
 export const SUMMARIZE_MODEL = OPENAI_REASONING_MODELS[1];
@@ -387,6 +390,7 @@ export const VISION_MODEL_REGEXES = [
   /^gpt-image-2$/,
   /grok-4/,
   /grok-4-1/,
+  /^grok-imagine-image$/,
 ];
 
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
@@ -450,6 +454,7 @@ const xAIModes = [
   "grok-4-1-fast-reasoning",
   "grok-4-1-fast-non-reasoning",
   "grok-4.20-multi-agent-0309",
+  ...XAI_IMAGE_MODELS,
 ];
 
 const chatglmModels = [

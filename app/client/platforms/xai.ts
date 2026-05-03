@@ -18,11 +18,20 @@ import {
   SpeechOptions,
 } from "../api";
 import { getClientConfig } from "@/app/config/client";
-import { getTimeoutMSByModel } from "@/app/utils";
+import { getTimeoutMSByModel, isXAIImageModel } from "@/app/utils";
 import {
+  base64Image2Blob,
+  cacheImageToBase64Image,
   detectResponsesStreamTermination,
   preProcessImageContent,
+  uploadImage,
 } from "@/app/utils/chat";
+import {
+  XAIImageAspectRatio,
+  XAIImageQuality,
+  XAIImageResolution,
+  XAIImageResponseFormat,
+} from "@/app/typing";
 import {
   ResponsesBuiltinTool,
   ResponsesFunctionCallOutputItem,
@@ -42,6 +51,33 @@ interface Citation {
 
 type XAISearchTool = { type: "x_search" };
 type XAITool = ResponsesTool | ResponsesBuiltinTool | XAISearchTool;
+
+type XAIImageAsset = {
+  type: "image_url";
+  url: string;
+};
+
+interface XAIImageRequestPayload {
+  model: string;
+  prompt: string;
+  n?: number;
+  aspect_ratio?: XAIImageAspectRatio;
+  quality?: XAIImageQuality;
+  resolution?: XAIImageResolution;
+  response_format?: XAIImageResponseFormat;
+  image?: XAIImageAsset;
+  images?: XAIImageAsset[];
+  mask?: XAIImageAsset;
+}
+
+interface XAIImageResponse {
+  created?: number;
+  data?: Array<{
+    url?: string;
+    b64_json?: string;
+    revised_prompt?: string;
+  }>;
+}
 
 class ResponsesReasoningAccumulator {
   private readonly summaryParts = new Map<string, string>();
@@ -220,6 +256,80 @@ function buildResponsesInputContent(
     .filter(Boolean) as ResponsesInputContentPart[];
 }
 
+function extractTextContent(content: string | MultimodalContent[]) {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content
+    .filter((part) => part.type === "text" && part.text)
+    .map((part) => part.text?.trim() ?? "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function extractImageUrls(content: string | MultimodalContent[]) {
+  if (typeof content === "string") {
+    return [] as string[];
+  }
+
+  return content
+    .filter((part) => part.type === "image_url" && part.image_url?.url)
+    .map((part) => part.image_url?.url?.trim() ?? "")
+    .filter(Boolean);
+}
+
+function normalizeXAIImageAspectRatio(
+  aspectRatio?: string,
+): XAIImageAspectRatio | undefined {
+  switch (aspectRatio) {
+    case "1:1":
+    case "16:9":
+    case "9:16":
+    case "4:3":
+    case "3:4":
+    case "3:2":
+    case "2:3":
+    case "2:1":
+    case "1:2":
+    case "19.5:9":
+    case "9:19.5":
+    case "20:9":
+    case "9:20":
+      return aspectRatio;
+    case "auto":
+    default:
+      return undefined;
+  }
+}
+
+function normalizeXAIImageQuality(quality?: string): XAIImageQuality {
+  switch (quality) {
+    case "low":
+    case "high":
+      return quality;
+    case "medium":
+    default:
+      return "medium";
+  }
+}
+
+function normalizeXAIImageResolution(resolution?: string): XAIImageResolution {
+  return resolution === "2k" ? "2k" : "1k";
+}
+
+function normalizeXAIImageResponseFormat(
+  responseFormat?: string,
+): XAIImageResponseFormat {
+  return responseFormat === "b64_json" ? "b64_json" : "url";
+}
+
+function normalizeXAIImageCount(count?: number): number {
+  const normalized = Math.round(count ?? 1);
+  return Math.min(10, Math.max(1, normalized));
+}
+
 function extractResponseText(output?: ResponsesOutputItem[]) {
   if (!output || !Array.isArray(output)) {
     return "";
@@ -364,9 +474,34 @@ export class XAIApi implements LLMApi {
     return [baseUrl, path].join("/");
   }
 
-  extractMessage(res: any) {
+  async extractMessage(res: any) {
     if (res.error) {
       return "```\n" + JSON.stringify(res, null, 4) + "\n```";
+    }
+
+    if (res.data && Array.isArray(res.data)) {
+      const imageParts: MultimodalContent[] = [];
+
+      for (const item of res.data as NonNullable<XAIImageResponse["data"]>) {
+        let url = item?.url?.trim() ?? "";
+
+        if (!url && item?.b64_json) {
+          url = await uploadImage(base64Image2Blob(item.b64_json, "image/png"));
+        }
+
+        if (url) {
+          imageParts.push({
+            type: "image_url",
+            image_url: {
+              url,
+            },
+          });
+        }
+      }
+
+      if (imageParts.length > 0) {
+        return imageParts;
+      }
     }
 
     if (typeof res.output_text === "string" && res.output_text.length > 0) {
@@ -376,20 +511,119 @@ export class XAIApi implements LLMApi {
     return extractResponseText(res.output);
   }
 
+  private async chatWithImagesApi(options: ChatOptions, modelConfig: any) {
+    const latestUserMessage = [...options.messages]
+      .reverse()
+      .find((message) => message.role === "user");
+    const latestContent = latestUserMessage
+      ? await preProcessImageContent(latestUserMessage.content)
+      : "";
+    const prompt = extractTextContent(latestContent);
+    const imageUrls = extractImageUrls(latestContent);
+    const isEditRequest = imageUrls.length > 0;
+
+    if (imageUrls.length > 5) {
+      throw new Error(
+        "xAI Imagine image editing supports up to 5 input images per request.",
+      );
+    }
+
+    const controller = new AbortController();
+    options.onController?.(controller);
+    let requestTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      const requestPayload: XAIImageRequestPayload = {
+        model: options.config.model,
+        prompt,
+        n: normalizeXAIImageCount(modelConfig.xaiImageCount),
+        quality: normalizeXAIImageQuality(modelConfig.quality),
+        resolution: normalizeXAIImageResolution(modelConfig.xaiImageResolution),
+        response_format: normalizeXAIImageResponseFormat(
+          modelConfig.xaiImageResponseFormat,
+        ),
+      };
+      const aspectRatio = normalizeXAIImageAspectRatio(
+        modelConfig.xaiImageAspectRatio,
+      );
+
+      if (aspectRatio && (!isEditRequest || imageUrls.length > 1)) {
+        requestPayload.aspect_ratio = aspectRatio;
+      }
+
+      if (isEditRequest) {
+        const normalizedImages = imageUrls.map(
+          (url) =>
+            ({
+              type: "image_url",
+              url,
+            }) satisfies XAIImageAsset,
+        );
+
+        if (normalizedImages.length === 1) {
+          requestPayload.image = normalizedImages[0];
+        } else {
+          requestPayload.images = normalizedImages;
+        }
+
+        const rawMaskImageUrl = modelConfig.imageGenerationMaskImageUrl?.trim();
+        if (rawMaskImageUrl) {
+          requestPayload.mask = {
+            type: "image_url",
+            url: await cacheImageToBase64Image(rawMaskImageUrl),
+          };
+        }
+      }
+
+      const chatPath = this.path(
+        isEditRequest ? XAI.ImageEditPath : XAI.ImagePath,
+      );
+      const chatPayload = {
+        method: "POST",
+        body: JSON.stringify(requestPayload),
+        signal: controller.signal,
+        headers: getHeaders(),
+      };
+
+      console.log("[Request] xai imagine payload:", {
+        model: requestPayload.model,
+        prompt: requestPayload.prompt,
+        n: requestPayload.n,
+        aspect_ratio: requestPayload.aspect_ratio,
+        quality: requestPayload.quality,
+        resolution: requestPayload.resolution,
+        response_format: requestPayload.response_format,
+        isEditRequest,
+        imageCount: imageUrls.length,
+        hasMask: !!requestPayload.mask,
+      });
+
+      requestTimeoutId = setTimeout(
+        () => controller.abort(),
+        getTimeoutMSByModel(options.config.model),
+      );
+
+      const res = await fetch(chatPath, chatPayload);
+      clearTimeout(requestTimeoutId);
+
+      const resJson = (await res.json()) as XAIImageResponse;
+      const message = await this.extractMessage(resJson);
+      options.onFinish(message, res);
+    } catch (e) {
+      console.log("[Request] failed to make an xai image request", e);
+      options.onError?.(e as Error);
+    } finally {
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+      }
+    }
+  }
+
   speech(options: SpeechOptions): Promise<ArrayBuffer> {
     throw new Error("Method not implemented.");
   }
 
   async chat(options: ChatOptions) {
-    const input: ResponsesInput[] = [];
-    for (const v of options.messages) {
-      const content = await preProcessImageContent(v.content);
-      input.push({
-        role: v.role,
-        content: buildResponsesInputContent(content),
-      });
-    }
-
     const modelConfig = {
       ...useAppConfig.getState().modelConfig,
       ...useChatStore.getState().currentSession().mask.modelConfig,
@@ -398,6 +632,29 @@ export class XAIApi implements LLMApi {
         providerName: options.config.providerName,
       },
     };
+
+    if (isXAIImageModel(modelConfig.model)) {
+      return this.chatWithImagesApi(options, modelConfig);
+    }
+
+    const latestUserMessageIndex = options.messages
+      .map((message) => message.role)
+      .lastIndexOf("user");
+    const shouldUseIncrementalInput =
+      !!options.previousXAIResponseId && latestUserMessageIndex >= 0;
+
+    const input: ResponsesInput[] = [];
+    for (const [index, v] of options.messages.entries()) {
+      if (shouldUseIncrementalInput && index !== latestUserMessageIndex) {
+        continue;
+      }
+
+      const content = await preProcessImageContent(v.content);
+      input.push({
+        role: v.role,
+        content: buildResponsesInputContent(content),
+      });
+    }
 
     const [pluginToolsRaw, funcs] = usePluginStore
       .getState()
@@ -422,6 +679,24 @@ export class XAIApi implements LLMApi {
         },
       },
     };
+
+    if (options.previousXAIResponseId) {
+      requestPayload.previous_response_id = options.previousXAIResponseId;
+      console.log(
+        "[xAI Responses API] Using previous_response_id:",
+        options.previousXAIResponseId,
+      );
+
+      if (shouldUseIncrementalInput) {
+        console.log(
+          "[xAI Responses API] Sending only the newest user turn with previous_response_id",
+          {
+            latestUserMessageIndex,
+            inputMessageCount: input.length,
+          },
+        );
+      }
+    }
 
     if (requestTools.length > 0) {
       requestPayload.tools = requestTools as any;
@@ -473,6 +748,7 @@ export class XAIApi implements LLMApi {
       if (shouldStream) {
         let toolIndex = -1;
         const reasoningAccumulator = new ResponsesReasoningAccumulator();
+        let responseIdCaptured = false;
 
         return streamWithThink(
           chatPath,
@@ -483,6 +759,11 @@ export class XAIApi implements LLMApi {
           controller,
           (text: string, runTools: ChatMessageTool[]) => {
             const event = JSON.parse(text) as ResponsesStreamEvent;
+
+            if (!responseIdCaptured && event.response?.id) {
+              responseIdCaptured = true;
+              options.onXAIResponseId?.(event.response.id);
+            }
 
             if (event.type === "response.output_text.delta") {
               return {
@@ -636,11 +917,14 @@ export class XAIApi implements LLMApi {
         clearTimeout(requestTimeoutId);
 
         const resJson = await res.json();
+        if (typeof resJson?.id === "string" && resJson.id.length > 0) {
+          options.onXAIResponseId?.(resJson.id);
+        }
         const citations = collectCitations(resJson.output);
         if (citations.length > 0 && options.onCitations) {
           options.onCitations(citations);
         }
-        const message = this.extractMessage(resJson);
+        const message = await this.extractMessage(resJson);
         options.onFinish(message, res);
       }
     } catch (e) {

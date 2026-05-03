@@ -12,8 +12,26 @@ export type DalleSize = "1024x1024" | "1792x1024" | "1024x1792";
 export type DalleQuality = "standard" | "hd";
 export type DalleStyle = "vivid" | "natural";
 export type OpenAIImageQuality = "low" | "medium" | "high" | "auto";
-export type ImageQuality = DalleQuality | OpenAIImageQuality;
+export type XAIImageQuality = "low" | "medium" | "high";
+export type ImageQuality = DalleQuality | OpenAIImageQuality | XAIImageQuality;
 export type ImageModeration = "auto" | "low";
+export type XAIImageAspectRatio =
+  | "auto"
+  | "1:1"
+  | "16:9"
+  | "9:16"
+  | "4:3"
+  | "3:4"
+  | "3:2"
+  | "2:3"
+  | "2:1"
+  | "1:2"
+  | "19.5:9"
+  | "9:19.5"
+  | "20:9"
+  | "9:20";
+export type XAIImageResolution = "1k" | "2k";
+export type XAIImageResponseFormat = "url" | "b64_json";
 
 export type PresetModelSize =
   | "auto"

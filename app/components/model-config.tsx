@@ -5,6 +5,7 @@ import {
   isDalle3,
   isGPT5ImageGenModel,
   isOpenAIImagesApiModel,
+  isXAIImageModel,
 } from "../utils";
 import {
   DalleQuality,
@@ -12,6 +13,10 @@ import {
   ImageModeration,
   ModelSize,
   OpenAIImageQuality,
+  XAIImageAspectRatio,
+  XAIImageQuality,
+  XAIImageResolution,
+  XAIImageResponseFormat,
 } from "../typing";
 
 import Locale from "../locales";
@@ -34,6 +39,8 @@ export function ModelConfigList(props: {
   );
   const currentModel = props.modelConfig.model;
   const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
+  const isXAIImageModelSelected =
+    isXAIProvider && isXAIImageModel(currentModel);
   const isXaiMultiAgentModel =
     isXAIProvider && currentModel.includes("multi-agent");
   const isXaiGrok43Model = isXAIProvider && currentModel.startsWith("grok-4.3");
@@ -78,6 +85,28 @@ export function ModelConfigList(props: {
     "jpeg",
   ] as const;
   const gpt5ImageGenerationInputFidelityOptions = ["low", "high"] as const;
+  const xaiImageAspectRatioOptions: XAIImageAspectRatio[] = [
+    "auto",
+    "1:1",
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "2:1",
+    "1:2",
+    "19.5:9",
+    "9:19.5",
+    "20:9",
+    "9:20",
+  ];
+  const xaiImageQualityOptions: XAIImageQuality[] = ["low", "medium", "high"];
+  const xaiImageResolutionOptions: XAIImageResolution[] = ["1k", "2k"];
+  const xaiImageResponseFormatOptions: XAIImageResponseFormat[] = [
+    "url",
+    "b64_json",
+  ];
   const imageQualityOptions = isLegacyDalle3
     ? dalleQualityOptions
     : isModernOpenAIImageModel
@@ -133,6 +162,26 @@ export function ModelConfigList(props: {
   );
   const currentGpt5ImageGenerationInputFidelity =
     props.modelConfig.imageGenerationInputFidelity === "high" ? "high" : "low";
+  const currentXAIImageAspectRatio = xaiImageAspectRatioOptions.includes(
+    props.modelConfig.xaiImageAspectRatio as XAIImageAspectRatio,
+  )
+    ? (props.modelConfig.xaiImageAspectRatio as XAIImageAspectRatio)
+    : "auto";
+  const currentXAIImageQuality = xaiImageQualityOptions.includes(
+    props.modelConfig.quality as XAIImageQuality,
+  )
+    ? (props.modelConfig.quality as XAIImageQuality)
+    : "medium";
+  const currentXAIImageResolution =
+    props.modelConfig.xaiImageResolution === "2k" ? "2k" : "1k";
+  const currentXAIImageResponseFormat =
+    props.modelConfig.xaiImageResponseFormat === "b64_json"
+      ? "b64_json"
+      : "url";
+  const currentXAIImageCount = Math.min(
+    10,
+    Math.max(1, Math.round(props.modelConfig.xaiImageCount ?? 1)),
+  );
   const currentReasoningEffort = props.modelConfig.reasoningEffort ?? "auto";
   const normalizedXaiReasoningEffort =
     currentReasoningEffort === "low" ||
@@ -292,6 +341,136 @@ export function ModelConfigList(props: {
               </Select>
             </ListItem>
           )}
+        </>
+      )}
+
+      {isXAIImageModelSelected && (
+        <>
+          <ListItem
+            title="Aspect Ratio"
+            subTitle="Controls output ratio. Single-image edits follow the input image unless you override it."
+          >
+            <Select
+              aria-label="Aspect Ratio"
+              value={currentXAIImageAspectRatio}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.xaiImageAspectRatio = e.currentTarget
+                    .value as XAIImageAspectRatio;
+                });
+              }}
+            >
+              {xaiImageAspectRatioOptions.map((ratio) => (
+                <option value={ratio} key={ratio}>
+                  {ratio}
+                </option>
+              ))}
+            </Select>
+          </ListItem>
+
+          <ListItem
+            title="Resolution"
+            subTitle="xAI Imagine currently supports 1k and 2k outputs."
+          >
+            <Select
+              aria-label="Resolution"
+              value={currentXAIImageResolution}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.xaiImageResolution = e.currentTarget
+                    .value as XAIImageResolution;
+                });
+              }}
+            >
+              {xaiImageResolutionOptions.map((resolution) => (
+                <option value={resolution} key={resolution}>
+                  {resolution}
+                </option>
+              ))}
+            </Select>
+          </ListItem>
+
+          <ListItem
+            title="Quality"
+            subTitle="Choose the image quality level used by the Imagine API."
+          >
+            <Select
+              aria-label="Quality"
+              value={currentXAIImageQuality}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.quality = e.currentTarget.value as XAIImageQuality;
+                });
+              }}
+            >
+              {xaiImageQualityOptions.map((quality) => (
+                <option value={quality} key={quality}>
+                  {quality}
+                </option>
+              ))}
+            </Select>
+          </ListItem>
+
+          <ListItem
+            title="Response Format"
+            subTitle="URL is the API default. Choose b64_json if you want the app to persist generated images in chat history."
+          >
+            <Select
+              aria-label="Response Format"
+              value={currentXAIImageResponseFormat}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.xaiImageResponseFormat = e.currentTarget
+                    .value as XAIImageResponseFormat;
+                });
+              }}
+            >
+              {xaiImageResponseFormatOptions.map((format) => (
+                <option value={format} key={format}>
+                  {format}
+                </option>
+              ))}
+            </Select>
+          </ListItem>
+
+          <ListItem
+            title="Image Count"
+            subTitle="Generate between 1 and 10 images per request."
+          >
+            <InputRange
+              aria="Image Count"
+              value={currentXAIImageCount}
+              title={String(currentXAIImageCount)}
+              min="1"
+              max="10"
+              step="1"
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.xaiImageCount = Math.min(
+                    10,
+                    Math.max(1, Math.round(Number(e.currentTarget.value))),
+                  );
+                });
+              }}
+            ></InputRange>
+          </ListItem>
+
+          <ListItem
+            title="Mask Image URL"
+            subTitle="Optional. Used only for image edits. Supports public URLs and data URLs."
+          >
+            <input
+              aria-label="Mask Image URL"
+              type="text"
+              placeholder="https://... or data:image/..."
+              value={props.modelConfig.imageGenerationMaskImageUrl ?? ""}
+              onChange={(e) => {
+                props.updateConfig((config) => {
+                  config.imageGenerationMaskImageUrl = e.currentTarget.value;
+                });
+              }}
+            ></input>
+          </ListItem>
         </>
       )}
 

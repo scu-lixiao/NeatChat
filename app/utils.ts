@@ -7,6 +7,7 @@ import {
   REQUEST_TIMEOUT_MS,
   REQUEST_TIMEOUT_MS_FOR_THINKING,
   ServiceProvider,
+  XAI_IMAGE_MODELS,
 } from "./constant";
 // import { fetch as tauriFetch, ResponseType } from "@tauri-apps/api/http";
 import { fetch as tauriStreamFetch } from "./utils/stream";
@@ -321,6 +322,15 @@ export function isOpenAIImagesApiModel(model: string): boolean {
   );
 }
 
+export function isXAIImageModel(model: string): boolean {
+  const lowerModel = model.toLowerCase();
+  return XAI_IMAGE_MODELS.some((imageModel) => imageModel === lowerModel);
+}
+
+export function isPureImageGenerationModel(model: string): boolean {
+  return isOpenAIImagesApiModel(model) || isXAIImageModel(model);
+}
+
 /**
  * 判断模型是否支持通过 Responses API 的 image_generation 工具生成图像
  * 按 OpenAI 当前文档，仅部分 GPT-5 系列模型支持该原生工具。
@@ -334,7 +344,7 @@ export function isGPT5ImageGenModel(model: string): boolean {
  * 判断模型是否支持图像生成能力（包括 OpenAI Images API 和 GPT-5 原生生成）
  */
 export function supportsImageGeneration(model: string): boolean {
-  return isOpenAIImagesApiModel(model) || isGPT5ImageGenModel(model);
+  return isPureImageGenerationModel(model) || isGPT5ImageGenModel(model);
 }
 
 export function getTimeoutMSByModel(model: string) {

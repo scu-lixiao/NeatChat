@@ -138,6 +138,10 @@ export interface ChatOptions {
   onOpenAIResponseId?: (responseId: string) => void;
   // 用于多轮对话的上一次 response id（仅 OpenAI Responses API 使用）
   previousOpenAIResponseId?: string;
+  // xAI Responses API 返回的 response id 回调
+  onXAIResponseId?: (responseId: string) => void;
+  // 用于多轮对话的上一次 response id（仅 xAI Responses API 使用）
+  previousXAIResponseId?: string;
 }
 
 export interface LLMUsage {

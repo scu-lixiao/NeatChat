@@ -4,6 +4,9 @@ import {
   ImageModeration,
   ImageQuality,
   ModelSize,
+  XAIImageAspectRatio,
+  XAIImageResolution,
+  XAIImageResponseFormat,
 } from "../typing";
 import { getClientConfig } from "../config/client";
 import {
@@ -188,6 +191,14 @@ export const DEFAULT_CONFIG = {
     imageGenerationMaskFileId: "",
     // imageGenerationMaskImageUrl: 可选的蒙版 image_url/data URL
     imageGenerationMaskImageUrl: "",
+    // xaiImageAspectRatio: xAI Imagine API 的纵横比控制
+    xaiImageAspectRatio: "auto" as XAIImageAspectRatio,
+    // xaiImageResolution: xAI Imagine API 输出分辨率
+    xaiImageResolution: "1k" as XAIImageResolution,
+    // xaiImageCount: xAI Imagine API 单次生成张数
+    xaiImageCount: 1,
+    // xaiImageResponseFormat: xAI Imagine API 返回 URL 或 base64
+    xaiImageResponseFormat: "url" as XAIImageResponseFormat,
   },
 
   ttsConfig: {
