@@ -462,6 +462,9 @@ export class GeminiProApi implements LLMApi {
     // }
 
     const accessStore = useAccessStore.getState();
+    const shouldOmitGemini3SamplingParams = /^gemini-3(?:[.-]|$)/.test(
+      modelConfig.model,
+    );
 
     // {{CHENGQI:
     // Action: Added - 构建 system_instruction 字段
@@ -481,9 +484,11 @@ export class GeminiProApi implements LLMApi {
       }),
       contents: messages,
       generationConfig: {
-        temperature: modelConfig.temperature,
         maxOutputTokens: modelConfig.max_tokens,
-        topP: modelConfig.top_p,
+        ...(!shouldOmitGemini3SamplingParams && {
+          temperature: modelConfig.temperature,
+          topP: modelConfig.top_p,
+        }),
       },
       safetySettings: [
         {
