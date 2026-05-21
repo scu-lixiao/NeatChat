@@ -524,7 +524,9 @@ export class GeminiProApi implements LLMApi {
     } else if (
       modelConfig.model === "gemini-3-pro-preview" ||
       modelConfig.model === "gemini-3-flash-preview" ||
-      modelConfig.model === "gemini-3.1-pro-preview"
+      modelConfig.model === "gemini-3.1-pro-preview" ||
+      modelConfig.model === "gemini-3.5-pro" ||
+      modelConfig.model === "gemini-3.5-flash"
     ) {
       // {{CHENGQI:
       // Action: Fixed - 修复 code_execution 不触发的问题
@@ -566,7 +568,9 @@ export class GeminiProApi implements LLMApi {
     } else if (
       modelConfig.model === "gemini-3-pro-preview" ||
       modelConfig.model === "gemini-3-flash-preview" ||
-      modelConfig.model === "gemini-3.1-pro-preview"
+      modelConfig.model === "gemini-3.1-pro-preview" ||
+      modelConfig.model === "gemini-3.5-pro" ||
+      modelConfig.model === "gemini-3.5-flash"
     ) {
       (requestPayload as any).generationConfig.thinkingConfig = {
         includeThoughts: true,
@@ -589,7 +593,9 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3-pro-preview" ||
       modelConfig.model === "gemini-3-pro-image-preview" ||
       modelConfig.model === "gemini-3-flash-preview" ||
-      modelConfig.model === "gemini-3.1-pro-preview"
+      modelConfig.model === "gemini-3.1-pro-preview" ||
+      modelConfig.model === "gemini-3.5-pro" ||
+      modelConfig.model === "gemini-3.5-flash"
     ) {
       (requestPayload as any).generationConfig = {
         ...(requestPayload as any).generationConfig, // 保留现有配置

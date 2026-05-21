@@ -399,6 +399,8 @@ const openaiModels = [...OPENAI_REASONING_MODELS, ...OPENAI_IMAGE_MODELS];
 const azureModels = OPENAI_REASONING_MODELS;
 
 const googleModels = [
+  "gemini-3.5-pro",
+  "gemini-3.5-flash",
   "gemini-3-pro-preview",
   "gemini-3.1-pro-preview",
   "gemini-3-pro-image-preview",
