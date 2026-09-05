@@ -404,7 +404,8 @@ function resolveXAIReasoningEffort(
     | "low"
     | "medium"
     | "high"
-    | "xhigh",
+    | "xhigh"
+    | "max",
 ) {
   if (!supportsConfigurableXAIReasoning(model)) {
     return undefined;
