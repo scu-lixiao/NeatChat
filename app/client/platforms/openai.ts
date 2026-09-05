@@ -171,7 +171,7 @@ export interface ResponsesRequestPayload {
     | { type: "image_generation" };
   previous_response_id?: string; // 用于多轮对话引用
   reasoning?: {
-    effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+    effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
     summary?: "auto" | "none" | "concise" | "detailed";
   };
   // 指定响应中要包含的额外数据
@@ -771,7 +771,14 @@ interface ResponsesReasoningSummaryLogContext {
   providerName?: string;
   stream: boolean;
   responseId?: string;
-  reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  reasoningEffort?:
+    | "none"
+    | "minimal"
+    | "low"
+    | "medium"
+    | "high"
+    | "xhigh"
+    | "max";
   reasoningSummary?: "auto" | "none" | "concise" | "detailed";
   requestedSummary: boolean;
 }
@@ -1231,7 +1238,10 @@ export class ChatGPTApi implements LLMApi {
 
     const lowerModel = options.config.model.toLowerCase();
     const isGPT5ReasoningModelForDiagnostics =
-      lowerModel.startsWith("gpt-5.4") || lowerModel.startsWith("gpt-5.5");
+      lowerModel.startsWith("gpt-5.4") ||
+      lowerModel.startsWith("gpt-5.5") ||
+      lowerModel.startsWith("gpt-5.6") ||
+      lowerModel === "gpt-6-astra";
     const isModernOpenAIImageModel = OPENAI_IMAGE_MODELS.some(
       (model) => model === lowerModel,
     );
@@ -1557,13 +1567,16 @@ export class ChatGPTApi implements LLMApi {
     const shouldUseIncrementalInput =
       !!options.previousOpenAIResponseId && latestUserMessageIndex >= 0;
 
-    // 判断是否为 GPT-5.4/5.5 推理模型
+    // 判断是否为 GPT-5.4/5.5/5.6 或 GPT-6 Astra 推理模型
     const isGPT5ReasoningModel =
       options.config.model.startsWith("gpt-5.4") ||
-      options.config.model.startsWith("gpt-5.5");
+      options.config.model.startsWith("gpt-5.5") ||
+      options.config.model.startsWith("gpt-5.6") ||
+      options.config.model === "gpt-6-astra";
     const isGPT5Pro =
       options.config.model === "gpt-5.4-pro" ||
       options.config.model === "gpt-5.5-pro";
+    const isGpt6Astra = options.config.model === "gpt-6-astra";
 
     // 提取 system message 作为 instructions
     let instructions: string | undefined;
@@ -1650,11 +1663,13 @@ export class ChatGPTApi implements LLMApi {
         | "low"
         | "medium"
         | "high"
-        | "xhigh";
+        | "xhigh"
+        | "max";
 
       // 定义不同模型支持的推理级别
-      // gpt-5.4 / gpt-5.5: 支持 none, minimal, low, medium, high, xhigh
+      // gpt-5.4 / gpt-5.5 / gpt-5.6: 支持 none, minimal, low, medium, high, xhigh
       // gpt-5.4-pro / gpt-5.5-pro: 支持 medium, high, xhigh
+      // gpt-6-astra: 支持 low, medium, high, xhigh, max（不支持 none / minimal）
 
       if (userReasoningEffort === "auto") {
         // 自动模式：根据模型类型选择默认值
@@ -1662,7 +1677,7 @@ export class ChatGPTApi implements LLMApi {
           // gpt-5.4-mini 默认使用 "low"（轻量版本）
           finalReasoningEffort = "low";
         } else {
-          // gpt-5.4 / gpt-5.5 默认使用 "medium"
+          // gpt-5.4 / gpt-5.5 / gpt-5.6 / gpt-6-astra 默认使用 "medium"
           finalReasoningEffort = "medium";
         }
         console.log(
@@ -1671,11 +1686,12 @@ export class ChatGPTApi implements LLMApi {
       } else {
         // 用户明确指定了推理级别，需要验证是否支持
         if (isGPT5Pro) {
-          // GPT-5 Pro 不支持 "none"、"minimal" 和 "low"
+          // GPT-5 Pro 不支持 "none"、"minimal"、"low" 和 "max"
           if (
             userReasoningEffort === "none" ||
             userReasoningEffort === "minimal" ||
-            userReasoningEffort === "low"
+            userReasoningEffort === "low" ||
+            userReasoningEffort === "max"
           ) {
             finalReasoningEffort = "medium"; // 升级到 medium
             console.warn(
@@ -1684,8 +1700,27 @@ export class ChatGPTApi implements LLMApi {
           } else {
             finalReasoningEffort = userReasoningEffort;
           }
+        } else if (isGpt6Astra) {
+          // GPT-6 Astra 不支持 none / minimal；文档要求从 none/minimal 迁移到 low
+          if (
+            userReasoningEffort === "none" ||
+            userReasoningEffort === "minimal"
+          ) {
+            finalReasoningEffort = "low";
+            console.warn(
+              `[GPT-6 Astra] '${userReasoningEffort}' not supported, falling back to 'low'`,
+            );
+          } else {
+            finalReasoningEffort = userReasoningEffort;
+          }
+        } else if (userReasoningEffort === "max") {
+          // 仅 Astra 支持 max
+          finalReasoningEffort = "xhigh";
+          console.warn(
+            `[GPT-5] 'max' not supported on ${options.config.model}, falling back to 'xhigh'`,
+          );
         } else {
-          // 其他 GPT-5.4/5.5 模型支持所有级别
+          // 其他 GPT-5.4/5.5/5.6 模型支持所有常规级别
           finalReasoningEffort = userReasoningEffort;
         }
         console.log(
@@ -1757,7 +1792,7 @@ export class ChatGPTApi implements LLMApi {
       }));
     }
 
-    // GPT-5.4/5.5 系列模型添加 image_generation 工具支持
+    // 支持原生图像生成的 GPT-5 系列模型添加 image_generation 工具支持
     // 当启用 enableImageGeneration 时，模型可以生成图像
     if (isGPT5ImageGen && modelConfig.enableImageGeneration) {
       const shouldEditImage = latestUserInputImageCount > 0;
@@ -1848,7 +1883,7 @@ export class ChatGPTApi implements LLMApi {
       );
     }
 
-    // GPT-5.4/5.5 系列模型添加 web_search 内置工具支持
+    // GPT-5.4/5.5/5.6 系列模型添加 web_search 内置工具支持
     // 当启用 web_search 时，模型可以自动搜索网络获取最新信息
     if (isGPT5ReasoningModel && modelConfig.enableWebSearch) {
       const webSearchTool: ResponsesWebSearchTool = {
@@ -1869,7 +1904,7 @@ export class ChatGPTApi implements LLMApi {
       console.log("[GPT-5] Added web_search tool with config:", webSearchTool);
     }
 
-    // GPT-5.4/5.5 系列模型添加 code_interpreter 内置工具支持
+    // GPT-5.4/5.5/5.6 系列模型添加 code_interpreter 内置工具支持
     // 当启用 code_interpreter 时，模型可以执行 Python 代码进行计算和数据分析
     if (isGPT5ReasoningModel && modelConfig.enableCodeInterpreter) {
       const codeInterpreterTool: ResponsesCodeInterpreterTool = {
@@ -1883,7 +1918,7 @@ export class ChatGPTApi implements LLMApi {
       console.log("[GPT-5] Added code_interpreter tool");
     }
 
-    // GPT-5.4/5.5 系列模型添加 file_search 内置工具支持
+    // GPT-5.4/5.5/5.6 系列模型添加 file_search 内置工具支持
     // 当启用 file_search 时，模型可以在矢量存储中搜索文档
     // 注意: 需要先创建 vector store 并配置 vectorStoreIds
     if (
@@ -1906,7 +1941,7 @@ export class ChatGPTApi implements LLMApi {
       );
     }
 
-    // GPT-5.4/5.5 系列模型工具配置
+    // GPT-5.4/5.5/5.6 系列模型工具配置
     // 注意：根据 OpenAI 官方文档，GPT-5 系列模型在 Responses API 中
     // 只支持 tool_choice: "auto"，其他值（如 "required"、"none"）会报错
     // 因此不再显式设置 tool_choice，让 API 使用默认值 "auto"
@@ -1923,7 +1958,7 @@ export class ChatGPTApi implements LLMApi {
       );
     }
 
-    // GPT-5.4/5.5 系列模型添加 include 参数
+    // GPT-5.4/5.5/5.6 系列模型添加 include 参数
     // include 参数用于指定响应中要包含的额外数据，与工具配置分开处理
     if (isGPT5ReasoningModel) {
       // 添加 include 参数以获取工具调用的详细输出

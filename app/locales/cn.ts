@@ -591,6 +591,7 @@ const cn = {
         Medium: "中",
         High: "高",
         XHigh: "极高 (最深)",
+        Max: "最大",
       },
     },
     ReasoningSummary: {

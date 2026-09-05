@@ -297,6 +297,11 @@ export const OPENAI_REASONING_MODELS = [
   "gpt-5.4-pro",
   "gpt-5.5",
   "gpt-5.5-pro",
+  "gpt-5.6",
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
+  "gpt-6-astra",
 ] as const;
 
 export const OPENAI_IMAGE_MODELS = ["gpt-image-2"] as const;
@@ -314,6 +319,12 @@ export const KnowledgeCutOffDate: Record<string, string> = {
   "gpt-5.4-pro": "2025-08",
   "gpt-5.5": "2025-12",
   "gpt-5.5-pro": "2025-12",
+  "gpt-5.6": "2026-02",
+  "gpt-5.6-sol": "2026-02",
+  "gpt-5.6-terra": "2026-02",
+  "gpt-5.6-luna": "2026-02",
+  "gpt-6-astra": "2026-04",
+  "grok-4.5": "2026-02",
   "gpt-4-turbo": "2023-12",
   "gpt-4-turbo-2024-04-09": "2023-12",
   "gpt-4-turbo-preview": "2023-12",
@@ -387,6 +398,7 @@ export const VISION_MODEL_REGEXES = [
   /gpt-5\.1/,
   /gpt-5\.2/,
   /gpt-5\.4/,
+  /gpt-6/,
   /^gpt-image-2$/,
   /grok-4/,
   /grok-4-1/,
@@ -400,7 +412,9 @@ const azureModels = OPENAI_REASONING_MODELS;
 
 const googleModels = [
   "gemini-3.5-pro",
-  "gemini-3.5-flash",
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-3.6-flash",
   "gemini-3-pro-preview",
   "gemini-3.1-pro-preview",
   "gemini-3-pro-image-preview",
@@ -424,10 +438,12 @@ const anthropicModels = [
   "claude-opus-4-20250514",
   "claude-opus-4-6",
   "claude-opus-4-7",
+  "claude-opus-4-8",
   "claude-sonnet-4-20250514",
   "claude-sonnet-4-5-20250929",
   "claude-sonnet-4-6",
   "claude-haiku-4-5-20251001",
+  "claude-fable-5",
 ];
 
 const baiduModels = ["ernie-tiny-8k"];
@@ -447,6 +463,7 @@ const deepseekModels = ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"];
 const xAIModes = [
   "grok-4-0709",
   "grok-4.3",
+  "grok-4.5",
   "grok-3-latest",
   "grok-3-fast-latest",
   "grok-3-mini-latest",

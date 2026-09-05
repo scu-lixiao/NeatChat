@@ -127,10 +127,10 @@ export const DEFAULT_CONFIG = {
     size: "1024x1024" as ModelSize,
     quality: "standard" as ImageQuality,
     style: "vivid" as DalleStyle,
-    // GPT-5.4/5.5 系列推理级别配置
+    // GPT-5.4/5.5/5.6 与 GPT-6 Astra 推理级别配置
     // "auto": 根据模型自动选择（默认）
-    // "none": 无推理（快速响应，支持 temperature/top_p）
-    // "minimal"/"low"/"medium"/"high"/"xhigh": 不同级别推理深度
+    // "none": 无推理（快速响应，支持 temperature/top_p；Astra 不支持）
+    // "minimal"/"low"/"medium"/"high"/"xhigh"/"max": 不同级别推理深度
     reasoningEffort: "auto" as
       | "auto"
       | "none"
@@ -138,7 +138,8 @@ export const DEFAULT_CONFIG = {
       | "low"
       | "medium"
       | "high"
-      | "xhigh",
+      | "xhigh"
+      | "max",
     // reasoningSummary: 控制 GPT-5 推理摘要的输出详细度
     reasoningSummary: "auto" as "auto" | "none" | "concise" | "detailed",
     // textVerbosity: 控制 GPT-5 最终输出的冗长程度

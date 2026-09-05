@@ -387,8 +387,12 @@ function isMultiAgentModel(model: string) {
   return model.includes("multi-agent");
 }
 
+function isGrok45Model(model: string) {
+  return model === "grok-4.5";
+}
+
 function supportsConfigurableXAIReasoning(model: string) {
-  return isMultiAgentModel(model);
+  return isGrok45Model(model) || isMultiAgentModel(model);
 }
 
 function resolveXAIReasoningEffort(
@@ -410,7 +414,7 @@ function resolveXAIReasoningEffort(
     reasoningEffort === "low" ||
     reasoningEffort === "medium" ||
     reasoningEffort === "high" ||
-    reasoningEffort === "xhigh"
+    (reasoningEffort === "xhigh" && isMultiAgentModel(model))
   ) {
     return reasoningEffort;
   }

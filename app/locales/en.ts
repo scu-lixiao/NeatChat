@@ -598,6 +598,7 @@ const en: LocaleType = {
         Medium: "Medium",
         High: "High",
         XHigh: "XHigh (deepest)",
+        Max: "Max",
       },
     },
     ReasoningSummary: {

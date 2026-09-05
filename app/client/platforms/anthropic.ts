@@ -111,6 +111,17 @@ const ClaudeMapper = {
 
 const keys = ["claude-2, claude-instant-1"];
 const ANTHROPIC_MIN_THINKING_BUDGET = 1024;
+const ANTHROPIC_ADAPTIVE_THINKING_MODELS = new Set([
+  "claude-fable-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+]);
+const ANTHROPIC_XHIGH_EFFORT_MODELS = new Set([
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+]);
 
 function normalizeAnthropicModel(model: string) {
   return model.trim().toLowerCase();
@@ -119,11 +130,7 @@ function normalizeAnthropicModel(model: string) {
 function supportsAnthropicAdaptiveThinking(model: string) {
   const normalizedModel = normalizeAnthropicModel(model);
 
-  return (
-    normalizedModel === "claude-opus-4-7" ||
-    normalizedModel === "claude-opus-4-6" ||
-    normalizedModel === "claude-sonnet-4-6"
-  );
+  return ANTHROPIC_ADAPTIVE_THINKING_MODELS.has(normalizedModel);
 }
 
 function supportsAnthropicThinking(model: string) {
@@ -134,6 +141,7 @@ function supportsAnthropicThinking(model: string) {
   }
 
   return (
+    /^claude-fable-5(?:-|$)/.test(normalizedModel) ||
     /^claude-3-7-sonnet-20250219(?:-thinking)?$/.test(normalizedModel) ||
     /^claude-(?:opus|sonnet)-4(?:-|$)/.test(normalizedModel) ||
     /^claude-haiku-4-5(?:-|$)/.test(normalizedModel)
@@ -154,9 +162,12 @@ function resolveAnthropicAdaptiveEffort(
     return "low";
   }
 
-  if (reasoningEffort === "xhigh" && normalizedModel !== "claude-opus-4-7") {
+  if (
+    reasoningEffort === "xhigh" &&
+    !ANTHROPIC_XHIGH_EFFORT_MODELS.has(normalizedModel)
+  ) {
     console.warn(
-      `[Anthropic] Effort 'xhigh' is only supported on claude-opus-4-7, falling back to 'high' for ${model}`,
+      `[Anthropic] Effort 'xhigh' is only supported on Claude Opus 4.7/4.8, falling back to 'high' for ${model}`,
     );
     return "high";
   }

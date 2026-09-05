@@ -337,7 +337,11 @@ export function isPureImageGenerationModel(model: string): boolean {
  */
 export function isGPT5ImageGenModel(model: string): boolean {
   const lowerModel = model.toLowerCase();
-  return lowerModel === "gpt-5.4-mini" || lowerModel === "gpt-5.5";
+  return (
+    lowerModel === "gpt-5.4-mini" ||
+    lowerModel === "gpt-5.5" ||
+    lowerModel === "gpt-6-astra"
+  );
 }
 
 /**
@@ -359,7 +363,9 @@ export function getTimeoutMSByModel(model: string) {
     model.includes("-thinking") ||
     model.includes("grok") || // XAI models with search and reasoning modes need extended timeout
     model.startsWith("gpt-5.4") || // GPT-5.4 with thinking mode may need extended timeout
-    model.startsWith("gpt-5.5") // GPT-5.5 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.5") || // GPT-5.5 with thinking mode may need extended timeout
+    model.startsWith("gpt-5.6") || // GPT-5.6 with thinking mode may need extended timeout
+    model.startsWith("gpt-6") // GPT-6 Astra with thinking mode may need extended timeout
   )
     return REQUEST_TIMEOUT_MS_FOR_THINKING;
   return REQUEST_TIMEOUT_MS;
