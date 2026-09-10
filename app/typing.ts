@@ -11,7 +11,13 @@ export interface RequestMessage {
 export type DalleSize = "1024x1024" | "1792x1024" | "1024x1792";
 export type DalleQuality = "standard" | "hd";
 export type DalleStyle = "vivid" | "natural";
-export type OpenAIImageQuality = "low" | "medium" | "high" | "auto";
+export type OpenAIImageQuality =
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "auto";
 export type XAIImageQuality = "low" | "medium" | "high";
 export type ImageQuality = DalleQuality | OpenAIImageQuality | XAIImageQuality;
 export type ImageModeration = "auto" | "low";

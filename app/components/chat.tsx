@@ -615,11 +615,19 @@ export function ChatActions(props: {
     "medium",
     "high",
   ];
+  const gptImage25Qualitys: OpenAIImageQuality[] = [
+    ...gptImageQualitys,
+    "xhigh",
+    "max",
+  ];
+  const supportedGptImageQualitys = currentModel.startsWith("gpt-image-2.5-")
+    ? gptImage25Qualitys
+    : gptImageQualitys;
   const dalle3Styles: DalleStyle[] = ["vivid", "natural"];
   const qualityOptions = isLegacyDalle3
     ? dalle3Qualitys
     : isGptImageModel
-    ? gptImageQualitys
+    ? supportedGptImageQualitys
     : [];
   const currentSize =
     session.mask.modelConfig?.size ?? ("1024x1024" as ModelSize);
@@ -631,7 +639,7 @@ export function ChatActions(props: {
       ? "hd"
       : "standard"
     : isGptImageModel
-    ? gptImageQualitys.includes(
+    ? supportedGptImageQualitys.includes(
         session.mask.modelConfig?.quality as OpenAIImageQuality,
       )
       ? (session.mask.modelConfig?.quality as OpenAIImageQuality)

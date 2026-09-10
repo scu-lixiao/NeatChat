@@ -1,11 +1,13 @@
 import {
   KnowledgeCutOffDate,
+  OPENAI_IMAGE_MODELS,
   OPENAI_REASONING_MODELS,
   REQUEST_TIMEOUT_MS_FOR_THINKING,
 } from "../../constant";
 import {
   getTimeoutMSByModel,
   isGPT5ImageGenModel,
+  isOpenAIImagesApiModel,
   isVisionModel,
 } from "../../utils";
 
@@ -48,5 +50,17 @@ describe("OpenAI GPT-6 Astra", () => {
     expect(getTimeoutMSByModel("gpt-6-astra")).toBe(
       REQUEST_TIMEOUT_MS_FOR_THINKING,
     );
+  });
+});
+
+describe("OpenAI GPT Image 2.5", () => {
+  const models = ["gpt-image-2.5-sunburst", "gpt-image-2.5-flare"];
+
+  test("registers all Images API models with image capabilities", () => {
+    for (const model of models) {
+      expect(OPENAI_IMAGE_MODELS).toContain(model);
+      expect(isOpenAIImagesApiModel(model)).toBe(true);
+      expect(isVisionModel(model)).toBe(true);
+    }
   });
 });

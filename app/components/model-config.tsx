@@ -76,9 +76,20 @@ export function ModelConfigList(props: {
     "medium",
     "high",
   ];
+  const gptImage25QualityOptions: OpenAIImageQuality[] = [
+    ...gptImageQualityOptions,
+    "xhigh",
+    "max",
+  ];
+  const supportsGptImage25Quality = currentModel.startsWith("gpt-image-2.5-");
+  const supportedGptImageQualityOptions = supportsGptImage25Quality
+    ? gptImage25QualityOptions
+    : gptImageQualityOptions;
   const gptImageModerationOptions: ImageModeration[] = ["auto", "low"];
   const gpt5ImageGenerationModelOptions = [
     "gpt-image-2",
+    "gpt-image-2.5-sunburst",
+    "gpt-image-2.5-flare",
     "gpt-image-1",
     "gpt-image-1-mini",
     "gpt-image-1.5",
@@ -119,9 +130,9 @@ export function ModelConfigList(props: {
   const imageQualityOptions = isLegacyDalle3
     ? dalleQualityOptions
     : isModernOpenAIImageModel
-    ? gptImageQualityOptions
+    ? supportedGptImageQualityOptions
     : [];
-  const currentOpenAIImageQuality = gptImageQualityOptions.includes(
+  const currentOpenAIImageQuality = supportedGptImageQualityOptions.includes(
     props.modelConfig.quality as OpenAIImageQuality,
   )
     ? (props.modelConfig.quality as OpenAIImageQuality)
@@ -145,6 +156,8 @@ export function ModelConfigList(props: {
     : "auto";
   const currentGpt5ImageGenerationModel =
     props.modelConfig.imageGenerationModel === "gpt-image-2" ||
+    props.modelConfig.imageGenerationModel === "gpt-image-2.5-sunburst" ||
+    props.modelConfig.imageGenerationModel === "gpt-image-2.5-flare" ||
     props.modelConfig.imageGenerationModel === "gpt-image-1-mini" ||
     props.modelConfig.imageGenerationModel === "gpt-image-1.5"
       ? props.modelConfig.imageGenerationModel
@@ -843,6 +856,8 @@ export function ModelConfigList(props: {
                       props.updateConfig((config) => {
                         config.imageGenerationModel = e.currentTarget.value as
                           | "gpt-image-2"
+                          | "gpt-image-2.5-sunburst"
+                          | "gpt-image-2.5-flare"
                           | "gpt-image-1"
                           | "gpt-image-1-mini"
                           | "gpt-image-1.5";
@@ -940,7 +955,7 @@ export function ModelConfigList(props: {
                       });
                     }}
                   >
-                    {gptImageQualityOptions.map((quality) => (
+                    {supportedGptImageQualityOptions.map((quality) => (
                       <option value={quality} key={quality}>
                         {quality}
                       </option>

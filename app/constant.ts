@@ -304,7 +304,11 @@ export const OPENAI_REASONING_MODELS = [
   "gpt-6-astra",
 ] as const;
 
-export const OPENAI_IMAGE_MODELS = ["gpt-image-2"] as const;
+export const OPENAI_IMAGE_MODELS = [
+  "gpt-image-2",
+  "gpt-image-2.5-sunburst",
+  "gpt-image-2.5-flare",
+] as const;
 export const XAI_IMAGE_MODELS = ["grok-imagine-image"] as const;
 
 export const DEFAULT_OPENAI_MODEL = OPENAI_REASONING_MODELS[0];
@@ -400,6 +404,8 @@ export const VISION_MODEL_REGEXES = [
   /gpt-5\.4/,
   /gpt-6/,
   /^gpt-image-2$/,
+  /^gpt-image-2\.5-sunburst$/,
+  /^gpt-image-2\.5-flare$/,
   /grok-4/,
   /grok-4-1/,
   /^grok-imagine-image$/,

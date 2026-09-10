@@ -128,6 +128,8 @@ export type ResponsesImageGenerationSize = "auto" | `${number}x${number}`;
 
 export type ResponsesImageGenerationToolModel =
   | "gpt-image-2"
+  | "gpt-image-2.5-sunburst"
+  | "gpt-image-2.5-flare"
   | "gpt-image-1"
   | "gpt-image-1-mini"
   | "gpt-image-1.5";
@@ -545,6 +547,8 @@ function normalizeResponsesImageGenerationModel(
 ): ResponsesImageGenerationToolModel {
   switch (model) {
     case "gpt-image-2":
+    case "gpt-image-2.5-sunburst":
+    case "gpt-image-2.5-flare":
     case "gpt-image-1-mini":
     case "gpt-image-1.5":
       return model;
@@ -583,6 +587,8 @@ function normalizeOpenAIImageApiQuality(
     case "low":
     case "medium":
     case "high":
+    case "xhigh":
+    case "max":
     case "auto":
       return quality;
     case "hd":

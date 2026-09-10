@@ -166,6 +166,8 @@ export const DEFAULT_CONFIG = {
     // imageGenerationModel: Responses image_generation 工具使用的图像模型
     imageGenerationModel: "gpt-image-2" as
       | "gpt-image-2"
+      | "gpt-image-2.5-sunburst"
+      | "gpt-image-2.5-flare"
       | "gpt-image-1"
       | "gpt-image-1-mini"
       | "gpt-image-1.5",
