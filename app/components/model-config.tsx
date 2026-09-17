@@ -55,8 +55,11 @@ export function ModelConfigList(props: {
     currentModel.startsWith("gpt-5.6") ||
     currentModel === "gpt-6-astra";
   const isGpt6Astra = currentModel === "gpt-6-astra";
+  const isAnthropicFableModel = /^claude-fable-5(?:-|$)/.test(currentModel);
+  const maxTokensLimit = isAnthropicFableModel ? 128000 : 512000;
+  const maxTokensValue = Math.min(props.modelConfig.max_tokens, maxTokensLimit);
   const isAnthropicReasoningModel =
-    /^claude-fable-5(?:-|$)/.test(currentModel) ||
+    isAnthropicFableModel ||
     /^claude-3-7-sonnet-20250219(?:-thinking)?$/.test(currentModel) ||
     /^claude-(?:opus|sonnet)-4(?:-|$)/.test(currentModel) ||
     /^claude-haiku-4-5(?:-|$)/.test(currentModel);
@@ -507,18 +510,21 @@ export function ModelConfigList(props: {
             ? false
             : isGpt5ReasoningModel
             ? !isGPT5Pro && !isGpt6Astra
-            : true;
+            : !isAnthropicFableModel;
           const supportsLow = isXaiConfigurableReasoningModel
             ? true
             : !isGpt5ReasoningModel || !isGPT5Pro;
           const supportsXHigh = isXaiMultiAgentModel
             ? true
             : isGpt5ReasoningModel ||
+              isAnthropicFableModel ||
               model === "claude-opus-4-7" ||
               model === "claude-opus-4-8";
-          const supportsMax = isGpt6Astra;
+          const supportsMax = isGpt6Astra || isAnthropicFableModel;
           const reasoningEffortValue = isXaiConfigurableReasoningModel
             ? normalizedXaiReasoningEffort
+            : isAnthropicFableModel && currentReasoningEffort === "none"
+            ? "auto"
             : currentReasoningEffort;
           const reasoningEffortSubTitle = isXaiMultiAgentModel
             ? Locale.Settings.ReasoningEffort.XAIMultiAgentSubTitle
@@ -1263,8 +1269,8 @@ export function ModelConfigList(props: {
           aria-label={Locale.Settings.MaxTokens.Title}
           type="number"
           min={1024}
-          max={512000}
-          value={props.modelConfig.max_tokens}
+          max={maxTokensLimit}
+          value={maxTokensValue}
           onChange={(e) =>
             props.updateConfig(
               (config) =>

@@ -34,6 +34,103 @@ export type AnthropicMessage = {
   content: string | MultiBlockContent[];
 };
 
+type AnthropicStreamContentBlock = {
+  type: "thinking" | "redacted_thinking" | "text" | "tool_use";
+  id?: string;
+  name?: string;
+  thinking?: string;
+  signature?: string;
+  text?: string;
+  input?: unknown;
+  data?: string;
+  [key: string]: unknown;
+};
+
+type AnthropicStreamDelta = {
+  type:
+    | "text_delta"
+    | "input_json_delta"
+    | "thinking_delta"
+    | "signature_delta";
+  text?: string;
+  thinking?: string;
+  partial_json?: string;
+  signature?: string;
+};
+
+export function createAnthropicResponseContentAccumulator() {
+  const blocks = new Map<number, AnthropicStreamContentBlock>();
+  const toolInputs = new Map<number, string>();
+
+  return {
+    start(index: number, contentBlock: AnthropicStreamContentBlock) {
+      blocks.set(index, { ...contentBlock });
+    },
+    appendDelta(index: number, delta: AnthropicStreamDelta) {
+      const contentBlock = blocks.get(index);
+      if (!contentBlock) {
+        return;
+      }
+
+      if (
+        delta.type === "thinking_delta" &&
+        typeof delta.thinking === "string"
+      ) {
+        contentBlock.thinking = `${contentBlock.thinking ?? ""}${
+          delta.thinking
+        }`;
+      }
+
+      if (
+        delta.type === "signature_delta" &&
+        typeof delta.signature === "string"
+      ) {
+        contentBlock.signature = `${contentBlock.signature ?? ""}${
+          delta.signature
+        }`;
+      }
+
+      if (delta.type === "text_delta" && typeof delta.text === "string") {
+        contentBlock.text = `${contentBlock.text ?? ""}${delta.text}`;
+      }
+
+      if (
+        delta.type === "input_json_delta" &&
+        typeof delta.partial_json === "string"
+      ) {
+        toolInputs.set(
+          index,
+          `${toolInputs.get(index) ?? ""}${delta.partial_json}`,
+        );
+      }
+    },
+    stop(index: number) {
+      const contentBlock = blocks.get(index);
+      const inputJson = toolInputs.get(index);
+
+      if (contentBlock?.type !== "tool_use" || inputJson === undefined) {
+        return;
+      }
+
+      try {
+        contentBlock.input = JSON.parse(inputJson);
+      } catch {
+        return;
+      }
+    },
+    take() {
+      const content = [...blocks.entries()]
+        .sort(([leftIndex], [rightIndex]) => leftIndex - rightIndex)
+        .map(([, contentBlock]) => contentBlock);
+
+      blocks.clear();
+      toolInputs.clear();
+
+      return content;
+    },
+  };
+}
+
 type AnthropicThinkingDisplay = "summarized" | "omitted";
 
 type AnthropicAdaptiveThinking = {
@@ -111,7 +208,12 @@ const ClaudeMapper = {
 
 const keys = ["claude-2, claude-instant-1"];
 const ANTHROPIC_MIN_THINKING_BUDGET = 1024;
+const ANTHROPIC_ALWAYS_ON_THINKING_MODELS = new Set([
+  "claude-fable-5-1",
+  "claude-fable-5",
+]);
 const ANTHROPIC_ADAPTIVE_THINKING_MODELS = new Set([
+  "claude-fable-5-1",
   "claude-fable-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
@@ -119,8 +221,25 @@ const ANTHROPIC_ADAPTIVE_THINKING_MODELS = new Set([
   "claude-sonnet-4-6",
 ]);
 const ANTHROPIC_XHIGH_EFFORT_MODELS = new Set([
+  "claude-fable-5-1",
+  "claude-fable-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
+]);
+const ANTHROPIC_DEFAULT_SAMPLING_MODELS = new Set([
+  "claude-fable-5-1",
+  "claude-fable-5",
+  "claude-mythos-5-1",
+  "claude-mythos-5",
+  "claude-mythos-preview",
+  "claude-opus-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-sonnet-5",
+]);
+const ANTHROPIC_MAX_OUTPUT_TOKENS = new Map([
+  ["claude-fable-5-1", 128000],
+  ["claude-fable-5", 128000],
 ]);
 
 function normalizeAnthropicModel(model: string) {
@@ -131,6 +250,12 @@ function supportsAnthropicAdaptiveThinking(model: string) {
   const normalizedModel = normalizeAnthropicModel(model);
 
   return ANTHROPIC_ADAPTIVE_THINKING_MODELS.has(normalizedModel);
+}
+
+function hasAnthropicAlwaysOnThinking(model: string) {
+  const normalizedModel = normalizeAnthropicModel(model);
+
+  return ANTHROPIC_ALWAYS_ON_THINKING_MODELS.has(normalizedModel);
 }
 
 function supportsAnthropicThinking(model: string) {
@@ -207,12 +332,20 @@ function resolveAnthropicManualThinkingBudget(
   );
 }
 
-function buildAnthropicThinkingConfig(
+export function buildAnthropicThinkingConfig(
   model: string,
   maxTokens: number,
   reasoningEffort: AnthropicReasoningEffort,
 ): Pick<AnthropicChatRequest, "thinking" | "output_config"> {
-  if (reasoningEffort === "none" || !supportsAnthropicThinking(model)) {
+  const effectiveReasoningEffort =
+    reasoningEffort === "none" && hasAnthropicAlwaysOnThinking(model)
+      ? "auto"
+      : reasoningEffort;
+
+  if (
+    effectiveReasoningEffort === "none" ||
+    !supportsAnthropicThinking(model)
+  ) {
     return {};
   }
 
@@ -223,14 +356,14 @@ function buildAnthropicThinkingConfig(
         display: "summarized",
       },
       output_config: {
-        effort: resolveAnthropicAdaptiveEffort(model, reasoningEffort),
+        effort: resolveAnthropicAdaptiveEffort(model, effectiveReasoningEffort),
       },
     };
   }
 
   const budgetTokens = resolveAnthropicManualThinkingBudget(
     maxTokens,
-    reasoningEffort,
+    effectiveReasoningEffort,
   );
 
   if (!budgetTokens) {
@@ -244,6 +377,29 @@ function buildAnthropicThinkingConfig(
       display: "summarized",
     },
   };
+}
+
+export function buildAnthropicSamplingConfig(
+  model: string,
+  temperature?: number,
+): Pick<AnthropicChatRequest, "temperature"> {
+  const normalizedModel = normalizeAnthropicModel(model);
+
+  if (ANTHROPIC_DEFAULT_SAMPLING_MODELS.has(normalizedModel)) {
+    return {};
+  }
+
+  return temperature === undefined ? {} : { temperature };
+}
+
+export function resolveAnthropicMaxTokens(model: string, maxTokens: number) {
+  const modelMaxTokens = ANTHROPIC_MAX_OUTPUT_TOKENS.get(
+    normalizeAnthropicModel(model),
+  );
+
+  return modelMaxTokens === undefined
+    ? maxTokens
+    : Math.min(maxTokens, modelMaxTokens);
 }
 
 export class ClaudeApi implements LLMApi {
@@ -354,10 +510,18 @@ export class ClaudeApi implements LLMApi {
       });
     }
 
-    const anthropicThinkingConfig = buildAnthropicThinkingConfig(
+    const maxTokens = resolveAnthropicMaxTokens(
       modelConfig.model,
       modelConfig.max_tokens,
+    );
+    const anthropicThinkingConfig = buildAnthropicThinkingConfig(
+      modelConfig.model,
+      maxTokens,
       (modelConfig.reasoningEffort ?? "auto") as AnthropicReasoningEffort,
+    );
+    const anthropicSamplingConfig = buildAnthropicSamplingConfig(
+      modelConfig.model,
+      modelConfig.temperature,
     );
 
     const requestBody: AnthropicChatRequest = {
@@ -365,8 +529,8 @@ export class ClaudeApi implements LLMApi {
       stream: shouldStream,
 
       model: modelConfig.model,
-      max_tokens: modelConfig.max_tokens,
-      temperature: modelConfig.temperature,
+      max_tokens: maxTokens,
+      ...anthropicSamplingConfig,
       //top_p: modelConfig.top_p,
       // top_k: modelConfig.top_k,
       //top_k: 5,
@@ -380,6 +544,7 @@ export class ClaudeApi implements LLMApi {
 
     if (shouldStream) {
       let index = -1;
+      const responseContent = createAnthropicResponseContentAccumulator();
       const [tools, funcs] = usePluginStore
         .getState()
         .getAsTools(
@@ -420,24 +585,8 @@ export class ClaudeApi implements LLMApi {
                   content: any[];
                   model: string;
                 };
-                content_block?: {
-                  type: "tool_use" | "thinking" | "text";
-                  id?: string;
-                  name?: string;
-                  thinking?: string;
-                  text?: string;
-                };
-                delta?: {
-                  type:
-                    | "text_delta"
-                    | "input_json_delta"
-                    | "thinking_delta"
-                    | "signature_delta";
-                  text?: string;
-                  thinking?: string;
-                  partial_json?: string;
-                  signature?: string;
-                };
+                content_block?: AnthropicStreamContentBlock;
+                delta?: AnthropicStreamDelta;
                 index?: number;
               };
 
@@ -460,6 +609,13 @@ export class ClaudeApi implements LLMApi {
 
           // Handle content block start events
           if (chunkJson?.type === "content_block_start") {
+            if (
+              typeof chunkJson.index === "number" &&
+              chunkJson.content_block
+            ) {
+              responseContent.start(chunkJson.index, chunkJson.content_block);
+            }
+
             if (chunkJson?.content_block?.type === "thinking") {
               console.log("[Thinking] Content block started");
               return {
@@ -492,6 +648,10 @@ export class ClaudeApi implements LLMApi {
 
           // Handle content block stop events
           if (chunkJson?.type === "content_block_stop") {
+            if (typeof chunkJson.index === "number") {
+              responseContent.stop(chunkJson.index);
+            }
+
             console.log(
               "[Anthropic] Content block stopped, index:",
               chunkJson?.index,
@@ -502,6 +662,10 @@ export class ClaudeApi implements LLMApi {
           // Handle content block delta events
           if (chunkJson?.type === "content_block_delta" && chunkJson?.delta) {
             const delta = chunkJson.delta;
+
+            if (typeof chunkJson.index === "number") {
+              responseContent.appendDelta(chunkJson.index, delta);
+            }
 
             // Handle thinking delta
             if (delta.type === "thinking_delta" && delta.thinking) {
@@ -554,6 +718,7 @@ export class ClaudeApi implements LLMApi {
         ) => {
           // reset index value
           index = -1;
+          const assistantContent = responseContent.take();
           // @ts-ignore
           requestPayload?.messages?.splice(
             // @ts-ignore
@@ -561,16 +726,17 @@ export class ClaudeApi implements LLMApi {
             0,
             {
               role: "assistant",
-              content: toolCallMessage.tool_calls.map(
-                (tool: ChatMessageTool) => ({
-                  type: "tool_use",
-                  id: tool.id,
-                  name: tool?.function?.name,
-                  input: tool?.function?.arguments
-                    ? JSON.parse(tool?.function?.arguments)
-                    : {},
-                }),
-              ),
+              content:
+                assistantContent.length > 0
+                  ? assistantContent
+                  : toolCallMessage.tool_calls.map((tool: ChatMessageTool) => ({
+                      type: "tool_use",
+                      id: tool.id,
+                      name: tool?.function?.name,
+                      input: tool?.function?.arguments
+                        ? JSON.parse(tool?.function?.arguments)
+                        : {},
+                    })),
             },
             // @ts-ignore
             ...toolCallResult.map((result) => ({

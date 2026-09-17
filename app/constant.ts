@@ -384,6 +384,7 @@ export const VISION_MODEL_REGEXES = [
   /claude-(?:opus|sonnet|haiku)-4/,
   /claude-4/,
   /claude-4\.5/,
+  /claude-fable-5/,
   /gemini-1\.5/,
   /gemini-exp/,
   /gemini-2\.0/,
@@ -449,6 +450,7 @@ const anthropicModels = [
   "claude-sonnet-4-5-20250929",
   "claude-sonnet-4-6",
   "claude-haiku-4-5-20251001",
+  "claude-fable-5-1",
   "claude-fable-5",
 ];
 
