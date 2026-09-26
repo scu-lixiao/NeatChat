@@ -211,10 +211,13 @@ const ANTHROPIC_MIN_THINKING_BUDGET = 1024;
 const ANTHROPIC_ALWAYS_ON_THINKING_MODELS = new Set([
   "claude-fable-5-1",
   "claude-fable-5",
+  "claude-opus-5-5",
 ]);
 const ANTHROPIC_ADAPTIVE_THINKING_MODELS = new Set([
   "claude-fable-5-1",
   "claude-fable-5",
+  "claude-opus-5-5",
+  "claude-sonnet-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
   "claude-opus-4-6",
@@ -233,6 +236,7 @@ const ANTHROPIC_DEFAULT_SAMPLING_MODELS = new Set([
   "claude-mythos-5",
   "claude-mythos-preview",
   "claude-opus-5",
+  "claude-opus-5-5",
   "claude-opus-4-8",
   "claude-opus-4-7",
   "claude-sonnet-5",
@@ -240,6 +244,10 @@ const ANTHROPIC_DEFAULT_SAMPLING_MODELS = new Set([
 const ANTHROPIC_MAX_OUTPUT_TOKENS = new Map([
   ["claude-fable-5-1", 128000],
   ["claude-fable-5", 128000],
+  ["claude-opus-5-5", 128000],
+  ["claude-sonnet-5", 128000],
+  ["claude-haiku-4-5", 64000],
+  ["claude-haiku-4-5-20251001", 64000],
 ]);
 
 function normalizeAnthropicModel(model: string) {
@@ -280,7 +288,7 @@ function resolveAnthropicAdaptiveEffort(
   const normalizedModel = normalizeAnthropicModel(model);
 
   if (reasoningEffort === "auto") {
-    return "high";
+    return normalizedModel === "claude-opus-5-5" ? "medium" : "high";
   }
 
   if (reasoningEffort === "minimal") {

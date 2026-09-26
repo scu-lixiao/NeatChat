@@ -302,6 +302,8 @@ export const OPENAI_REASONING_MODELS = [
   "gpt-5.6-terra",
   "gpt-5.6-luna",
   "gpt-6-astra",
+  "gpt-6-sol",
+  "gpt-6-luna",
 ] as const;
 
 export const OPENAI_IMAGE_MODELS = [
@@ -309,7 +311,10 @@ export const OPENAI_IMAGE_MODELS = [
   "gpt-image-2.5-sunburst",
   "gpt-image-2.5-flare",
 ] as const;
-export const XAI_IMAGE_MODELS = ["grok-imagine-image"] as const;
+export const XAI_IMAGE_MODELS = [
+  "grok-imagine-image",
+  "grok-imagine-image-2.0",
+] as const;
 
 export const DEFAULT_OPENAI_MODEL = OPENAI_REASONING_MODELS[0];
 export const SUMMARIZE_MODEL = OPENAI_REASONING_MODELS[1];
@@ -328,6 +333,9 @@ export const KnowledgeCutOffDate: Record<string, string> = {
   "gpt-5.6-terra": "2026-02",
   "gpt-5.6-luna": "2026-02",
   "gpt-6-astra": "2026-04",
+  "gpt-6-sol": "2026-04",
+  "gpt-6-luna": "2026-05",
+  "grok-4.7": "2026-05",
   "grok-4.5": "2026-02",
   "gpt-4-turbo": "2023-12",
   "gpt-4-turbo-2024-04-09": "2023-12",
@@ -385,6 +393,7 @@ export const VISION_MODEL_REGEXES = [
   /claude-4/,
   /claude-4\.5/,
   /claude-fable-5/,
+  /claude-(?:opus|sonnet)-5/,
   /gemini-1\.5/,
   /gemini-exp/,
   /gemini-2\.0/,
@@ -410,6 +419,8 @@ export const VISION_MODEL_REGEXES = [
   /grok-4/,
   /grok-4-1/,
   /^grok-imagine-image$/,
+  /^grok-imagine-image-2\.0$/,
+  /^deepseek-flash$/,
 ];
 
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
@@ -452,6 +463,9 @@ const anthropicModels = [
   "claude-haiku-4-5-20251001",
   "claude-fable-5-1",
   "claude-fable-5",
+  "claude-opus-5-5",
+  "claude-sonnet-5",
+  "claude-haiku-4-5",
 ];
 
 const baiduModels = ["ernie-tiny-8k"];
@@ -466,9 +480,17 @@ const moonshotModes = ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"];
 
 const iflytekModels = ["4.0Ultra"];
 
-const deepseekModels = ["deepseek-chat", "deepseek-coder", "deepseek-reasoner"];
+const deepseekModels = [
+  "deepseek-flash",
+  "deepseek-v4-pro",
+  "deepseek-chat",
+  "deepseek-coder",
+  "deepseek-reasoner",
+];
 
 const xAIModes = [
+  "grok-4.7",
+  "grok-4.6",
   "grok-4-0709",
   "grok-4.3",
   "grok-4.5",

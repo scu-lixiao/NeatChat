@@ -391,8 +391,14 @@ function isGrok45Model(model: string) {
   return model === "grok-4.5";
 }
 
+function isGrok46Or47Model(model: string) {
+  return model === "grok-4.6" || model === "grok-4.7";
+}
+
 function supportsConfigurableXAIReasoning(model: string) {
-  return isGrok45Model(model) || isMultiAgentModel(model);
+  return (
+    isGrok45Model(model) || isGrok46Or47Model(model) || isMultiAgentModel(model)
+  );
 }
 
 function resolveXAIReasoningEffort(
@@ -415,7 +421,8 @@ function resolveXAIReasoningEffort(
     reasoningEffort === "low" ||
     reasoningEffort === "medium" ||
     reasoningEffort === "high" ||
-    (reasoningEffort === "xhigh" && isMultiAgentModel(model))
+    (reasoningEffort === "xhigh" &&
+      (isGrok46Or47Model(model) || isMultiAgentModel(model)))
   ) {
     return reasoningEffort;
   }

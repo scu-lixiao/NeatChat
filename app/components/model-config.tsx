@@ -45,21 +45,38 @@ export function ModelConfigList(props: {
     isXAIProvider && currentModel.includes("multi-agent");
   const isXaiGrok43Model = isXAIProvider && currentModel.startsWith("grok-4.3");
   const isXaiGrok45Model = isXAIProvider && currentModel === "grok-4.5";
+  const isXaiGrok46Or47Model =
+    isXAIProvider &&
+    (currentModel === "grok-4.6" || currentModel === "grok-4.7");
   const isXaiConfigurableReasoningModel =
-    isXaiGrok45Model || isXaiMultiAgentModel;
+    isXaiGrok45Model || isXaiGrok46Or47Model || isXaiMultiAgentModel;
   const supportsXaiToolControls =
-    isXaiGrok43Model || isXaiGrok45Model || isXaiMultiAgentModel;
+    isXaiGrok43Model ||
+    isXaiGrok45Model ||
+    isXaiGrok46Or47Model ||
+    isXaiMultiAgentModel;
+  const isGpt6ReasoningModel = currentModel.startsWith("gpt-6-");
   const isGpt5ReasoningModel =
     currentModel.startsWith("gpt-5.4") ||
     currentModel.startsWith("gpt-5.5") ||
     currentModel.startsWith("gpt-5.6") ||
-    currentModel === "gpt-6-astra";
+    isGpt6ReasoningModel;
   const isGpt6Astra = currentModel === "gpt-6-astra";
   const isAnthropicFableModel = /^claude-fable-5(?:-|$)/.test(currentModel);
-  const maxTokensLimit = isAnthropicFableModel ? 128000 : 512000;
+  const isAnthropicOpus55Model = currentModel === "claude-opus-5-5";
+  const isAnthropicSonnet5Model = currentModel === "claude-sonnet-5";
+  const isAnthropicAdaptiveThinkingModel =
+    isAnthropicFableModel || isAnthropicOpus55Model || isAnthropicSonnet5Model;
+  const isAnthropicAlwaysOnThinkingModel =
+    isAnthropicFableModel || isAnthropicOpus55Model;
+  const maxTokensLimit = isAnthropicAdaptiveThinkingModel
+    ? 128000
+    : /^claude-haiku-4-5(?:-|$)/.test(currentModel)
+    ? 64000
+    : 512000;
   const maxTokensValue = Math.min(props.modelConfig.max_tokens, maxTokensLimit);
   const isAnthropicReasoningModel =
-    isAnthropicFableModel ||
+    isAnthropicAdaptiveThinkingModel ||
     /^claude-3-7-sonnet-20250219(?:-thinking)?$/.test(currentModel) ||
     /^claude-(?:opus|sonnet)-4(?:-|$)/.test(currentModel) ||
     /^claude-haiku-4-5(?:-|$)/.test(currentModel);
@@ -212,7 +229,8 @@ export function ModelConfigList(props: {
     currentReasoningEffort === "low" ||
     currentReasoningEffort === "medium" ||
     currentReasoningEffort === "high" ||
-    (currentReasoningEffort === "xhigh" && isXaiMultiAgentModel)
+    (currentReasoningEffort === "xhigh" &&
+      (isXaiGrok46Or47Model || isXaiMultiAgentModel))
       ? currentReasoningEffort
       : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
@@ -510,20 +528,22 @@ export function ModelConfigList(props: {
             ? false
             : isGpt5ReasoningModel
             ? !isGPT5Pro && !isGpt6Astra
-            : !isAnthropicFableModel;
+            : !isAnthropicAlwaysOnThinkingModel;
           const supportsLow = isXaiConfigurableReasoningModel
             ? true
             : !isGpt5ReasoningModel || !isGPT5Pro;
           const supportsXHigh = isXaiMultiAgentModel
             ? true
-            : isGpt5ReasoningModel ||
+            : isXaiGrok46Or47Model ||
+              isGpt5ReasoningModel ||
               isAnthropicFableModel ||
               model === "claude-opus-4-7" ||
               model === "claude-opus-4-8";
-          const supportsMax = isGpt6Astra || isAnthropicFableModel;
+          const supportsMax = isGpt6ReasoningModel || isAnthropicFableModel;
           const reasoningEffortValue = isXaiConfigurableReasoningModel
             ? normalizedXaiReasoningEffort
-            : isAnthropicFableModel && currentReasoningEffort === "none"
+            : isAnthropicAlwaysOnThinkingModel &&
+              currentReasoningEffort === "none"
             ? "auto"
             : currentReasoningEffort;
           const reasoningEffortSubTitle = isXaiMultiAgentModel
@@ -651,11 +671,7 @@ export function ModelConfigList(props: {
       )}
 
       {/* Responses API 内置工具配置 */}
-      {(currentModel.startsWith("gpt-5.4") ||
-        currentModel.startsWith("gpt-5.5") ||
-        currentModel.startsWith("gpt-5.6") ||
-        currentModel === "gpt-6-astra" ||
-        supportsXaiToolControls) && (
+      {(isGpt5ReasoningModel || supportsXaiToolControls) && (
         <>
           {/* 网络搜索工具 */}
           <ListItem

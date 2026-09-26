@@ -1247,7 +1247,7 @@ export class ChatGPTApi implements LLMApi {
       lowerModel.startsWith("gpt-5.4") ||
       lowerModel.startsWith("gpt-5.5") ||
       lowerModel.startsWith("gpt-5.6") ||
-      lowerModel === "gpt-6-astra";
+      lowerModel.startsWith("gpt-6-");
     const isModernOpenAIImageModel = OPENAI_IMAGE_MODELS.some(
       (model) => model === lowerModel,
     );
@@ -1573,12 +1573,14 @@ export class ChatGPTApi implements LLMApi {
     const shouldUseIncrementalInput =
       !!options.previousOpenAIResponseId && latestUserMessageIndex >= 0;
 
-    // 判断是否为 GPT-5.4/5.5/5.6 或 GPT-6 Astra 推理模型
+    const isGpt6ReasoningModel = options.config.model.startsWith("gpt-6-");
+
+    // 判断是否为 GPT-5.4/5.5/5.6 或 GPT-6 推理模型
     const isGPT5ReasoningModel =
       options.config.model.startsWith("gpt-5.4") ||
       options.config.model.startsWith("gpt-5.5") ||
       options.config.model.startsWith("gpt-5.6") ||
-      options.config.model === "gpt-6-astra";
+      isGpt6ReasoningModel;
     const isGPT5Pro =
       options.config.model === "gpt-5.4-pro" ||
       options.config.model === "gpt-5.5-pro";
@@ -1676,6 +1678,7 @@ export class ChatGPTApi implements LLMApi {
       // gpt-5.4 / gpt-5.5 / gpt-5.6: 支持 none, minimal, low, medium, high, xhigh
       // gpt-5.4-pro / gpt-5.5-pro: 支持 medium, high, xhigh
       // gpt-6-astra: 支持 low, medium, high, xhigh, max（不支持 none / minimal）
+      // gpt-6-sol / gpt-6-luna: 支持 none, low, medium, high, xhigh, max
 
       if (userReasoningEffort === "auto") {
         // 自动模式：根据模型类型选择默认值
@@ -1683,7 +1686,7 @@ export class ChatGPTApi implements LLMApi {
           // gpt-5.4-mini 默认使用 "low"（轻量版本）
           finalReasoningEffort = "low";
         } else {
-          // gpt-5.4 / gpt-5.5 / gpt-5.6 / gpt-6-astra 默认使用 "medium"
+          // gpt-5.4 / gpt-5.5 / gpt-5.6 / GPT-6 默认使用 "medium"
           finalReasoningEffort = "medium";
         }
         console.log(
@@ -1719,8 +1722,8 @@ export class ChatGPTApi implements LLMApi {
           } else {
             finalReasoningEffort = userReasoningEffort;
           }
-        } else if (userReasoningEffort === "max") {
-          // 仅 Astra 支持 max
+        } else if (userReasoningEffort === "max" && !isGpt6ReasoningModel) {
+          // GPT-5 系列不支持 max
           finalReasoningEffort = "xhigh";
           console.warn(
             `[GPT-5] 'max' not supported on ${options.config.model}, falling back to 'xhigh'`,

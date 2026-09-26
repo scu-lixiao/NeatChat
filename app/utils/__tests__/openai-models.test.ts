@@ -32,24 +32,30 @@ describe("OpenAI GPT-5.6 models", () => {
   });
 });
 
-describe("OpenAI GPT-6 Astra", () => {
-  test("registers gpt-6-astra as a built-in OpenAI reasoning model", () => {
-    expect(OPENAI_REASONING_MODELS).toContain("gpt-6-astra");
+describe("OpenAI GPT-6 flagship models", () => {
+  const gpt6Models = ["gpt-6-astra", "gpt-6-sol", "gpt-6-luna"];
+
+  test("registers the current GPT-6 model family", () => {
+    expect(OPENAI_REASONING_MODELS).toEqual(expect.arrayContaining(gpt6Models));
   });
 
-  test("uses the April 2026 knowledge cutoff", () => {
+  test("uses the documented knowledge cutoffs", () => {
     expect(KnowledgeCutOffDate["gpt-6-astra"]).toBe("2026-04");
+    expect(KnowledgeCutOffDate["gpt-6-sol"]).toBe("2026-04");
+    expect(KnowledgeCutOffDate["gpt-6-luna"]).toBe("2026-05");
   });
 
-  test("is treated as a vision and native image-generation model", () => {
-    expect(isVisionModel("gpt-6-astra")).toBe(true);
-    expect(isGPT5ImageGenModel("gpt-6-astra")).toBe(true);
+  test("supports vision and native image generation", () => {
+    for (const model of gpt6Models) {
+      expect(isVisionModel(model)).toBe(true);
+      expect(isGPT5ImageGenModel(model)).toBe(true);
+    }
   });
 
   test("uses the extended thinking timeout", () => {
-    expect(getTimeoutMSByModel("gpt-6-astra")).toBe(
-      REQUEST_TIMEOUT_MS_FOR_THINKING,
-    );
+    for (const model of gpt6Models) {
+      expect(getTimeoutMSByModel(model)).toBe(REQUEST_TIMEOUT_MS_FOR_THINKING);
+    }
   });
 });
 

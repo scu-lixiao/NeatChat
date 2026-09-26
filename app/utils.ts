@@ -340,7 +340,9 @@ export function isGPT5ImageGenModel(model: string): boolean {
   return (
     lowerModel === "gpt-5.4-mini" ||
     lowerModel === "gpt-5.5" ||
-    lowerModel === "gpt-6-astra"
+    lowerModel === "gpt-6-astra" ||
+    lowerModel === "gpt-6-sol" ||
+    lowerModel === "gpt-6-luna"
   );
 }
 
