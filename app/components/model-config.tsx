@@ -26,7 +26,11 @@ import { useAllModels } from "../utils/hooks";
 import { formatProviderName } from "../utils/provider";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
-import { getModelProvider } from "../utils/model";
+import {
+  getModelProvider,
+  resolveDeepSeekReasoningEffort,
+  supportsDeepSeekReasoningEffort,
+} from "../utils/model";
 
 export function ModelConfigList(props: {
   modelConfig: ModelConfig;
@@ -39,6 +43,9 @@ export function ModelConfigList(props: {
   );
   const currentModel = props.modelConfig.model;
   const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
+  const isDeepSeekConfigurableReasoningModel =
+    props.modelConfig.providerName === ServiceProvider.DeepSeek &&
+    supportsDeepSeekReasoningEffort(currentModel);
   const isXAIImageModelSelected =
     isXAIProvider && isXAIImageModel(currentModel);
   const isXaiMultiAgentModel =
@@ -225,6 +232,9 @@ export function ModelConfigList(props: {
     Math.max(1, Math.round(props.modelConfig.xaiImageCount ?? 1)),
   );
   const currentReasoningEffort = props.modelConfig.reasoningEffort ?? "auto";
+  const normalizedDeepSeekReasoningEffort =
+    resolveDeepSeekReasoningEffort(currentModel, currentReasoningEffort) ??
+    "auto";
   const normalizedXaiReasoningEffort =
     currentReasoningEffort === "low" ||
     currentReasoningEffort === "medium" ||
@@ -520,18 +530,24 @@ export function ModelConfigList(props: {
       {/* 推理模型推理级别配置 */}
       {(isGpt5ReasoningModel ||
         isAnthropicReasoningModel ||
-        isXaiConfigurableReasoningModel) &&
+        isXaiConfigurableReasoningModel ||
+        isDeepSeekConfigurableReasoningModel) &&
         (() => {
           const model = currentModel;
           const isGPT5Pro = model === "gpt-5.4-pro" || model === "gpt-5.5-pro";
-          const supportsNone = isXaiConfigurableReasoningModel
+          const supportsNone = isDeepSeekConfigurableReasoningModel
+            ? true
+            : isXaiConfigurableReasoningModel
             ? false
             : isGpt5ReasoningModel
             ? !isGPT5Pro && !isGpt6Astra
             : !isAnthropicAlwaysOnThinkingModel;
-          const supportsLow = isXaiConfigurableReasoningModel
+          const supportsLow = isDeepSeekConfigurableReasoningModel
+            ? true
+            : isXaiConfigurableReasoningModel
             ? true
             : !isGpt5ReasoningModel || !isGPT5Pro;
+          const supportsMedium = !isDeepSeekConfigurableReasoningModel;
           const supportsXHigh = isXaiMultiAgentModel
             ? true
             : isXaiGrok46Or47Model ||
@@ -539,8 +555,13 @@ export function ModelConfigList(props: {
               isAnthropicFableModel ||
               model === "claude-opus-4-7" ||
               model === "claude-opus-4-8";
-          const supportsMax = isGpt6ReasoningModel || isAnthropicFableModel;
-          const reasoningEffortValue = isXaiConfigurableReasoningModel
+          const supportsMax =
+            isDeepSeekConfigurableReasoningModel ||
+            isGpt6ReasoningModel ||
+            isAnthropicFableModel;
+          const reasoningEffortValue = isDeepSeekConfigurableReasoningModel
+            ? normalizedDeepSeekReasoningEffort
+            : isXaiConfigurableReasoningModel
             ? normalizedXaiReasoningEffort
             : isAnthropicAlwaysOnThinkingModel &&
               currentReasoningEffort === "none"
@@ -585,9 +606,11 @@ export function ModelConfigList(props: {
                     {Locale.Settings.ReasoningEffort.Options.Low}
                   </option>
                 )}
-                <option value="medium">
-                  {Locale.Settings.ReasoningEffort.Options.Medium}
-                </option>
+                {supportsMedium && (
+                  <option value="medium">
+                    {Locale.Settings.ReasoningEffort.Options.Medium}
+                  </option>
+                )}
                 <option value="high">
                   {Locale.Settings.ReasoningEffort.Options.High}
                 </option>

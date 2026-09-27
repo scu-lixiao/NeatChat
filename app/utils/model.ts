@@ -48,6 +48,36 @@ export function getModelProvider(modelWithProvider: string): [string, string?] {
   return [model, provider];
 }
 
+export type DeepSeekReasoningEffort = "none" | "low" | "high" | "max";
+
+export function supportsDeepSeekReasoningEffort(model: string): boolean {
+  return model === "deepseek-flash" || model === "deepseek-v4-pro";
+}
+
+export function resolveDeepSeekReasoningEffort(
+  model: string,
+  reasoningEffort?: string,
+): DeepSeekReasoningEffort | undefined {
+  if (!supportsDeepSeekReasoningEffort(model)) {
+    return undefined;
+  }
+
+  switch (reasoningEffort) {
+    case "none":
+    case "low":
+    case "high":
+    case "max":
+      return reasoningEffort;
+    case "minimal":
+      return "low";
+    case "medium":
+    case "xhigh":
+      return "high";
+    default:
+      return undefined;
+  }
+}
+
 export function collectModelTable(
   models: readonly LLMModel[],
   customModels: string,

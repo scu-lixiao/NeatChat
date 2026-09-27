@@ -25,8 +25,16 @@ import {
   getMessageTextContentWithoutThinking,
   getTimeoutMSByModel,
 } from "@/app/utils";
-import { RequestPayload } from "./openai";
+import {
+  resolveDeepSeekReasoningEffort,
+  type DeepSeekReasoningEffort,
+} from "@/app/utils/model";
+import type { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
+
+type DeepSeekRequestPayload = RequestPayload & {
+  reasoning_effort?: DeepSeekReasoningEffort;
+};
 
 export class DeepSeekApi implements LLMApi {
   private disableListModels = true;
@@ -106,7 +114,12 @@ export class DeepSeekApi implements LLMApi {
       },
     };
 
-    const requestPayload: RequestPayload = {
+    const reasoningEffort = resolveDeepSeekReasoningEffort(
+      modelConfig.model,
+      modelConfig.reasoningEffort,
+    );
+
+    const requestPayload: DeepSeekRequestPayload = {
       messages: filteredMessages,
       stream: options.config.stream,
       model: modelConfig.model,
@@ -114,6 +127,7 @@ export class DeepSeekApi implements LLMApi {
       presence_penalty: modelConfig.presence_penalty,
       frequency_penalty: modelConfig.frequency_penalty,
       top_p: modelConfig.top_p,
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       // max_tokens: Math.max(modelConfig.max_tokens, 1024),
       // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
     };
