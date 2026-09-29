@@ -1,9 +1,11 @@
+import { DEFAULT_OPENAI_MODEL } from "../app/constant";
 import { isModelNotavailableInServer } from "../app/utils/model";
 
 describe("isModelNotavailableInServer", () => {
   test("test model will return false, which means the model is available", () => {
     const customModels = "";
-    const modelName = "gpt-4";
+    // must be a built-in model; hardcoded names break when model lists are pruned
+    const modelName = DEFAULT_OPENAI_MODEL;
     const providerNames = "OpenAI";
     const result = isModelNotavailableInServer(
       customModels,
