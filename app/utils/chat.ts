@@ -212,21 +212,18 @@ export function compressImage(file: Blob, maxSize: number): Promise<string> {
     reader.onerror = reject;
 
     if (file.type.includes("heic")) {
-      try {
-        const heic2any = require("heic2any");
-        heic2any({ blob: file, toType: "image/jpeg" })
-          .then((blob: Blob) => {
-            reader.readAsDataURL(blob);
-          })
-          .catch((e: any) => {
-            reject(e);
-          });
-      } catch (e) {
-        reject(e);
-      }
+      // heic2any is ~1.3MB, so only load it when a HEIC file is uploaded.
+      import("heic2any")
+        .then(({ default: heic2any }) =>
+          heic2any({ blob: file, toType: "image/jpeg" }),
+        )
+        .then((blob) => {
+          reader.readAsDataURL(Array.isArray(blob) ? blob[0] : blob);
+        })
+        .catch(reject);
+    } else {
+      reader.readAsDataURL(file);
     }
-
-    reader.readAsDataURL(file);
   });
 }
 

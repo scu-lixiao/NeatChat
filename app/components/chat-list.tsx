@@ -15,14 +15,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Path } from "../constant";
 import { MaskAvatar } from "./mask";
 import { Mask } from "../store/mask";
-import { useRef, useEffect } from "react";
+import { memo, useCallback, useRef, useEffect } from "react";
 import { showConfirm } from "./ui-lib";
 import { useMobileScreen } from "../utils";
 import clsx from "clsx";
 
-export function ChatItem(props: {
-  onClick?: () => void;
-  onDelete?: () => void;
+export const ChatItem = memo(function ChatItem(props: {
+  onClick?: (index: number) => void;
+  onDelete?: (index: number) => void;
   title: string;
   count: number;
   time: string;
@@ -51,7 +51,7 @@ export function ChatItem(props: {
               props.selected &&
               (currentPath === Path.Chat || currentPath === Path.Home),
           })}
-          onClick={props.onClick}
+          onClick={() => props.onClick?.(props.index)}
           ref={(ele) => {
             draggableRef.current = ele;
             provided.innerRef(ele);
@@ -89,7 +89,7 @@ export function ChatItem(props: {
           <div
             className={styles["chat-item-delete"]}
             onClickCapture={(e) => {
-              props.onDelete?.();
+              props.onDelete?.(props.index);
               e.preventDefault();
               e.stopPropagation();
             }}
@@ -100,7 +100,7 @@ export function ChatItem(props: {
       )}
     </Draggable>
   );
-}
+});
 
 export function ChatList(props: { narrow?: boolean }) {
   const [sessions, selectedIndex, selectSession, moveSession] = useChatStore(
@@ -111,9 +111,30 @@ export function ChatList(props: { narrow?: boolean }) {
       state.moveSession,
     ],
   );
-  const chatStore = useChatStore();
+  const deleteSession = useChatStore((state) => state.deleteSession);
   const navigate = useNavigate();
   const isMobileScreen = useMobileScreen();
+
+  // Stable callbacks so memoized ChatItems don't re-render on every store
+  // update (e.g. each streamed token of the current chat).
+  const onSelect = useCallback(
+    (index: number) => {
+      navigate(Path.Chat);
+      selectSession(index);
+    },
+    [navigate, selectSession],
+  );
+  const onDelete = useCallback(
+    async (index: number) => {
+      if (
+        (!props.narrow && !isMobileScreen) ||
+        (await showConfirm(Locale.Home.DeleteChat))
+      ) {
+        deleteSession(index);
+      }
+    },
+    [props.narrow, isMobileScreen, deleteSession],
+  );
 
   const onDragEnd: OnDragEndResponder = (result) => {
     const { destination, source } = result;
@@ -149,18 +170,8 @@ export function ChatList(props: { narrow?: boolean }) {
                 id={item.id}
                 index={i}
                 selected={i === selectedIndex}
-                onClick={() => {
-                  navigate(Path.Chat);
-                  selectSession(i);
-                }}
-                onDelete={async () => {
-                  if (
-                    (!props.narrow && !isMobileScreen) ||
-                    (await showConfirm(Locale.Home.DeleteChat))
-                  ) {
-                    chatStore.deleteSession(i);
-                  }
-                }}
+                onClick={onSelect}
+                onDelete={onDelete}
                 narrow={props.narrow}
                 mask={item.mask}
               />

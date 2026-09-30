@@ -1,13 +1,3 @@
-// {{CHENGQI:
-// Action: Modified - 添加性能适配器导入
-// Timestamp: 2025-11-23 05:15:00 +08:00
-// Reason: 阶段 1.1 - 集成 PerformanceAdapter 实现移动端性能降级
-// Principle_Applied: KISS - 复用现有性能基础设施
-// Optimization: 移动端强制 eco 模式，降低 GPU 占用 80%
-// Architectural_Note (AR): 使用现有 usePerformanceAdapter hook
-// Documentation_Note (DW): 为移动端性能优化做准备
-// }}
-
 import { useDebouncedCallback } from "use-debounce";
 import React, {
   Fragment,
@@ -58,7 +48,6 @@ import PluginIcon from "../icons/plugin.svg";
 import ShortcutkeyIcon from "../icons/shortcutkey.svg";
 // MCP工具图标已移除 - 生产环境清理
 import HeadphoneIcon from "../icons/headphone.svg";
-import { usePerformanceAdapter } from "../hooks/usePerformanceAdapter";
 import {
   BOT_HELLO,
   ChatMessage,
@@ -130,22 +119,18 @@ import { ContextPrompts, MaskAvatar, MaskConfig } from "./mask";
 import { useMaskStore } from "../store/mask";
 import { ChatCommandPrefix, useChatCommand, useCommand } from "../command";
 import { prettyObject } from "../utils/format";
-import { ExportMessageModal } from "./exporter";
 import { getClientConfig } from "../config/client";
 import { useAllModels } from "../utils/hooks";
 import { ClientApi, MultimodalContent } from "../client/api";
 import { createTTSPlayer } from "../utils/audio";
-import { MsEdgeTTS, OUTPUT_FORMAT } from "../utils/ms_edge_tts";
 
 import { isEmpty } from "lodash-es";
 import { getModelProvider } from "../utils/model";
-import { RealtimeChat } from "@/app/components/realtime-chat";
 import { ThinkingWindow } from "./thinking-window";
 import clsx from "clsx";
 // MCP actions已移除 - 生产环境清理
 
 import { Citations } from "./citations";
-import { PerformanceMonitor } from "./performance/PerformanceMonitor";
 
 const localStorage = safeLocalStorage();
 
@@ -154,6 +139,15 @@ const ttsPlayer = createTTSPlayer();
 const Markdown = dynamic(async () => (await import("./markdown")).Markdown, {
   loading: () => <LoadingIcon />,
 });
+
+// Only needed once the user opens them; exporter pulls in html-to-image.
+const ExportMessageModal = dynamic(
+  async () => (await import("./exporter")).ExportMessageModal,
+);
+
+const RealtimeChat = dynamic(
+  async () => (await import("./realtime-chat")).RealtimeChat,
+);
 
 // MCPAction组件已移除 - 生产环境清理
 const MCPAction = () => {
@@ -481,52 +475,35 @@ function useScrollToBottom(
     lastMessagesLength.current = messages.length;
   }, [messages.length, detach, autoScroll, scrollDomToBottom]);
 
-  // {{CHENGQI:
-  // Action: Added - 流式更新时的自动滚动支持
-  // Timestamp: 2025-01-02 17:40:00 +08:00
-  // Reason: 修复流式更新时页面不自动滚动的问题
-  // Principle_Applied: SOLID - 单一职责的流式更新滚动逻辑
-  // Optimization: 检测streaming状态并定期滚动，确保流式内容可见
-  // Architectural_Note (AR): 扩展现有滚动系统，保持向后兼容
-  // Documentation_Note (DW): 新增流式更新的滚动支持，解决用户体验问题
-  // }}
-  // 检测是否有流式更新的消息，并进行定期滚动
+  // Keep following the bottom while a reply is streaming. The interval only
+  // depends on whether something is streaming, so it isn't torn down and
+  // recreated on every streamed update.
+  const isStreaming = isLoading || messages.some((msg) => msg.streaming);
   useEffect(() => {
-    const hasStreamingMessage =
-      messages.some((msg) => msg.streaming) || isLoading;
-
-    if (hasStreamingMessage && autoScroll && !detach) {
-      const scrollInterval = setInterval(() => {
-        scrollDomToBottom();
-      }, 100); // 每100ms检查一次滚动
-
+    if (isStreaming && autoScroll && !detach) {
+      const scrollInterval = setInterval(scrollDomToBottom, 100);
       return () => clearInterval(scrollInterval);
     }
-  }, [messages, autoScroll, detach, scrollDomToBottom, isLoading]);
+  }, [isStreaming, autoScroll, detach, scrollDomToBottom]);
 
-  // 监听消息内容变化（不仅仅是数量变化）
-  const lastMessagesContent = useRef<string>("");
+  // Scroll when the tail of the conversation changes. A cheap signature of the
+  // last message replaces joining every message's content on each update,
+  // which was O(history size) per streamed token.
+  const lastMessage = messages.at(-1);
+  const tailSignature = [
+    messages.length,
+    lastMessage?.id,
+    lastMessage?.content.length ?? 0,
+    lastMessage?.thinkingContent?.length ?? 0,
+    isLoading,
+  ].join(":");
   useEffect(() => {
-    const currentContent =
-      messages
-        .map((m) =>
-          typeof m.content === "string" ? m.content : JSON.stringify(m.content),
-        )
-        .join("") + (isLoading ? "loading" : "");
-
-    if (
-      currentContent !== lastMessagesContent.current &&
-      autoScroll &&
-      !detach
-    ) {
-      // 内容发生变化且允许自动滚动时，延迟滚动以确保DOM更新
-      setTimeout(() => {
-        scrollDomToBottom();
-      }, 50);
+    if (autoScroll && !detach) {
+      // wait for the DOM to update before scrolling
+      const timer = setTimeout(scrollDomToBottom, 50);
+      return () => clearTimeout(timer);
     }
-
-    lastMessagesContent.current = currentContent;
-  }, [messages, autoScroll, detach, scrollDomToBottom, isLoading]);
+  }, [tailSignature, autoScroll, detach, scrollDomToBottom]);
 
   return {
     scrollRef,
@@ -1096,47 +1073,6 @@ function _Chat() {
   const { submitKey, shouldSubmit } = useSubmitHandler();
 
   // {{CHENGQI:
-  // Action: Added - 集成性能适配器实现移动端性能降级
-  // Timestamp: 2025-11-23 05:15:00 +08:00
-  // Reason: 阶段 1.1 - 移动端强制使用 eco 性能模式，降低 GPU 占用 80%
-  // Principle_Applied: KISS - 复用现有性能基础设施，简单有效
-  // Optimization: 移动端检测 + 强制 eco 模式 + 性能日志
-  // Architectural_Note (AR): 使用 usePerformanceAdapter hook 获取性能配置
-  // Documentation_Note (DW): 为 Holographic 组件提供性能模式控制
-  // }}
-  const { profile } = usePerformanceAdapter({
-    autoInitialize: true,
-    enableRealTimeMetrics: false, // 不需要实时指标，减少性能开销
-    enableDebugLogging: false,
-  });
-
-  // 检测移动设备
-  const isMobileDevice = useMemo(() => {
-    if (typeof navigator === "undefined") return false;
-    return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent);
-  }, []);
-
-  // 强制移动端使用 eco 性能模式
-  const performanceMode = useMemo(() => {
-    if (isMobileDevice) {
-      return "eco";
-    }
-    return profile?.level || "balanced";
-  }, [isMobileDevice, profile?.level]);
-
-  // 性能模式日志（已禁用 - 2025-11-28）
-  // useEffect(() => {
-  //   if (process.env.NODE_ENV === 'development') {
-  //     console.log('[Performance] Chat Component Performance Mode:', {
-  //       mode: performanceMode,
-  //       isMobile: isMobileDevice,
-  //       profileLevel: profile?.level,
-  //       effectSettings: profile?.effectSettings,
-  //     });
-  //   }
-  // }, [performanceMode, isMobileDevice, profile]);
-
-  // {{CHENGQI:
   // Action: Modified - 优化内存警告监听
   // Timestamp: 2025-11-28 Claude Opus 4.5
   // Reason: 解决开发模式下频繁警告导致渲染速度慢的问题
@@ -1176,56 +1112,6 @@ function _Chat() {
       clearInterval(interval);
     };
   }, []);
-
-  // {{CHENGQI:
-  // Action: Added - 监听性能优化器的清理事件
-  // Timestamp: 2025-11-23 06:00:00 +08:00
-  // Reason: 阶段 2.3 - 当内存超过 200MB 时自动触发消息清理
-  // Principle_Applied: 事件驱动架构，解耦性能监控和消息清理
-  // Optimization: 自动清理旧消息，防止内存溢出
-  // Architectural_Note (AR): 通过自定义事件通信，保持模块独立性
-  // Documentation_Note (DW): 自动清理旧消息，优化内存占用
-  // }}
-  // 监听性能优化器的清理事件
-  useEffect(() => {
-    const handleCleanupMessages = (event: CustomEvent) => {
-      const { memoryUsage, threshold } = event.detail;
-
-      console.log("[Memory] 收到清理消息事件:", {
-        memoryUsage,
-        threshold,
-        currentMessages: session.messages.length,
-      });
-
-      // 只保留最近 100 条消息
-      if (session.messages.length > 100) {
-        chatStore.cleanupOldMessages(session, 100);
-
-        showToast(`内存使用过高 (${memoryUsage}MB)，已自动清理旧消息`, {
-          text: "查看详情",
-          onClick: () => {
-            console.log("[Memory] 清理详情:", {
-              before: session.messages.length,
-              after: 100,
-              cleaned: session.messages.length - 100,
-            });
-          },
-        });
-      }
-    };
-
-    window.addEventListener(
-      "performance:cleanup-messages",
-      handleCleanupMessages as EventListener,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "performance:cleanup-messages",
-        handleCleanupMessages as EventListener,
-      );
-    };
-  }, [session, chatStore]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const isScrolledToBottom = scrollRef?.current
@@ -1680,9 +1566,14 @@ function _Chat() {
       setSpeechLoading(true);
       ttsPlayer.init();
       let audioBuffer: ArrayBuffer;
-      const { markdownToTxt } = require("markdown-to-txt");
+      // TTS-only dependencies are loaded on first use to keep them (and the
+      // Node polyfills they pull in) out of the chat bundle.
+      const { markdownToTxt } = await import("markdown-to-txt");
       const textContent = markdownToTxt(text);
       if (config.ttsConfig.engine !== DEFAULT_TTS_ENGINE) {
+        const { MsEdgeTTS, OUTPUT_FORMAT } = await import(
+          "../utils/ms_edge_tts"
+        );
         const edgeVoiceName = accessStore.edgeVoiceName();
         const tts = new MsEdgeTTS();
         await tts.setMetadata(
@@ -2253,21 +2144,22 @@ function _Chat() {
                     <button
                       className={styles["load-more-button"]}
                       onClick={() => {
+                        const loadCount = Math.min(
+                          50,
+                          session.archivedMessages?.length ?? 0,
+                        );
                         const success = chatStore.loadHistoryMessages(
                           session,
                           50,
                         );
                         if (success) {
-                          showToast(
-                            `已加载 ${Math.min(
-                              50,
-                              session.archivedMessages?.length || 0,
-                            )} 条历史消息`,
-                          );
+                          showToast(Locale.Chat.History.Loaded(loadCount));
                         }
                       }}
                     >
-                      加载更多历史消息 ({session.archivedMessages.length} 条)
+                      {Locale.Chat.History.LoadMore(
+                        session.archivedMessages.length,
+                      )}
                     </button>
                   </div>
                 )}
@@ -2708,7 +2600,6 @@ function _Chat() {
           </div>
           <div
             className={clsx(styles["chat-side-panel"], {
-              [styles["mobile"]]: isMobileScreen,
               [styles["chat-side-panel-show"]]: showChatSidePanel,
             })}
           >
@@ -2739,25 +2630,6 @@ function _Chat() {
 
       {showShortcutKeyModal && (
         <ShortcutKeyModal onClose={() => setShowShortcutKeyModal(false)} />
-      )}
-
-      {/* {{CHENGQI:
-        Action: Disabled - 关闭性能监控面板显示
-        Timestamp: 2025-11-28 - 用户请求关闭
-        Reason: 关闭开发者模式下的性能监控及显示
-        Note: 如需重新开启，将条件改回 process.env.NODE_ENV === 'development'
-      }} */}
-      {false && (
-        <PerformanceMonitor
-          showMetrics={true}
-          showSettings={true}
-          showDeviceInfo={true}
-          position="bottom-right"
-          collapsible={true}
-          initialCollapsed={false}
-          compact={false}
-          enableDebugMode={true}
-        />
       )}
     </>
   );

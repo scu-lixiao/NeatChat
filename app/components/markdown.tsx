@@ -1,4 +1,4 @@
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import "katex/dist/katex.min.css";
 import RemarkMath from "remark-math";
 import RemarkBreaks from "remark-breaks";
@@ -7,7 +7,6 @@ import RemarkGfm from "remark-gfm";
 import RehypeHighlight from "rehype-highlight";
 import { useRef, useState, RefObject, useEffect, useMemo } from "react";
 import { copyToClipboard, useWindowSize } from "../utils";
-import mermaid from "mermaid";
 import Locale from "../locales";
 import LoadingIcon from "../icons/three-dots.svg";
 import ReloadButtonIcon from "../icons/reload.svg";
@@ -31,11 +30,15 @@ export function Mermaid(props: { code: string }) {
 
   useEffect(() => {
     if (props.code && ref.current) {
-      mermaid
-        .run({
-          nodes: [ref.current],
-          suppressErrors: true,
-        })
+      const node = ref.current;
+      // mermaid is large (~1.4MB), so load it only when a diagram is rendered
+      import("mermaid")
+        .then(({ default: mermaid }) =>
+          mermaid.run({
+            nodes: [node],
+            suppressErrors: true,
+          }),
+        )
         .catch((e) => {
           setHasError(true);
           console.error("[Mermaid] ", e.message);
@@ -77,8 +80,10 @@ export function PreCode(props: { children: any }) {
   const [mermaidCode, setMermaidCode] = useState("");
   const [htmlCode, setHtmlCode] = useState("");
   const { height } = useWindowSize();
-  const chatStore = useChatStore();
-  const session = chatStore.currentSession();
+  const maskEnableArtifacts = useChatStore(
+    (state) => state.currentSession().mask?.enableArtifacts,
+  );
+  const configEnableArtifacts = useAppConfig((state) => state.enableArtifacts);
 
   const renderArtifacts = useDebouncedCallback(() => {
     if (!ref.current) return;
@@ -99,9 +104,8 @@ export function PreCode(props: { children: any }) {
     }
   }, 600);
 
-  const config = useAppConfig();
   const enableArtifacts =
-    session.mask?.enableArtifacts !== false && config.enableArtifacts;
+    maskEnableArtifacts !== false && configEnableArtifacts;
 
   //Wrap the paragraph for plain-text
   useEffect(() => {
@@ -174,11 +178,11 @@ export function PreCode(props: { children: any }) {
 }
 
 function CustomCode(props: { children: any; className?: string }) {
-  const chatStore = useChatStore();
-  const session = chatStore.currentSession();
-  const config = useAppConfig();
-  const enableCodeFold =
-    session.mask?.enableCodeFold !== false && config.enableCodeFold;
+  const maskEnableCodeFold = useChatStore(
+    (state) => state.currentSession().mask?.enableCodeFold,
+  );
+  const configEnableCodeFold = useAppConfig((state) => state.enableCodeFold);
+  const enableCodeFold = maskEnableCodeFold !== false && configEnableCodeFold;
 
   const ref = useRef<HTMLPreElement>(null);
   const [collapsed, setCollapsed] = useState(true);
@@ -267,6 +271,51 @@ function tryWrapHtmlCode(text: string) {
     );
 }
 
+// Keep plugins and component overrides referentially stable: inline arrow
+// components would be new component types on every render, making React
+// remount every paragraph/link (and reload audio/video) on each streamed token.
+const REMARK_PLUGINS: Options["remarkPlugins"] = [
+  RemarkMath,
+  RemarkGfm,
+  RemarkBreaks,
+];
+const REHYPE_PLUGINS: Options["rehypePlugins"] = [
+  RehypeKatex,
+  [
+    RehypeHighlight,
+    {
+      detect: false,
+      ignoreMissing: true,
+    },
+  ],
+];
+
+const MARKDOWN_COMPONENTS: Components = {
+  pre: PreCode,
+  code: CustomCode,
+  p: (pProps) => <p {...pProps} dir="auto" />,
+  a: (aProps) => {
+    const href = aProps.href || "";
+    if (/\.(aac|mp3|opus|wav)$/.test(href)) {
+      return (
+        <figure>
+          <audio controls src={href}></audio>
+        </figure>
+      );
+    }
+    if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
+      return (
+        <video controls width="99.9%">
+          <source src={href} />
+        </video>
+      );
+    }
+    const isInternal = /^\/#/i.test(href);
+    const target = isInternal ? "_self" : aProps.target ?? "_blank";
+    return <a {...aProps} target={target} />;
+  },
+};
+
 function _MarkDownContent(props: { content: string }) {
   const escapedContent = useMemo(() => {
     return tryWrapHtmlCode(escapeBrackets(props.content));
@@ -274,42 +323,9 @@ function _MarkDownContent(props: { content: string }) {
 
   return (
     <ReactMarkdown
-      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
-      rehypePlugins={[
-        RehypeKatex,
-        [
-          RehypeHighlight,
-          {
-            detect: false,
-            ignoreMissing: true,
-          },
-        ],
-      ]}
-      components={{
-        pre: PreCode,
-        code: CustomCode,
-        p: (pProps) => <p {...pProps} dir="auto" />,
-        a: (aProps) => {
-          const href = aProps.href || "";
-          if (/\.(aac|mp3|opus|wav)$/.test(href)) {
-            return (
-              <figure>
-                <audio controls src={href}></audio>
-              </figure>
-            );
-          }
-          if (/\.(3gp|3g2|webm|ogv|mpeg|mp4|avi)$/.test(href)) {
-            return (
-              <video controls width="99.9%">
-                <source src={href} />
-              </video>
-            );
-          }
-          const isInternal = /^\/#/i.test(href);
-          const target = isInternal ? "_self" : aProps.target ?? "_blank";
-          return <a {...aProps} target={target} />;
-        },
-      }}
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={REHYPE_PLUGINS}
+      components={MARKDOWN_COMPONENTS}
     >
       {escapedContent}
     </ReactMarkdown>

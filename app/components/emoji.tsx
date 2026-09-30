@@ -1,8 +1,4 @@
-import EmojiPicker, {
-  Emoji,
-  EmojiStyle,
-  Theme as EmojiTheme,
-} from "emoji-picker-react";
+import dynamic from "next/dynamic";
 
 import { ModelType } from "../store";
 
@@ -22,28 +18,36 @@ import BotIconHunyuan from "../icons/llm-icons/hunyuan.svg";
 import BotIconDoubao from "../icons/llm-icons/doubao.svg";
 import BotIconChatglm from "../icons/llm-icons/chatglm.svg";
 
-export function getEmojiUrl(unified: string, style: EmojiStyle) {
+export function getEmojiUrl(unified: string, style: string) {
   // Whoever owns this Content Delivery Network (CDN), I am using your CDN to serve emojis
   // Old CDN broken, so I had to switch to this one
   // Author: https://github.com/H0llyW00dzZ
   return `https://fastly.jsdelivr.net/npm/emoji-datasource-apple/img/${style}/64/${unified}.png`;
 }
 
-export function AvatarPicker(props: {
-  onEmojiClick: (emojiId: string) => void;
-}) {
-  return (
-    <EmojiPicker
-      width={"100%"}
-      lazyLoadEmojis
-      theme={EmojiTheme.AUTO}
-      getEmojiUrl={getEmojiUrl}
-      onEmojiClick={(e) => {
-        props.onEmojiClick(e.unified);
-      }}
-    />
-  );
-}
+// emoji-picker-react ships its full emoji dataset (~250KB), so it is only
+// loaded when a picker is actually opened.
+export const AvatarPicker = dynamic(
+  async () => {
+    const { default: EmojiPicker, Theme } = await import("emoji-picker-react");
+    return function AvatarPicker(props: {
+      onEmojiClick: (emojiId: string) => void;
+    }) {
+      return (
+        <EmojiPicker
+          width={"100%"}
+          lazyLoadEmojis
+          theme={Theme.AUTO}
+          getEmojiUrl={getEmojiUrl}
+          onEmojiClick={(e) => {
+            props.onEmojiClick(e.unified);
+          }}
+        />
+      );
+    };
+  },
+  { ssr: false },
+);
 
 export function Avatar(props: { model?: ModelType; avatar?: string }) {
   let LlmIcon = BotIconDefault;
@@ -68,7 +72,10 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
       LlmIcon = BotIconClaude;
     } else if (modelName.includes("llama")) {
       LlmIcon = BotIconMeta;
-    } else if (modelName.startsWith("mixtral") || modelName.startsWith("codestral")) {
+    } else if (
+      modelName.startsWith("mixtral") ||
+      modelName.startsWith("codestral")
+    ) {
       LlmIcon = BotIconMistral;
     } else if (modelName.includes("deepseek")) {
       LlmIcon = BotIconDeepseek;
@@ -107,11 +114,18 @@ export function Avatar(props: { model?: ModelType; avatar?: string }) {
 }
 
 export function EmojiAvatar(props: { avatar: string; size?: number }) {
+  const size = props.size ?? 18;
   return (
-    <Emoji
-      unified={props.avatar}
-      size={props.size ?? 18}
-      getEmojiUrl={getEmojiUrl}
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={getEmojiUrl(props.avatar, "apple")}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      draggable={false}
+      style={{ display: "block", width: size, height: size }}
+      onError={(e) => (e.currentTarget.style.visibility = "hidden")}
     />
   );
 }

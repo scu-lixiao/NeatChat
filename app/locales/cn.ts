@@ -34,6 +34,10 @@ const cn = {
   },
   Chat: {
     SubTitle: (count: number) => `共 ${count} 条对话`,
+    History: {
+      LoadMore: (count: number) => `加载更多历史消息（${count} 条）`,
+      Loaded: (count: number) => `已加载 ${count} 条历史消息`,
+    },
     EditMessage: {
       Title: "编辑消息记录",
       Topic: {

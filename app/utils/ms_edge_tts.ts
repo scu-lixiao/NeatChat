@@ -1,6 +1,5 @@
 // import axios from "axios";
 import { Buffer } from "buffer";
-import { randomBytes } from "crypto";
 import { Readable } from "stream";
 
 // Modified according to https://github.com/Migushthe2nd/MsEdgeTTS
@@ -371,7 +370,12 @@ export class MsEdgeTTS {
   } {
     this._metadataCheck();
 
-    const requestId = randomBytes(16).toString("hex");
+    // Web Crypto instead of Node's `crypto`, which webpack would polyfill
+    // with ~100KB (gzipped) of crypto-browserify.
+    const requestId = Array.from(
+      crypto.getRandomValues(new Uint8Array(16)),
+      (b) => b.toString(16).padStart(2, "0"),
+    ).join("");
     const request =
       `X-RequestId:${requestId}\r\nContent-Type:application/ssml+xml\r\nPath:ssml\r\n\r\n
                 ` + requestSSML.trim();

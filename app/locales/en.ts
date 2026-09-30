@@ -35,6 +35,10 @@ const en: LocaleType = {
   },
   Chat: {
     SubTitle: (count: number) => `${count} messages`,
+    History: {
+      LoadMore: (count: number) => `Load earlier messages (${count})`,
+      Loaded: (count: number) => `Loaded ${count} earlier messages`,
+    },
     EditMessage: {
       Title: "Edit All Messages",
       Topic: {
