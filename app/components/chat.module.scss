@@ -1010,6 +1010,11 @@
   // (translateX(100%)) makes this box twice as wide, and with plain `hidden`
   // focus/scroll-into-view could shift the whole chat sideways on mobile.
   overflow: clip;
+  // Unlike `hidden`, `clip` doesn't make this a scroll container, so the flex
+  // item's automatic min-height stops being 0 and `height: 100%` can no longer
+  // shrink to fit under the window header, which pushes the input panel off
+  // the bottom of the screen.
+  min-height: 0;
   .chat-body-container {
     height: 100%;
     display: flex;
