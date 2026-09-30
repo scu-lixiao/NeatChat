@@ -1,11 +1,7 @@
 @import "./animation.scss";
 @import "./window.scss";
 @import "./premium-theme.scss";
-@import "./performance-levels.scss";
 @import "./premium-animations.scss";
-@import "./holographic-materials.scss";
-@import "./page-transitions.scss";
-@import "./premium-router.scss";
 
 @mixin light {
   --theme: light;
@@ -15,6 +11,7 @@
   --black: rgb(48, 48, 48);
   --gray: rgb(250, 250, 250);
   --primary: rgb(29, 147, 171);
+  --primary-rgb: 29, 147, 171;
   --second: rgb(231, 248, 255);
   --hover-color: #f3f3f3;
   --bar-color: rgba(0, 0, 0, 0.1);
@@ -26,6 +23,8 @@
 
   /* stroke */
   --border-in-light: 1px solid rgb(222, 222, 222);
+
+  @include premium-light-palette;
 }
 
 @mixin dark {
@@ -36,6 +35,7 @@
   --black: rgb(187, 187, 187);
   --gray: rgb(21, 21, 21);
   --primary: rgb(29, 147, 171);
+  --primary-rgb: 29, 147, 171;
   --second: rgb(27 38 42);
   --hover-color: #323232;
 
@@ -44,6 +44,8 @@
   --border-in-light: 1px solid rgba(255, 255, 255, 0.192);
 
   --theme-color: var(--gray);
+
+  @include premium-dark-palette;
 
   div:not(.no-dark) > svg {
     filter: invert(0.5);
@@ -118,6 +120,26 @@
 @media (prefers-color-scheme: dark) {
   :root {
     @include dark;
+  }
+}
+
+// Cheaper glows on touch devices and with reduced motion. Declared after the
+// theme palettes (which also set these tokens) so they take precedence.
+@media (max-width: 768px) and (hover: none) {
+  :root,
+  .light,
+  .dark {
+    --premium-glow-primary: 0 0 4px rgba(100, 150, 255, 0.2);
+    --premium-energy-field: 0 0 4px rgba(100, 150, 255, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .light,
+  .dark {
+    --premium-glow-primary: none;
+    --premium-energy-field: var(--premium-shadow-sm);
   }
 }
 

@@ -42,7 +42,7 @@
   justify-content: center;
   padding: 60px 20px;
   text-align: center;
-  color: rgb(240, 240, 240);
+  color: var(--premium-text-primary);
 
   p {
     margin-bottom: 20px;
@@ -176,7 +176,7 @@
   }
 
   &::placeholder {
-    color: rgba(240, 240, 240, 0.5);
+    color: var(--premium-text-tertiary);
   }
 
   // 错误状态
@@ -281,8 +281,8 @@
 
   .model-editor input[type="text"],
   .model-editor input[type="email"] {
-    background-color: rgb(20, 20, 20);
-    color: rgb(240, 240, 240);
+    background-color: var(--premium-bg-nebula);
+    color: var(--premium-text-primary);
   }
 }
 
@@ -292,8 +292,8 @@
   .model-editor {
     // Premium 深空主题的特殊效果
     background: linear-gradient(135deg,
-      rgb(8, 8, 16) 0%,
-      rgb(16, 8, 24) 100%);
+      var(--premium-bg-space) 0%,
+      var(--premium-bg-nebula) 100%);
     position: relative;
 
     &::before {

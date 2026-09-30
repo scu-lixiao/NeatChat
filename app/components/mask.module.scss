@@ -5,8 +5,8 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: rgb(8, 8, 8);
-  color: rgb(240, 240, 240);
+  background: var(--premium-bg-space);
+  color: var(--premium-text-primary);
 
   .mask-page-body {
     padding: 20px;
@@ -45,7 +45,7 @@
       justify-content: space-between;
       padding: 20px;
       border: 1px solid rgba(100, 150, 255, 0.3);
-      background: rgb(4, 4, 4);
+      background: var(--premium-bg-cosmos);
       animation: slide-in ease 0.3s;
       transition: all 0.3s ease;
       position: relative;

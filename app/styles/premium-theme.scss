@@ -11,7 +11,7 @@
 // 从极深宇宙空间到激活交互状态的5层渐进系统
 // =============================================================================
 
-:root {
+@mixin premium-dark-palette {
   // 背景深度层次 - 营造无限深空感
   --premium-bg-cosmos: rgb(4, 4, 4);        // 极深主背景 - 接近纯黑的宇宙深空
   --premium-bg-space: rgb(8, 8, 8);         // 深空背景 - 组件容器背景
@@ -108,6 +108,58 @@
     0 0 16px rgba(100, 150, 255, 0.2),
     0 0 32px rgba(100, 150, 255, 0.1),
     inset 0 0 8px rgba(100, 150, 255, 0.1);
+
+  --premium-glass-border: rgba(255, 255, 255, 0.1);
+}
+
+// Light counterpart of the deep space palette. Components are styled with the
+// --premium-* tokens, so these must follow the active theme; before this the
+// dark values applied everywhere and light mode rendered dark text on
+// near-black surfaces.
+@mixin premium-light-palette {
+  --premium-bg-cosmos: rgb(250, 250, 250);
+  --premium-bg-space: rgb(245, 246, 248);
+  --premium-bg-void: rgb(255, 255, 255);
+  --premium-bg-nebula: rgb(236, 243, 255);
+  --premium-bg-stellar: rgb(240, 242, 246);
+  --premium-bg-aurora: rgb(229, 233, 240);
+
+  --premium-text-primary: rgb(29, 29, 31);
+  --premium-text-secondary: rgb(66, 66, 69);
+  --premium-text-tertiary: rgb(110, 110, 115);
+  --premium-text-quaternary: rgb(142, 142, 147);
+  --premium-text-disabled: rgb(174, 174, 178);
+
+  --premium-border-cosmos: rgba(0, 0, 0, 0.04);
+  --premium-border-space: rgba(0, 0, 0, 0.06);
+  --premium-border-void: rgba(0, 0, 0, 0.1);
+  --premium-border-nebula: rgba(0, 0, 0, 0.14);
+  --premium-border-starlight: rgba(64, 120, 230, 0.28);
+  --premium-border-stellar: rgba(64, 120, 230, 0.45);
+  --premium-border-aurora: rgba(64, 120, 230, 0.65);
+  --premium-border-focus: rgba(64, 120, 230, 0.55);
+  --premium-border-active: rgba(64, 120, 230, 0.75);
+  --premium-border-energy: rgba(120, 80, 230, 0.4);
+
+  --premium-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --premium-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  --premium-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+  --premium-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.05);
+  --premium-shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+
+  --premium-glow-primary: 0 0 12px rgba(64, 120, 230, 0.18),
+    0 0 24px rgba(64, 120, 230, 0.06);
+  --premium-energy-field: 0 0 6px rgba(64, 120, 230, 0.2),
+    0 0 12px rgba(64, 120, 230, 0.08);
+  --premium-glass-border: rgba(0, 0, 0, 0.06);
+}
+
+:root {
+  @include premium-dark-palette;
 
   // =============================================================================
   // 材质与纹理效果变量 (Material & Texture Effects)
@@ -312,14 +364,6 @@
 // 开发环境下的调试辅助
 // =============================================================================
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    // 自动应用深邃主题变量作为默认值
-    --white: var(--premium-bg-void);
-    --black: var(--premium-text-primary);
-    --gray: var(--premium-bg-cosmos);
-  }
-}
 
 // 调试边框 - 开发时启用
 .premium-debug {

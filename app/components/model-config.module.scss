@@ -6,8 +6,8 @@
   select {
     max-width: 100%;
     white-space: normal;
-    background: rgb(4, 4, 4);
-    color: rgb(240, 240, 240);
+    background: var(--premium-bg-cosmos);
+    color: var(--premium-text-primary);
     border: 1px solid rgba(100, 150, 255, 0.3);
     border-radius: 6px;
     padding: 8px;
@@ -15,7 +15,7 @@
     &:focus {
       outline: none;
       border-color: rgba(100, 150, 255, 0.6);
-      background: rgb(12, 12, 12);
+      background: var(--premium-bg-void);
       box-shadow: 
         0 0 10px rgba(100, 150, 255, 0.2),
         inset 0 0 5px rgba(100, 150, 255, 0.1);

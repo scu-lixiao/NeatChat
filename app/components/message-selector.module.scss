@@ -1,8 +1,8 @@
 @import "../styles/premium-mixins.scss";
 
 .message-selector {
-  background: rgb(8, 8, 8);
-  color: rgb(240, 240, 240);
+  background: var(--premium-bg-space);
+  color: var(--premium-text-primary);
   
   .message-filter {
     display: flex;
@@ -42,7 +42,7 @@
     margin-top: 20px;
     border-radius: 10px;
     border: 1px solid rgba(100, 150, 255, 0.3);
-    background: rgb(4, 4, 4);
+    background: var(--premium-bg-cosmos);
     overflow: hidden;
 
     .message {

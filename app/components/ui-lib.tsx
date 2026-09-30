@@ -269,21 +269,21 @@ export function Input(props: InputProps) {
 
   const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
     props.onInput?.(e);
-    
+
     setIsTyping(true);
     setIsContentChanging(true);
-    
+
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
     if (contentChangeTimeoutRef.current) {
       clearTimeout(contentChangeTimeoutRef.current);
     }
-    
+
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
     }, 1000);
-    
+
     contentChangeTimeoutRef.current = setTimeout(() => {
       setIsContentChanging(false);
     }, 2000);
@@ -302,11 +302,11 @@ export function Input(props: InputProps) {
   const dynamicClasses = clsx(
     styles["input"],
     {
-      'typing': isTyping,
-      'content-changing': isContentChanging,
-      'quantum-input': true,
+      typing: isTyping,
+      "content-changing": isContentChanging,
+      "quantum-input": true,
     },
-    props.className
+    props.className,
   );
 
   useEffect(() => {
@@ -350,7 +350,7 @@ export function PasswordInput(
 
   function changeVisibility() {
     setVisible(!visible);
-    
+
     // 激活可见性切换动画
     setIsVisibilityToggling(true);
     setTimeout(() => {
@@ -361,15 +361,15 @@ export function PasswordInput(
   // 输入状态管理
   const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
     props.onInput?.(e);
-    
+
     // 激活typing状态
     setIsTyping(true);
-    
+
     // 清除之前的计时器
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     // 设置typing状态超时
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
@@ -377,14 +377,11 @@ export function PasswordInput(
   };
 
   // 动态className生成
-  const inputClasses = clsx(
-    "password-input",
-    {
-      'visibility-toggle': isVisibilityToggling,
-      'typing': isTyping,
-      'quantum-input': true,
-    }
-  );
+  const inputClasses = clsx("password-input", {
+    "visibility-toggle": isVisibilityToggling,
+    typing: isTyping,
+    "quantum-input": true,
+  });
 
   // 清理计时器
   useEffect(() => {
@@ -395,16 +392,18 @@ export function PasswordInput(
     };
   }, []);
 
+  const { aria, ...inputProps } = props;
+
   return (
     <div className={"password-input-container"}>
       <IconButton
-        aria={props.aria}
+        aria={aria}
         icon={visible ? <EyeIcon /> : <EyeOffIcon />}
         onClick={changeVisibility}
         className={"password-eye"}
       />
       <input
-        {...props}
+        {...inputProps}
         type={visible ? "text" : "password"}
         className={inputClasses}
         onInput={handleInput}
@@ -515,11 +514,11 @@ function PromptInput(props: {
   const onInput = (value: string) => {
     props.onChange(value);
     setInput(value);
-    
+
     // 激活流体交互状态
     setIsTyping(true);
     setIsContentChanging(true);
-    
+
     // 清除之前的计时器
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -527,12 +526,12 @@ function PromptInput(props: {
     if (contentChangeTimeoutRef.current) {
       clearTimeout(contentChangeTimeoutRef.current);
     }
-    
+
     // 设置状态超时
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
     }, 1000);
-    
+
     contentChangeTimeoutRef.current = setTimeout(() => {
       setIsContentChanging(false);
     }, 2000);
@@ -545,15 +544,12 @@ function PromptInput(props: {
   }, []);
 
   // 动态className生成
-  const dynamicClasses = clsx(
-    styles["modal-input"],
-    {
-      'typing': isTyping,
-      'content-changing': isContentChanging,
-      'height-adjusting': heightAdjusting,
-      'quantum-input': true,
-    }
-  );
+  const dynamicClasses = clsx(styles["modal-input"], {
+    typing: isTyping,
+    "content-changing": isContentChanging,
+    "height-adjusting": heightAdjusting,
+    "quantum-input": true,
+  });
 
   // 清理计时器
   useEffect(() => {

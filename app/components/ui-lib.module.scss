@@ -376,13 +376,13 @@
   // 简化版输入交互效果
   position: relative;
   border: 1px solid rgba(100, 150, 255, 0.3);
-  background-color: rgb(12, 12, 12);
+  background-color: var(--premium-bg-void);
   transition: all 0.3s ease;
   
   &:focus {
     outline: none;
     border-color: rgba(100, 150, 255, 0.6);
-    background-color: rgb(16, 16, 16);
+    background-color: var(--premium-bg-nebula);
   }
   
   &.error, &:invalid {
@@ -467,13 +467,13 @@
   // 简化版textarea交互效果
   position: relative;
   border: 1px solid rgba(100, 150, 255, 0.3);
-  background-color: rgb(12, 12, 12);
+  background-color: var(--premium-bg-void);
   transition: all 0.3s ease;
   
   &:focus {
     outline: none;
     border-color: rgba(100, 150, 255, 0.6);
-    background-color: rgb(16, 16, 16);
+    background-color: var(--premium-bg-nebula);
   }
   
   &.error, &:invalid {
@@ -505,8 +505,9 @@
   // Architectural_Note (AR): Consistent with modal and popover backdrop styling
   // Documentation_Note (DW): Selector backdrop now has premium cosmic depth
   // }}
-  background-color: var(--premium-bg-cosmos, rgba(0, 0, 0, 0.6)); // Deep cosmos backdrop
-  backdrop-filter: blur(15px) saturate(1.2); // Premium backdrop filter
+  // Translucent scrim: an opaque backdrop hid the whole page behind the list
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px) saturate(1.2);
   display: flex;
   align-items: center;
   justify-content: center;

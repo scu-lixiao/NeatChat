@@ -1,8 +1,8 @@
 @import "../styles/premium-mixins.scss";
 
 .message-exporter {
-  background: rgb(8, 8, 8);
-  color: rgb(240, 240, 240);
+  background: var(--premium-bg-space);
+  color: var(--premium-text-primary);
   
   &-body {
     margin-top: 20px;

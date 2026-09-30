@@ -925,7 +925,7 @@
  */
 @mixin quantum-input-success-feedback() {
   // 成功状态的绿色光感效果
-  &.success, &:valid {
+  &.success {
     border-color: rgba(99, 255, 99, 0.6);
     
     &:focus {

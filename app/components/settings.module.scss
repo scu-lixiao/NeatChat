@@ -3,8 +3,8 @@
 .settings {
   padding: 20px;
   overflow: auto;
-  background: rgb(8, 8, 8);
-  color: rgb(240, 240, 240);
+  background: var(--premium-bg-space);
+  color: var(--premium-text-primary);
   
   // Premium深邃主题支持
   min-height: calc(100vh - 60px);
@@ -15,7 +15,7 @@
   }
   
   &::-webkit-scrollbar-track {
-    background: rgb(4, 4, 4);
+    background: var(--premium-bg-cosmos);
     border-radius: 4px;
   }
   
@@ -37,7 +37,7 @@
   // Premium全息头像效果
   border: 2px solid rgba(100, 150, 255, 0.3);
   border-radius: 50%;
-  background: rgb(4, 4, 4);
+  background: var(--premium-bg-cosmos);
   padding: 4px;
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   
@@ -70,7 +70,7 @@
 
 .user-prompt-modal {
   min-height: 40vh;
-  background: rgb(8, 8, 8);
+  background: var(--premium-bg-space);
   border: 1px solid rgba(100, 150, 255, 0.3);
   border-radius: 12px;
   padding: 20px;
@@ -79,8 +79,8 @@
     width: 100%;
     max-width: 100%;
     margin-bottom: 10px;
-    background: rgb(4, 4, 4);
-    color: rgb(240, 240, 240);
+    background: var(--premium-bg-cosmos);
+    color: var(--premium-text-primary);
     border: 1px solid rgba(100, 150, 255, 0.3);
     border-radius: 8px;
     padding: 12px;
@@ -89,21 +89,21 @@
          &:focus {
        outline: none;
        border-color: rgba(100, 150, 255, 0.6);
-       background: rgb(12, 12, 12);
+       background: var(--premium-bg-void);
        box-shadow: 
          0 0 10px rgba(100, 150, 255, 0.2),
          inset 0 0 5px rgba(100, 150, 255, 0.1);
      }
      
      &::placeholder {
-       color: rgb(200, 200, 200);
+       color: var(--premium-text-secondary);
      }
   }
 
   .user-prompt-list {
     border: 1px solid rgba(100, 150, 255, 0.3);
     border-radius: 12px;
-    background: rgb(4, 4, 4);
+    background: var(--premium-bg-cosmos);
     backdrop-filter: blur(10px);
 
     .user-prompt-item {

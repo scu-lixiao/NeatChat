@@ -870,13 +870,13 @@
   // 简化版流体交互效果
   position: relative;
   border: 1px solid rgba(100, 150, 255, 0.3);
-  background-color: rgb(12, 12, 12);
+  background-color: var(--premium-bg-void);
   transition: all 0.3s ease;
   
   &:focus {
     outline: none;
     border-color: rgba(100, 150, 255, 0.6);
-    background-color: rgb(16, 16, 16);
+    background-color: var(--premium-bg-nebula);
   }
   
   // 重写边框为无边框样式（由容器提供）
@@ -1006,6 +1006,10 @@
   width: 100%;
   position: relative;
   overflow: hidden;
+  // `clip` also blocks programmatic scrolling. The off-canvas side panel below
+  // (translateX(100%)) makes this box twice as wide, and with plain `hidden`
+  // focus/scroll-into-view could shift the whole chat sideways on mobile.
+  overflow: clip;
   .chat-body-container {
     height: 100%;
     display: flex;

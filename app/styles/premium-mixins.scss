@@ -95,7 +95,7 @@
     position: relative;
     border: 1px solid transparent;
     background: 
-      linear-gradient(rgb(8,8,8), rgb(8,8,8)) padding-box,
+      linear-gradient(var(--premium-bg-space), var(--premium-bg-space)) padding-box,
       linear-gradient(90deg, 
         rgba(100, 150, 255, 0.5),
         rgba(150, 100, 255, 0.5),
@@ -458,8 +458,8 @@
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(100, 150, 255, 0.3);
-  background-color: rgb(12, 12, 12);
-  color: rgb(240, 240, 240);
+  background-color: var(--premium-bg-void);
+  color: var(--premium-text-primary);
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   
   // 创建光感边框效果的伪元素
@@ -497,7 +497,7 @@
   // 聚焦状态的光感效果
   &:focus {
     outline: none;
-    background-color: rgb(20, 20, 20);
+    background-color: var(--premium-bg-nebula);
     border-color: rgba(100, 150, 255, 0.6);
     
     &::before {
