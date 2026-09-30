@@ -1891,39 +1891,57 @@ function _Chat() {
     const images: string[] = [];
     images.push(...attachImages);
 
-    images.push(
-      ...(await new Promise<string[]>((res, rej) => {
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept =
-          "image/png, image/jpeg, image/webp, image/heic, image/heif";
-        fileInput.multiple = true;
-        fileInput.onchange = (event: any) => {
-          setUploading(true);
-          const files = event.target.files;
-          const imagesData: string[] = [];
-          for (let i = 0; i < files.length; i++) {
-            const file = event.target.files[i];
-            uploadImageRemote(file)
-              .then((dataUrl) => {
-                imagesData.push(dataUrl);
-                if (
-                  imagesData.length === 3 ||
-                  imagesData.length === files.length
-                ) {
+    try {
+      images.push(
+        ...(await new Promise<string[]>((res, rej) => {
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept =
+            "image/png, image/jpeg, image/webp, image/heic, image/heif";
+          fileInput.multiple = true;
+          // iOS/iPadOS Safari doesn't fire `change` on a file input that isn't
+          // in the document, so keep it attached (hidden) while the picker is
+          // open and remove it once the user picks or cancels.
+          fileInput.style.display = "none";
+          document.body.appendChild(fileInput);
+          fileInput.oncancel = () => {
+            fileInput.remove();
+            res([]);
+          };
+          fileInput.onchange = (event: any) => {
+            fileInput.remove();
+            setUploading(true);
+            const files = event.target.files;
+            const imagesData: string[] = [];
+            for (let i = 0; i < files.length; i++) {
+              const file = event.target.files[i];
+              uploadImageRemote(file)
+                .then((dataUrl) => {
+                  imagesData.push(dataUrl);
+                  if (
+                    imagesData.length === 3 ||
+                    imagesData.length === files.length
+                  ) {
+                    setUploading(false);
+                    res(imagesData);
+                  }
+                })
+                .catch((e) => {
                   setUploading(false);
-                  res(imagesData);
-                }
-              })
-              .catch((e) => {
-                setUploading(false);
-                rej(e);
-              });
-          }
-        };
-        fileInput.click();
-      })),
-    );
+                  rej(e);
+                });
+            }
+          };
+          fileInput.click();
+        })),
+      );
+    } catch (e: any) {
+      console.error("[Chat] failed to upload image", e);
+      showToast(
+        `${Locale.Chat.InputActions.UploadImageFailed}: ${e?.message ?? e}`,
+      );
+      return;
+    }
 
     const imagesLength = images.length;
     if (imagesLength > 3) {

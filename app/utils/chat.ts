@@ -172,16 +172,27 @@ export function detectGoogleStreamTermination(
   }
 }
 
+const MAX_IMAGE_DIMENSION = 2048;
+
 export function compressImage(file: Blob, maxSize: number): Promise<string> {
   return new Promise((resolve, reject) => {
+    let convertedHeic = false;
     const reader = new FileReader();
     reader.onload = (readerEvent: any) => {
       const image = new Image();
       image.onload = () => {
         let canvas = document.createElement("canvas");
         let ctx = canvas.getContext("2d");
-        let width = image.width;
-        let height = image.height;
+        // The result has to fit in maxSize anyway, so don't start from a
+        // full-size photo (12-48MP): re-encoding it over and over is slow,
+        // can run out of memory on iPad, and iOS/iPadOS WebKit can't encode
+        // a canvas over 16,777,216 pixels at all (toDataURL returns "data:,").
+        const scale = Math.min(
+          1,
+          MAX_IMAGE_DIMENSION / Math.max(image.width, image.height),
+        );
+        let width = Math.floor(image.width * scale);
+        let height = Math.floor(image.height * scale);
         let quality = 0.9;
         let dataUrl;
 
@@ -192,6 +203,10 @@ export function compressImage(file: Blob, maxSize: number): Promise<string> {
           ctx?.drawImage(image, 0, 0, width, height);
           dataUrl = canvas.toDataURL("image/jpeg", quality);
 
+          if (dataUrl === "data:,") {
+            reject(new Error(`Failed to encode ${width}x${height} image`));
+            return;
+          }
           if (dataUrl.length < maxSize) break;
 
           if (quality > 0.5) {
@@ -206,24 +221,28 @@ export function compressImage(file: Blob, maxSize: number): Promise<string> {
 
         resolve(dataUrl);
       };
-      image.onerror = reject;
+      image.onerror = () => {
+        if (!file.type.includes("heic") || convertedHeic) {
+          reject(new Error(`Failed to decode ${file.type || "image"}`));
+          return;
+        }
+        // Safari (incl. iOS/iPadOS) decodes HEIC natively. Other browsers
+        // can't, so convert with heic2any, which is ~1.3MB and only loaded
+        // when needed.
+        convertedHeic = true;
+        import("heic2any")
+          .then(({ default: heic2any }) =>
+            heic2any({ blob: file, toType: "image/jpeg" }),
+          )
+          .then((blob) => {
+            reader.readAsDataURL(Array.isArray(blob) ? blob[0] : blob);
+          })
+          .catch(reject);
+      };
       image.src = readerEvent.target.result;
     };
-    reader.onerror = reject;
-
-    if (file.type.includes("heic")) {
-      // heic2any is ~1.3MB, so only load it when a HEIC file is uploaded.
-      import("heic2any")
-        .then(({ default: heic2any }) =>
-          heic2any({ blob: file, toType: "image/jpeg" }),
-        )
-        .then((blob) => {
-          reader.readAsDataURL(Array.isArray(blob) ? blob[0] : blob);
-        })
-        .catch(reject);
-    } else {
-      reader.readAsDataURL(file);
-    }
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
   });
 }
 
@@ -299,7 +318,10 @@ export function base64Image2Blob(base64Data: string, contentType: string) {
 }
 
 export function uploadImage(file: Blob): Promise<string> {
-  if (!window._SW_ENABLED) {
+  // `_SW_ENABLED` only means registration succeeded. If the page isn't
+  // controlled by the service worker, the upload would go to the server,
+  // which has no /api/cache route.
+  if (!window._SW_ENABLED || !navigator.serviceWorker?.controller) {
     // if serviceWorker register error, using compressImage
     return compressImage(file, 256 * 1024);
   }
@@ -318,6 +340,10 @@ export function uploadImage(file: Blob): Promise<string> {
         return res?.data;
       }
       throw Error(`upload Error: ${res?.msg}`);
+    })
+    .catch((e) => {
+      console.warn("[uploadImage] cache upload failed, inlining image", e);
+      return compressImage(file, 256 * 1024);
     });
 }
 
