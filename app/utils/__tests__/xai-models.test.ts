@@ -7,6 +7,9 @@ import {
 import { isVisionModel, isXAIImageModel } from "../../utils";
 import { resolveXAIReasoningEffort } from "../../client/platforms/xai";
 import { useAppConfig } from "../../store/config";
+import { useChatStore } from "../../store/chat";
+import { useMaskStore } from "../../store/mask";
+import { replaceRetiredXAIModels } from "../model";
 
 describe("xAI model registry", () => {
   test("registers Grok 4.5 with its current knowledge cutoff", () => {
@@ -127,5 +130,71 @@ describe("retired xAI models", () => {
       "grok-4.7@xai",
       "grok-3-latest@openai",
     ]);
+  });
+});
+
+describe("retired xAI model selections", () => {
+  const retiredSelection = () => ({
+    model: "grok-3-latest",
+    providerName: "XAI",
+    compressModel: "grok-4-1-fast-non-reasoning",
+    compressProviderName: "XAI",
+  });
+
+  test("switch to grok-4.3 for the chat and compression model", () => {
+    const modelConfig = retiredSelection();
+    replaceRetiredXAIModels(modelConfig);
+    expect(modelConfig).toEqual({
+      model: "grok-4.3",
+      providerName: "XAI",
+      compressModel: "grok-4.3",
+      compressProviderName: "XAI",
+    });
+  });
+
+  test("leave current models and other providers untouched", () => {
+    const current = { model: "grok-4.7", providerName: "XAI" };
+    const otherProvider = { model: "grok-3-latest", providerName: "OpenAI" };
+    replaceRetiredXAIModels(current);
+    replaceRetiredXAIModels(otherProvider);
+    replaceRetiredXAIModels(undefined);
+    expect(current.model).toBe("grok-4.7");
+    expect(otherProvider.model).toBe("grok-3-latest");
+  });
+
+  test("are migrated in the global config", () => {
+    const migrated = useAppConfig.persist.getOptions().migrate!(
+      { models: [], modelConfig: retiredSelection() },
+      4.2,
+    ) as { modelConfig: ReturnType<typeof retiredSelection> };
+    expect(migrated.modelConfig.model).toBe("grok-4.3");
+    expect(migrated.modelConfig.compressModel).toBe("grok-4.3");
+  });
+
+  test("are migrated in every chat session", () => {
+    const migrated = useChatStore.persist.getOptions().migrate!(
+      {
+        sessions: [
+          { mask: { modelConfig: retiredSelection() }, messages: [] },
+          {
+            mask: { modelConfig: { model: "grok-4.5", providerName: "XAI" } },
+            messages: [],
+          },
+        ],
+      },
+      3.3,
+    ) as { sessions: { mask: { modelConfig: { model: string } } }[] };
+    expect(migrated.sessions.map((s) => s.mask.modelConfig.model)).toEqual([
+      "grok-4.3",
+      "grok-4.5",
+    ]);
+  });
+
+  test("are migrated in user masks", () => {
+    const migrated = useMaskStore.persist.getOptions().migrate!(
+      { masks: { a: { id: "a", modelConfig: retiredSelection() } } },
+      3.1,
+    ) as { masks: Record<string, { modelConfig: { model: string } }> };
+    expect(migrated.masks.a.modelConfig.model).toBe("grok-4.3");
   });
 });

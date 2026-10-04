@@ -497,8 +497,10 @@ const xAIModes = [
   ...XAI_IMAGE_MODELS,
 ];
 
-// No longer offered by xAI (most were retired on 2026-05-15). The config store
-// migration prunes these from persisted model lists.
+// No longer offered by xAI (most were retired on 2026-05-15). Store migrations
+// prune these from persisted model lists and switch selections to grok-4.3,
+// which xAI now serves the retired slugs with.
+export const RETIRED_XAI_MODEL_REPLACEMENT = "grok-4.3";
 export const RETIRED_XAI_MODELS = [
   "grok-4-0709",
   "grok-3-latest",

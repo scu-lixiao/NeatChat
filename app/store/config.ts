@@ -24,6 +24,7 @@ import {
   StoreKey,
   ServiceProvider,
 } from "../constant";
+import { replaceRetiredXAIModels } from "../utils/model";
 import { createPersistStore } from "../utils/store";
 import type { Voice } from "rt-client";
 import { nanoid } from "nanoid";
@@ -590,7 +591,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.2,
+    version: 4.3,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -657,6 +658,10 @@ export const useAppConfig = createPersistStore(
           (m) =>
             !(m.provider?.id === "xai" && RETIRED_XAI_MODELS.includes(m.name)),
         );
+      }
+
+      if (version < 4.3) {
+        replaceRetiredXAIModels(state.modelConfig);
       }
 
       return state as any;

@@ -33,7 +33,10 @@ import { createPersistStore } from "../utils/store";
 import { estimateTokenLength } from "../utils/token";
 import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
-import { collectModelsWithDefaultModel } from "../utils/model";
+import {
+  collectModelsWithDefaultModel,
+  replaceRetiredXAIModels,
+} from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
 // MCP功能已移除 - 生产环境清理
 
@@ -1377,7 +1380,7 @@ export const useChatStore = createPersistStore(
   },
   {
     name: StoreKey.Chat,
-    version: 3.3,
+    version: 3.4,
     migrate(persistedState, version) {
       const state = persistedState as any;
       const newState = JSON.parse(
@@ -1440,6 +1443,12 @@ export const useChatStore = createPersistStore(
           s.mask.modelConfig.compressModel = "";
           s.mask.modelConfig.compressProviderName = "";
         });
+      }
+
+      if (version < 3.4) {
+        newState.sessions.forEach((s) =>
+          replaceRetiredXAIModels(s.mask?.modelConfig),
+        );
       }
 
       return newState as any;

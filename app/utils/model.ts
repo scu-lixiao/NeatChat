@@ -1,4 +1,9 @@
-import { DEFAULT_MODELS, ServiceProvider } from "../constant";
+import {
+  DEFAULT_MODELS,
+  RETIRED_XAI_MODEL_REPLACEMENT,
+  RETIRED_XAI_MODELS,
+  ServiceProvider,
+} from "../constant";
 import { LLMModel } from "../client/api";
 
 const CustomSeq = {
@@ -284,4 +289,31 @@ export function isModelNotavailableInServer(
     if (modelTable?.[fullName]?.available === true) return false;
   }
   return true;
+}
+
+/**
+ * Switch a persisted model config that still selects a retired xAI model
+ * (chat or compression model) to its replacement. Mutates in place.
+ */
+export function replaceRetiredXAIModels(modelConfig?: {
+  model?: string;
+  providerName?: string;
+  compressModel?: string;
+  compressProviderName?: string;
+}) {
+  if (!modelConfig) return;
+
+  if (
+    modelConfig.providerName === ServiceProvider.XAI &&
+    RETIRED_XAI_MODELS.includes(modelConfig.model ?? "")
+  ) {
+    modelConfig.model = RETIRED_XAI_MODEL_REPLACEMENT;
+  }
+
+  if (
+    modelConfig.compressProviderName === ServiceProvider.XAI &&
+    RETIRED_XAI_MODELS.includes(modelConfig.compressModel ?? "")
+  ) {
+    modelConfig.compressModel = RETIRED_XAI_MODEL_REPLACEMENT;
+  }
 }
