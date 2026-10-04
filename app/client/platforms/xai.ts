@@ -401,7 +401,7 @@ function supportsConfigurableXAIReasoning(model: string) {
   );
 }
 
-function resolveXAIReasoningEffort(
+export function resolveXAIReasoningEffort(
   model: string,
   reasoningEffort?:
     | "auto"

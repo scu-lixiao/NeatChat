@@ -336,6 +336,7 @@ export const KnowledgeCutOffDate: Record<string, string> = {
   "gpt-6-sol": "2026-04",
   "gpt-6-luna": "2026-05",
   "grok-4.7": "2026-05",
+  "grok-4.6": "2026-02",
   "grok-4.5": "2026-02",
   "gpt-4-turbo": "2023-12",
   "gpt-4-turbo-2024-04-09": "2023-12",
