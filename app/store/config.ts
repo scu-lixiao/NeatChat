@@ -20,6 +20,7 @@ import {
   DEFAULT_TTS_MODELS,
   DEFAULT_TTS_VOICE,
   DEFAULT_TTS_VOICES,
+  RETIRED_XAI_MODELS,
   StoreKey,
   ServiceProvider,
 } from "../constant";
@@ -589,7 +590,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.1,
+    version: 4.2,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -647,6 +648,15 @@ export const useAppConfig = createPersistStore(
           DEFAULT_CONFIG.modelConfig.compressModel;
         state.modelConfig.compressProviderName =
           DEFAULT_CONFIG.modelConfig.compressProviderName;
+      }
+
+      if (version < 4.2) {
+        // merge() keeps persisted models missing from DEFAULT_MODELS, so
+        // retired models must be pruned here to leave the model list.
+        state.models = (state.models ?? []).filter(
+          (m) =>
+            !(m.provider?.id === "xai" && RETIRED_XAI_MODELS.includes(m.name)),
+        );
       }
 
       return state as any;

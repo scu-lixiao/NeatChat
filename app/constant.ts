@@ -418,7 +418,6 @@ export const VISION_MODEL_REGEXES = [
   /^gpt-image-2\.5-sunburst$/,
   /^gpt-image-2\.5-flare$/,
   /grok-4/,
-  /grok-4-1/,
   /^grok-imagine-image$/,
   /^grok-imagine-image-2\.0$/,
   /^deepseek-flash$/,
@@ -492,9 +491,16 @@ const deepseekModels = [
 const xAIModes = [
   "grok-4.7",
   "grok-4.6",
-  "grok-4-0709",
   "grok-4.3",
   "grok-4.5",
+  "grok-4.20-multi-agent-0309",
+  ...XAI_IMAGE_MODELS,
+];
+
+// No longer offered by xAI (most were retired on 2026-05-15). The config store
+// migration prunes these from persisted model lists.
+export const RETIRED_XAI_MODELS = [
+  "grok-4-0709",
   "grok-3-latest",
   "grok-3-fast-latest",
   "grok-3-mini-latest",
@@ -503,8 +509,6 @@ const xAIModes = [
   "grok-4-fast-non-reasoning-latest",
   "grok-4-1-fast-reasoning",
   "grok-4-1-fast-non-reasoning",
-  "grok-4.20-multi-agent-0309",
-  ...XAI_IMAGE_MODELS,
 ];
 
 const chatglmModels = [

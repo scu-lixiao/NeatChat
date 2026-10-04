@@ -1,10 +1,12 @@
 import {
   DEFAULT_MODELS,
   KnowledgeCutOffDate,
+  RETIRED_XAI_MODELS,
   XAI_IMAGE_MODELS,
 } from "../../constant";
 import { isVisionModel, isXAIImageModel } from "../../utils";
 import { resolveXAIReasoningEffort } from "../../client/platforms/xai";
+import { useAppConfig } from "../../store/config";
 
 describe("xAI model registry", () => {
   test("registers Grok 4.5 with its current knowledge cutoff", () => {
@@ -78,5 +80,52 @@ describe("xAI reasoning effort resolution", () => {
   test("does not send reasoning effort for non-configurable models", () => {
     expect(resolveXAIReasoningEffort("grok-4.3", "high")).toBeUndefined();
     expect(resolveXAIReasoningEffort("grok-4-0709", "xhigh")).toBeUndefined();
+  });
+});
+
+describe("retired xAI models", () => {
+  const xaiProvider = {
+    id: "xai",
+    providerName: "XAI",
+    providerType: "xai",
+    sorted: 11,
+  };
+
+  test("are not registered as built-in models", () => {
+    const xaiModelNames = DEFAULT_MODELS.filter(
+      (m) => m.provider.id === "xai",
+    ).map((m) => m.name);
+
+    for (const name of RETIRED_XAI_MODELS) {
+      expect(xaiModelNames).not.toContain(name);
+    }
+    expect(xaiModelNames).toEqual(
+      expect.arrayContaining(["grok-4.3", "grok-4.20-multi-agent-0309"]),
+    );
+  });
+
+  test("are pruned from persisted model lists on migration", () => {
+    const persisted = {
+      models: [
+        { name: "grok-3-latest", available: true, provider: xaiProvider },
+        { name: "grok-4-0709", available: true, provider: xaiProvider },
+        { name: "grok-4.7", available: true, provider: xaiProvider },
+        {
+          name: "grok-3-latest",
+          available: true,
+          provider: { id: "openai", providerName: "OpenAI" },
+        },
+      ],
+    };
+
+    const migrated = useAppConfig.persist.getOptions().migrate!(
+      persisted,
+      4.1,
+    ) as typeof persisted;
+
+    expect(migrated.models.map((m) => `${m.name}@${m.provider.id}`)).toEqual([
+      "grok-4.7@xai",
+      "grok-3-latest@openai",
+    ]);
   });
 });
