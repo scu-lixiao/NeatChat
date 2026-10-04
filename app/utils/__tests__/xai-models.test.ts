@@ -14,7 +14,7 @@ describe("xAI model registry", () => {
         provider: expect.objectContaining({ providerType: "xai" }),
       }),
     );
-    expect(KnowledgeCutOffDate["grok-4.5"]).toBe("2026-02");
+    expect(KnowledgeCutOffDate["grok-4.5"]).toBe("2026-01");
   });
 
   test.each(["grok-4.6", "grok-4.7"])(
@@ -37,7 +37,7 @@ describe("xAI model registry", () => {
   });
 
   test("registers Grok 4.6 with its knowledge cutoff", () => {
-    expect(KnowledgeCutOffDate["grok-4.6"]).toBe("2026-02");
+    expect(KnowledgeCutOffDate["grok-4.6"]).toBe("2026-01");
   });
 
   test.each(["grok-4.6", "grok-4.7"])(
