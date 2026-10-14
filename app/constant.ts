@@ -409,6 +409,7 @@ export const VISION_MODEL_REGEXES = [
   /o3/,
   /o4-mini/,
   /gemini-3/,
+  /gemini-4/,
   /gpt-5/,
   /gpt-5\.1/,
   /gpt-5\.2/,
@@ -429,6 +430,7 @@ const openaiModels = [...OPENAI_REASONING_MODELS, ...OPENAI_IMAGE_MODELS];
 const azureModels = OPENAI_REASONING_MODELS;
 
 const googleModels = [
+  "gemini-4-argon",
   "gemini-3.5-pro",
   "gemini-3.8-flash",
   "gemini-3.7-flash",

@@ -8,6 +8,7 @@ import {
   SpeechOptions,
 } from "../api";
 import {
+  DEFAULT_CONFIG,
   useAccessStore,
   useAppConfig,
   useChatStore,
@@ -34,6 +35,44 @@ import { preProcessImageContent } from "@/app/utils/chat";
 import { nanoid } from "nanoid";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
+
+const GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
+const GEMINI_4_ARGON_MAX_OUTPUT_TOKENS = 65536;
+
+// gemini-4-argon takes thinking_level low/medium/high (API default: medium);
+// the other Gemini 3.x thinking-level models always use "high".
+export function resolveGeminiThinkingLevel(
+  model: string,
+  reasoningEffort?: string,
+): "low" | "medium" | "high" | undefined {
+  if (model !== "gemini-4-argon") {
+    return "high";
+  }
+
+  if (
+    reasoningEffort === "low" ||
+    reasoningEffort === "medium" ||
+    reasoningEffort === "high"
+  ) {
+    return reasoningEffort;
+  }
+
+  return undefined;
+}
+
+// modelConfig.max_tokens has no "unset" state, so gemini-4-argon treats the
+// global default as unset and uses its own larger default instead.
+export function resolveGeminiMaxOutputTokens(model: string, maxTokens: number) {
+  if (model !== "gemini-4-argon") {
+    return maxTokens;
+  }
+
+  if (maxTokens === DEFAULT_CONFIG.modelConfig.max_tokens) {
+    return GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+
+  return Math.min(maxTokens, GEMINI_4_ARGON_MAX_OUTPUT_TOKENS);
+}
 
 export class GeminiProApi implements LLMApi {
   path(path: string, shouldStream = false): string {
@@ -462,7 +501,7 @@ export class GeminiProApi implements LLMApi {
     // }
 
     const accessStore = useAccessStore.getState();
-    const shouldOmitGemini3SamplingParams = /^gemini-3(?:[.-]|$)/.test(
+    const shouldOmitGemini3SamplingParams = /^gemini-[34](?:[.-]|$)/.test(
       modelConfig.model,
     );
 
@@ -484,7 +523,10 @@ export class GeminiProApi implements LLMApi {
       }),
       contents: messages,
       generationConfig: {
-        maxOutputTokens: modelConfig.max_tokens,
+        maxOutputTokens: resolveGeminiMaxOutputTokens(
+          modelConfig.model,
+          modelConfig.max_tokens,
+        ),
         ...(!shouldOmitGemini3SamplingParams && {
           temperature: modelConfig.temperature,
           topP: modelConfig.top_p,
@@ -528,7 +570,8 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.5-pro" ||
       modelConfig.model === "gemini-3.7-flash" ||
       modelConfig.model === "gemini-3.8-flash" ||
-      modelConfig.model === "gemini-3.6-flash"
+      modelConfig.model === "gemini-3.6-flash" ||
+      modelConfig.model === "gemini-4-argon"
     ) {
       // {{CHENGQI:
       // Action: Fixed - 修复 code_execution 不触发的问题
@@ -574,11 +617,16 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.5-pro" ||
       modelConfig.model === "gemini-3.7-flash" ||
       modelConfig.model === "gemini-3.8-flash" ||
-      modelConfig.model === "gemini-3.6-flash"
+      modelConfig.model === "gemini-3.6-flash" ||
+      modelConfig.model === "gemini-4-argon"
     ) {
+      const thinkingLevel = resolveGeminiThinkingLevel(
+        modelConfig.model,
+        modelConfig.reasoningEffort,
+      );
       (requestPayload as any).generationConfig.thinkingConfig = {
         includeThoughts: true,
-        thinking_level: "high",
+        ...(thinkingLevel && { thinking_level: thinkingLevel }),
       };
     }
 
@@ -601,7 +649,8 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.5-pro" ||
       modelConfig.model === "gemini-3.7-flash" ||
       modelConfig.model === "gemini-3.8-flash" ||
-      modelConfig.model === "gemini-3.6-flash"
+      modelConfig.model === "gemini-3.6-flash" ||
+      modelConfig.model === "gemini-4-argon"
     ) {
       (requestPayload as any).generationConfig = {
         ...(requestPayload as any).generationConfig, // 保留现有配置

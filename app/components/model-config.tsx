@@ -46,6 +46,9 @@ export function ModelConfigList(props: {
   const isDeepSeekConfigurableReasoningModel =
     props.modelConfig.providerName === ServiceProvider.DeepSeek &&
     supportsDeepSeekReasoningEffort(currentModel);
+  const isGeminiConfigurableThinkingModel =
+    props.modelConfig.providerName === ServiceProvider.Google &&
+    currentModel === "gemini-4-argon";
   const isXAIImageModelSelected =
     isXAIProvider && isXAIImageModel(currentModel);
   const isXaiMultiAgentModel =
@@ -241,6 +244,12 @@ export function ModelConfigList(props: {
     currentReasoningEffort === "high" ||
     (currentReasoningEffort === "xhigh" &&
       (isXaiGrok46Or47Model || isXaiMultiAgentModel))
+      ? currentReasoningEffort
+      : "auto";
+  const normalizedGeminiReasoningEffort =
+    currentReasoningEffort === "low" ||
+    currentReasoningEffort === "medium" ||
+    currentReasoningEffort === "high"
       ? currentReasoningEffort
       : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
@@ -531,13 +540,15 @@ export function ModelConfigList(props: {
       {(isGpt5ReasoningModel ||
         isAnthropicReasoningModel ||
         isXaiConfigurableReasoningModel ||
-        isDeepSeekConfigurableReasoningModel) &&
+        isDeepSeekConfigurableReasoningModel ||
+        isGeminiConfigurableThinkingModel) &&
         (() => {
           const model = currentModel;
           const isGPT5Pro = model === "gpt-5.4-pro" || model === "gpt-5.5-pro";
           const supportsNone = isDeepSeekConfigurableReasoningModel
             ? true
-            : isXaiConfigurableReasoningModel
+            : isXaiConfigurableReasoningModel ||
+              isGeminiConfigurableThinkingModel
             ? false
             : isGpt5ReasoningModel
             ? !isGPT5Pro && !isGpt6Astra
@@ -563,6 +574,8 @@ export function ModelConfigList(props: {
             ? normalizedDeepSeekReasoningEffort
             : isXaiConfigurableReasoningModel
             ? normalizedXaiReasoningEffort
+            : isGeminiConfigurableThinkingModel
+            ? normalizedGeminiReasoningEffort
             : isAnthropicAlwaysOnThinkingModel &&
               currentReasoningEffort === "none"
             ? "auto"
