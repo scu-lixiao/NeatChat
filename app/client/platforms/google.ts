@@ -35,6 +35,35 @@ import { nanoid } from "nanoid";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
 
+const GEMINI_4_ARGON_MAX_OUTPUT_TOKENS = 65536;
+
+// gemini-4-argon takes thinking_level low/medium/high (API default: medium);
+// the other Gemini 3.x thinking-level models always use "high".
+export function resolveGeminiThinkingLevel(
+  model: string,
+  reasoningEffort?: string,
+): "low" | "medium" | "high" | undefined {
+  if (model !== "gemini-4-argon") {
+    return "high";
+  }
+
+  if (
+    reasoningEffort === "low" ||
+    reasoningEffort === "medium" ||
+    reasoningEffort === "high"
+  ) {
+    return reasoningEffort;
+  }
+
+  return undefined;
+}
+
+export function resolveGeminiMaxOutputTokens(model: string, maxTokens: number) {
+  return model === "gemini-4-argon"
+    ? Math.min(maxTokens, GEMINI_4_ARGON_MAX_OUTPUT_TOKENS)
+    : maxTokens;
+}
+
 export class GeminiProApi implements LLMApi {
   path(path: string, shouldStream = false): string {
     const accessStore = useAccessStore.getState();
@@ -484,7 +513,10 @@ export class GeminiProApi implements LLMApi {
       }),
       contents: messages,
       generationConfig: {
-        maxOutputTokens: modelConfig.max_tokens,
+        maxOutputTokens: resolveGeminiMaxOutputTokens(
+          modelConfig.model,
+          modelConfig.max_tokens,
+        ),
         ...(!shouldOmitGemini3SamplingParams && {
           temperature: modelConfig.temperature,
           topP: modelConfig.top_p,
@@ -578,9 +610,13 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.6-flash" ||
       modelConfig.model === "gemini-4-argon"
     ) {
+      const thinkingLevel = resolveGeminiThinkingLevel(
+        modelConfig.model,
+        modelConfig.reasoningEffort,
+      );
       (requestPayload as any).generationConfig.thinkingConfig = {
         includeThoughts: true,
-        thinking_level: "high",
+        ...(thinkingLevel && { thinking_level: thinkingLevel }),
       };
     }
 

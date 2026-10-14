@@ -1,18 +1,54 @@
 import { jest } from "@jest/globals";
 import { DEFAULT_MODELS, KnowledgeCutOffDate } from "../../constant";
 import { isVisionModel } from "../../utils";
-import { GeminiProApi } from "../../client/platforms/google";
+import {
+  GeminiProApi,
+  resolveGeminiMaxOutputTokens,
+  resolveGeminiThinkingLevel,
+} from "../../client/platforms/google";
+import { useChatStore } from "../../store/chat";
+import type { ModelConfig } from "../../store/config";
 
-async function captureGeminiPayload(model: string) {
+const GEMINI_3_THINKING_LEVEL_MODELS = [
+  "gemini-3-pro-preview",
+  "gemini-3-flash-preview",
+  "gemini-3.1-pro-preview",
+  "gemini-3.5-pro",
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+  "gemini-3.8-flash",
+];
+
+async function captureGeminiPayload(
+  model: string,
+  modelConfig: Partial<ModelConfig> = {},
+) {
   const fetchMock = global.fetch as jest.Mock;
   fetchMock.mockClear();
 
-  await new GeminiProApi().chat({
-    messages: [{ role: "user", content: "hello" }],
-    config: { model, stream: false },
-    onFinish: () => {},
-    onError: () => {},
-  } as any);
+  // GeminiProApi reads the current session's mask config; override it there
+  // without writing to the persisted chat store.
+  const chatState = useChatStore.getState();
+  const session = chatState.currentSession();
+  const currentSession = jest.spyOn(chatState, "currentSession");
+  currentSession.mockReturnValue({
+    ...session,
+    mask: {
+      ...session.mask,
+      modelConfig: { ...session.mask.modelConfig, ...modelConfig },
+    },
+  });
+
+  try {
+    await new GeminiProApi().chat({
+      messages: [{ role: "user", content: "hello" }],
+      config: { model, stream: false },
+      onFinish: () => {},
+      onError: () => {},
+    } as any);
+  } finally {
+    currentSession.mockRestore();
+  }
 
   const chatCall = fetchMock.mock.calls.find(([, init]) =>
     String((init as RequestInit | undefined)?.body ?? "").includes(
@@ -45,25 +81,122 @@ describe("Google model registry", () => {
   });
 });
 
+describe("Gemini thinking level", () => {
+  test.each(["low", "medium", "high"] as const)(
+    "passes %s through for gemini-4-argon",
+    (effort) => {
+      expect(resolveGeminiThinkingLevel("gemini-4-argon", effort)).toBe(effort);
+    },
+  );
+
+  test("leaves unsupported efforts on gemini-4-argon to the API default", () => {
+    for (const effort of ["auto", "none", "minimal", "xhigh", "max"]) {
+      expect(
+        resolveGeminiThinkingLevel("gemini-4-argon", effort),
+      ).toBeUndefined();
+    }
+    expect(resolveGeminiThinkingLevel("gemini-4-argon")).toBeUndefined();
+  });
+
+  test.each(GEMINI_3_THINKING_LEVEL_MODELS)(
+    "keeps high thinking level for %s",
+    (model) => {
+      expect(resolveGeminiThinkingLevel(model, "low")).toBe("high");
+      expect(resolveGeminiThinkingLevel(model, "auto")).toBe("high");
+    },
+  );
+});
+
+describe("Gemini max output tokens", () => {
+  test("clamps gemini-4-argon to 65536 output tokens", () => {
+    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 128000)).toBe(65536);
+    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 65536)).toBe(65536);
+    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 32768)).toBe(32768);
+  });
+
+  test("does not clamp other Gemini models", () => {
+    expect(resolveGeminiMaxOutputTokens("gemini-3.5-pro", 128000)).toBe(128000);
+  });
+});
+
 describe("Gemini request payload", () => {
-  test("shapes gemini-4-argon generationConfig and tools like gemini-3.5-pro", async () => {
+  test("shapes gemini-4-argon tools and media resolution like gemini-3.5-pro", async () => {
     const argon = await captureGeminiPayload("gemini-4-argon");
     const reference = await captureGeminiPayload("gemini-3.5-pro");
 
-    expect(argon.generationConfig).toEqual(reference.generationConfig);
     expect(argon.tools).toEqual(reference.tools);
+    expect(argon.generationConfig.media_resolution).toBe(
+      reference.generationConfig.media_resolution,
+    );
+    expect(argon.generationConfig.media_resolution).toBe(
+      "MEDIA_RESOLUTION_HIGH",
+    );
   });
 
-  test("omits sampling params and uses high thinking level for gemini-4-argon", async () => {
-    const { generationConfig } = await captureGeminiPayload("gemini-4-argon");
+  test.each(["low", "medium", "high"] as const)(
+    "sends thinking_level %s for gemini-4-argon",
+    async (effort) => {
+      const { generationConfig } = await captureGeminiPayload(
+        "gemini-4-argon",
+        { reasoningEffort: effort },
+      );
+
+      expect(generationConfig.thinkingConfig).toEqual({
+        includeThoughts: true,
+        thinking_level: effort,
+      });
+    },
+  );
+
+  test.each(["auto", "xhigh", "none"] as const)(
+    "omits thinking_level for gemini-4-argon when effort is %s",
+    async (effort) => {
+      const { generationConfig } = await captureGeminiPayload(
+        "gemini-4-argon",
+        { reasoningEffort: effort },
+      );
+
+      expect(generationConfig.thinkingConfig).toEqual({
+        includeThoughts: true,
+      });
+    },
+  );
+
+  test.each(GEMINI_3_THINKING_LEVEL_MODELS)(
+    "keeps thinking_level high for %s regardless of effort",
+    async (model) => {
+      const { generationConfig } = await captureGeminiPayload(model, {
+        reasoningEffort: "low",
+      });
+
+      expect(generationConfig.thinkingConfig).toEqual({
+        includeThoughts: true,
+        thinking_level: "high",
+      });
+    },
+  );
+
+  test("clamps maxOutputTokens for gemini-4-argon only", async () => {
+    const argon = await captureGeminiPayload("gemini-4-argon", {
+      max_tokens: 128000,
+    });
+    const reference = await captureGeminiPayload("gemini-3.5-pro", {
+      max_tokens: 128000,
+    });
+
+    expect(argon.generationConfig.maxOutputTokens).toBe(65536);
+    expect(reference.generationConfig.maxOutputTokens).toBe(128000);
+  });
+
+  test("omits sampling params for gemini-4-argon", async () => {
+    const { generationConfig } = await captureGeminiPayload("gemini-4-argon", {
+      temperature: 0.2,
+      top_p: 0.8,
+    });
 
     expect(generationConfig).not.toHaveProperty("temperature");
     expect(generationConfig).not.toHaveProperty("topP");
-    expect(generationConfig.thinkingConfig).toEqual({
-      includeThoughts: true,
-      thinking_level: "high",
-    });
-    expect(generationConfig.media_resolution).toBe("MEDIA_RESOLUTION_HIGH");
+    expect(generationConfig).not.toHaveProperty("topK");
   });
 
   test("keeps sampling params for gemini-2.5-pro", async () => {
