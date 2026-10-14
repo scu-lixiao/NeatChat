@@ -8,6 +8,7 @@ import {
   SpeechOptions,
 } from "../api";
 import {
+  DEFAULT_CONFIG,
   useAccessStore,
   useAppConfig,
   useChatStore,
@@ -35,6 +36,7 @@ import { nanoid } from "nanoid";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
 
+const GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
 const GEMINI_4_ARGON_MAX_OUTPUT_TOKENS = 65536;
 
 // gemini-4-argon takes thinking_level low/medium/high (API default: medium);
@@ -58,10 +60,18 @@ export function resolveGeminiThinkingLevel(
   return undefined;
 }
 
+// modelConfig.max_tokens has no "unset" state, so gemini-4-argon treats the
+// global default as unset and uses its own larger default instead.
 export function resolveGeminiMaxOutputTokens(model: string, maxTokens: number) {
-  return model === "gemini-4-argon"
-    ? Math.min(maxTokens, GEMINI_4_ARGON_MAX_OUTPUT_TOKENS)
-    : maxTokens;
+  if (model !== "gemini-4-argon") {
+    return maxTokens;
+  }
+
+  if (maxTokens === DEFAULT_CONFIG.modelConfig.max_tokens) {
+    return GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS;
+  }
+
+  return Math.min(maxTokens, GEMINI_4_ARGON_MAX_OUTPUT_TOKENS);
 }
 
 export class GeminiProApi implements LLMApi {

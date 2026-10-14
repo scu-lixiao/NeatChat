@@ -7,7 +7,9 @@ import {
   resolveGeminiThinkingLevel,
 } from "../../client/platforms/google";
 import { useChatStore } from "../../store/chat";
-import type { ModelConfig } from "../../store/config";
+import { DEFAULT_CONFIG, type ModelConfig } from "../../store/config";
+
+const GLOBAL_DEFAULT_MAX_TOKENS = DEFAULT_CONFIG.modelConfig.max_tokens;
 
 const GEMINI_3_THINKING_LEVEL_MODELS = [
   "gemini-3-pro-preview",
@@ -117,6 +119,32 @@ describe("Gemini max output tokens", () => {
   test("does not clamp other Gemini models", () => {
     expect(resolveGeminiMaxOutputTokens("gemini-3.5-pro", 128000)).toBe(128000);
   });
+
+  test("uses 32768 for gemini-4-argon when max_tokens is the global default", () => {
+    expect(
+      resolveGeminiMaxOutputTokens("gemini-4-argon", GLOBAL_DEFAULT_MAX_TOKENS),
+    ).toBe(32768);
+  });
+
+  test("respects user-set max_tokens for gemini-4-argon", () => {
+    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 1024)).toBe(1024);
+    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 8192)).toBe(8192);
+    expect(
+      resolveGeminiMaxOutputTokens(
+        "gemini-4-argon",
+        GLOBAL_DEFAULT_MAX_TOKENS + 1,
+      ),
+    ).toBe(GLOBAL_DEFAULT_MAX_TOKENS + 1);
+  });
+
+  test.each(["gemini-2.5-pro", ...GEMINI_3_THINKING_LEVEL_MODELS])(
+    "keeps the global default max_tokens for %s",
+    (model) => {
+      expect(
+        resolveGeminiMaxOutputTokens(model, GLOBAL_DEFAULT_MAX_TOKENS),
+      ).toBe(GLOBAL_DEFAULT_MAX_TOKENS);
+    },
+  );
 });
 
 describe("Gemini request payload", () => {
@@ -186,6 +214,28 @@ describe("Gemini request payload", () => {
 
     expect(argon.generationConfig.maxOutputTokens).toBe(65536);
     expect(reference.generationConfig.maxOutputTokens).toBe(128000);
+  });
+
+  test("defaults maxOutputTokens to 32768 for gemini-4-argon only", async () => {
+    const argon = await captureGeminiPayload("gemini-4-argon", {
+      max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
+    });
+    const reference = await captureGeminiPayload("gemini-3.5-pro", {
+      max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
+    });
+
+    expect(argon.generationConfig.maxOutputTokens).toBe(32768);
+    expect(reference.generationConfig.maxOutputTokens).toBe(
+      GLOBAL_DEFAULT_MAX_TOKENS,
+    );
+  });
+
+  test("sends user-set maxOutputTokens for gemini-4-argon", async () => {
+    const { generationConfig } = await captureGeminiPayload("gemini-4-argon", {
+      max_tokens: 16384,
+    });
+
+    expect(generationConfig.maxOutputTokens).toBe(16384);
   });
 
   test("omits sampling params for gemini-4-argon", async () => {
