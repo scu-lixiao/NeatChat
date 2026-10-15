@@ -210,14 +210,6 @@ const en: LocaleType = {
         "Font Family of the chat content, leave empty to apply global default font",
       Placeholder: "Font Family Name",
     },
-    WebGPUAcceleration: {
-      Title: "GPU Acceleration (M4)",
-      SubTitle: "WebGPU hardware acceleration for M4 iPad Pro",
-      Auto: "Auto (Recommended)",
-      ForceWebGPU: "Force WebGPU",
-      ForceCSS: "Use CSS (Power Saving)",
-      Off: "Disable Effects",
-    },
     InjectSystemPrompts: {
       Title: "Inject System Prompts",
       SubTitle: "Inject a global system prompt for every request",

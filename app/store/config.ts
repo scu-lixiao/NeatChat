@@ -278,9 +278,6 @@ export const DEFAULT_CONFIG = {
   // Documentation_Note (DW): 隐藏模型按服务提供商分组存储
   // }}
   hiddenModelsByProvider: {} as HiddenModelsByProvider,
-
-  // WebGPU加速配置 (Task 6 - M4 iPad Pro优化)
-  webgpuAcceleration: "auto" as "auto" | "force-webgpu" | "force-css" | "off",
 };
 
 export type ChatConfig = typeof DEFAULT_CONFIG;
@@ -620,7 +617,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.6,
+    version: 4.7,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -705,6 +702,11 @@ export const useAppConfig = createPersistStore(
       // append-only history is opt-in; existing users stay on the window.
       if (version < 4.6 && state.modelConfig) {
         state.modelConfig.historyStrategy ??= "window";
+      }
+
+      if (version < 4.7) {
+        // the WebGPU acceleration setting was removed; merge() would keep it
+        delete (state as { webgpuAcceleration?: unknown }).webgpuAcceleration;
       }
 
       return state as any;

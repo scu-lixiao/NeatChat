@@ -16,7 +16,6 @@ export interface IPadOSDeviceInfo {
   model: "ipad" | "ipad-pro" | "ipad-mini" | "ipad-air" | "unknown";
   chipset: "a-series" | "m1" | "m2" | "m3" | "m4" | "unknown";
   metalVersion: number; // 1-4
-  supportsWebGPU: boolean;
   screenSize: {
     width: number;
     height: number;
@@ -254,26 +253,6 @@ export function detectMetalVersion(
 }
 
 /**
- * Check WebGPU support
- */
-export async function checkWebGPUSupport(): Promise<boolean> {
-  if (!("gpu" in navigator) || !navigator.gpu) {
-    return false;
-  }
-
-  try {
-    const adapter = await navigator.gpu.requestAdapter({
-      powerPreference: "low-power", // mobile-friendly
-    });
-
-    return adapter !== null;
-  } catch (e) {
-    console.warn("WebGPU check failed:", e);
-    return false;
-  }
-}
-
-/**
  * Calculate performance class
  */
 export function calculatePerformanceClass(
@@ -309,7 +288,6 @@ export async function getIPadOSDeviceInfo(): Promise<IPadOSDeviceInfo> {
   const model = detectIPadModel();
   const chipset = detectChipset();
   const metalVersion = detectMetalVersion(version, chipset);
-  const supportsWebGPU = await checkWebGPUSupport();
   const performanceClass = calculatePerformanceClass(chipset, metalVersion);
 
   return {
@@ -319,7 +297,6 @@ export async function getIPadOSDeviceInfo(): Promise<IPadOSDeviceInfo> {
     model,
     chipset,
     metalVersion,
-    supportsWebGPU,
     screenSize: {
       width: screen.width,
       height: screen.height,
@@ -345,7 +322,6 @@ export async function logDeviceInfo(): Promise<void> {
   );
   console.log("Chipset:", info.chipset);
   console.log("Metal:", `v${info.metalVersion}`);
-  console.log("WebGPU:", info.supportsWebGPU ? "✅" : "❌");
   console.log("Performance:", info.performanceClass);
   console.log(
     "Screen:",

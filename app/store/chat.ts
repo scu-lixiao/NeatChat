@@ -5,7 +5,7 @@ import {
   trimTopic,
 } from "../utils";
 
-import { indexedDBStorage } from "@/app/utils/indexedDB-storage";
+import { indexedDBStorage, pausePersist } from "@/app/utils/indexedDB-storage";
 import { nanoid } from "nanoid";
 import { shallow } from "zustand/shallow";
 import type {
@@ -663,189 +663,215 @@ export const useChatStore = createPersistStore(
         const scheduleStreamingUpdate = createFrameThrottle(notifyStreaming, {
           minIntervalMs: STREAMING_UPDATE_THROTTLE_MS,
         });
+        // Each chat store write serializes every session, so hold them back
+        // until the reply is complete (see pausePersist). The new messages
+        // saved above are still written on the normal schedule.
+        const resumePersist = pausePersist(StoreKey.Chat);
 
         const api: ClientApi = getClientApi(modelConfig.providerName);
         // make request
-        api.llm.chat({
-          messages: sendMessages,
-          config: { ...modelConfig, stream: true },
-          // 传递 previous_response_id 用于 OpenAI Responses API 多轮对话
-          previousOpenAIResponseId,
-          // 传递 previous_response_id 用于 xAI Responses API 多轮对话
-          previousXAIResponseId,
-          // 用于生成 OpenAI/xAI 的 prompt_cache_key
-          sessionId: session.id,
-          onUpdate(message) {
-            botMessage.streaming = true;
-            if (
-              (typeof message === "string" && message.length > 0) ||
-              (Array.isArray(message) && message.length > 0)
-            ) {
-              botMessage.content = mergeStreamingMessageContent(
-                botMessage.content,
-                message,
-              );
-            }
-
-            scheduleStreamingUpdate();
-          },
-          // {{CHENGQI:
-          // Action: Enhanced - 思考内容更新回调 (添加节流)
-          // Timestamp: 2025-11-21 Claude 4.5 sonnet
-          // Reason: P1-LD-005任务 - 在onUserInput中集成思考内容回调
-          // Bug_Fixed: 添加节流机制,避免移动端崩溃
-          // Principle_Applied: SOLID - 单一职责的思考内容管理
-          // Optimization: 思考内容与主内容分离，独立更新botMessage,节流减少状态更新
-          // Architectural_Note (AR): 思考内容存储在ChatMessage.thinkingContent字段
-          // Documentation_Note (DW): 思考内容通过独立回调实时更新，不影响主内容流
-          // }}
-          onThinkingUpdate(thinkingContent) {
-            if (thinkingContent) {
-              botMessage.thinkingContent = thinkingContent;
-            }
-
-            scheduleStreamingUpdate();
-          },
-          // {{CHENGQI:
-          // Action: Added - Citations回调处理
-          // Timestamp: 2025-01-02 16:25:00 +08:00
-          // Reason: 在onUserInput中添加onCitations回调，将引用来源存储到botMessage
-          // Principle_Applied: SOLID - 单一职责的citations数据管理
-          // Optimization: Citations数据在响应完成时一次性存储
-          // Architectural_Note (AR): Citations数据与现有消息系统集成
-          // Documentation_Note (DW): Citations数据通过回调存储到ChatMessage.citations字段
-          // }}
-          onCitations(citations) {
-            if (citations && citations.length > 0) {
-              botMessage.citations = citations;
-              commitBotMessage();
-            }
-          },
-          // {{CHENGQI:
-          // Action: Added - Google Parts 回调处理
-          // Timestamp: 2025-11-28 Claude Opus 4.5
-          // Reason: 支持 Google Gemini API 的 thoughtSignature 多轮对话功能
-          // Reference: https://ai.google.dev/gemini-api/docs/thought-signatures
-          // Principle_Applied: 将 thoughtSignature 存储到消息中，用于后续对话
-          // Architectural_Note (AR):
-          //   - googleParts 包含 thoughtSignature 和相关元数据
-          //   - 用于图片生成/编辑的多轮对话中保持签名
-          // Documentation_Note (DW): Google Parts 通过回调存储到 ChatMessage.googleParts 字段
-          // }}
-          onGoogleParts(parts) {
-            if (parts && parts.length > 0) {
-              botMessage.googleParts = parts;
-              if (process.env.NODE_ENV === "development") {
-                console.log("[Google ThoughtSignature] Saved to botMessage:", {
-                  partsCount: parts.length,
-                  signatures: parts.map((p) =>
-                    p.thoughtSignature ? "yes" : "no",
-                  ),
-                });
+        api.llm
+          .chat({
+            messages: sendMessages,
+            config: { ...modelConfig, stream: true },
+            // 传递 previous_response_id 用于 OpenAI Responses API 多轮对话
+            previousOpenAIResponseId,
+            // 传递 previous_response_id 用于 xAI Responses API 多轮对话
+            previousXAIResponseId,
+            // 用于生成 OpenAI/xAI 的 prompt_cache_key
+            sessionId: session.id,
+            onUpdate(message) {
+              botMessage.streaming = true;
+              if (
+                (typeof message === "string" && message.length > 0) ||
+                (Array.isArray(message) && message.length > 0)
+              ) {
+                botMessage.content = mergeStreamingMessageContent(
+                  botMessage.content,
+                  message,
+                );
               }
-              commitBotMessage();
-            }
-          },
-          async onFinish(message, _responseRes, usage) {
-            botMessage.streaming = false;
-            // Covers stop/abort too: aborting the controller ends in onFinish.
-            // Removed before the update below so that components re-checking
-            // ChatControllerPool.hasPending() on it see the request gone.
-            ChatControllerPool.remove(session.id, botMessage.id);
-            // The regular update below supersedes any pending streaming flush
-            scheduleStreamingUpdate.cancel();
-            if (usage) {
-              botMessage.usage = usage;
-              const session_ = get().sessions.find((s) => s.id === session.id);
-              if (session_)
-                session_.stat = addUsageToStat(session_.stat, usage);
-            }
-            if (message) {
-              botMessage.content = message;
-              botMessage.date = new Date().toLocaleString();
-            }
-            // {{CHENGQI:
-            // Action: Fixed - iPad M3 思考内容和引用显示bug
-            // Timestamp: 2025-11-24 Claude 4.5 sonnet
-            // Reason: 节流机制可能导致最后一次thinkingContent/citations更新被吞掉，iPad Safari严格要求React状态同步
-            // Bug_Fixed: onFinish时强制触发一次状态更新，确保所有内容都被渲染
-            // Principle_Applied: KISS - 在流式结束时确保最终状态正确
-            // Optimization: 避免iPad Safari渲染引擎的严格限制
-            // Architectural_Note (AR): iPad Safari对React状态更新要求比macOS Safari更严格
-            // Documentation_Note (DW): 修复iPad M3下ThinkingWindow和Citations不显示的bug
-            // }}
-            // 强制触发一次状态更新，确保思考内容和引用被正确渲染（特别是iPad Safari）
-            // A regular update, also without a final message: it is what
-            // re-renders the page and sidebar once the stream ends.
-            commitBotMessage();
-            if (message) {
-              get().onNewMessage(botMessage, session);
-            }
-          },
-          // {{CHENGQI:
-          // Action: Added - OpenAI Response ID 回调处理
-          // Timestamp: 2025-12-21 Claude Opus 4.5
-          // Reason: 存储 OpenAI Responses API 返回的 response id，用于多轮对话
-          // Reference: https://platform.openai.com/docs/api-reference/responses
-          // Architectural_Note (AR): 将 response id 存储到 botMessage，用于下次请求
-          // }}
-          onOpenAIResponseId(responseId: string) {
-            if (responseId) {
-              botMessage.openaiResponseId = responseId;
-              // 触发状态更新以保存 response id
-              commitBotMessage();
-            }
-          },
-          onXAIResponseId(responseId: string) {
-            if (responseId) {
-              botMessage.xaiResponseId = responseId;
-              commitBotMessage();
-            }
-          },
-          // Tools get a new array on each change (not edited in place) so the
-          // rendered message can tell that they changed
-          onBeforeTool(tool: ChatMessageTool) {
-            botMessage.tools = [...(botMessage.tools ?? []), tool];
-            commitBotMessage();
-          },
-          onAfterTool(tool: ChatMessageTool) {
-            botMessage.tools = botMessage.tools?.map((t) =>
-              tool.id == t.id ? { ...tool } : t,
-            );
-            commitBotMessage();
-          },
-          onError(error) {
-            const isAborted = error.message?.includes?.("aborted");
-            botMessage.content +=
-              "\n\n" +
-              prettyObject({
-                error: true,
-                message: error.message,
-              });
-            botMessage.streaming = false;
-            userMessage.isError = !isAborted;
-            botMessage.isError = !isAborted;
-            // Same order as onFinish: remove, then one regular update
-            ChatControllerPool.remove(
-              session.id,
-              botMessage.id ?? messageIndex,
-            );
-            scheduleStreamingUpdate.cancel();
-            commitBotMessage();
 
-            console.error("[Chat] failed ", error);
-          },
-          onController(controller) {
-            // collect controller for stop/retry
-            ChatControllerPool.addController(
-              session.id,
-              botMessage.id ?? messageIndex,
-              controller,
-            );
-            // Let stop buttons re-check ChatControllerPool.hasPending()
-            notifyStreaming();
-          },
-        });
+              scheduleStreamingUpdate();
+            },
+            // {{CHENGQI:
+            // Action: Enhanced - 思考内容更新回调 (添加节流)
+            // Timestamp: 2025-11-21 Claude 4.5 sonnet
+            // Reason: P1-LD-005任务 - 在onUserInput中集成思考内容回调
+            // Bug_Fixed: 添加节流机制,避免移动端崩溃
+            // Principle_Applied: SOLID - 单一职责的思考内容管理
+            // Optimization: 思考内容与主内容分离，独立更新botMessage,节流减少状态更新
+            // Architectural_Note (AR): 思考内容存储在ChatMessage.thinkingContent字段
+            // Documentation_Note (DW): 思考内容通过独立回调实时更新，不影响主内容流
+            // }}
+            onThinkingUpdate(thinkingContent) {
+              if (thinkingContent) {
+                botMessage.thinkingContent = thinkingContent;
+              }
+
+              scheduleStreamingUpdate();
+            },
+            // {{CHENGQI:
+            // Action: Added - Citations回调处理
+            // Timestamp: 2025-01-02 16:25:00 +08:00
+            // Reason: 在onUserInput中添加onCitations回调，将引用来源存储到botMessage
+            // Principle_Applied: SOLID - 单一职责的citations数据管理
+            // Optimization: Citations数据在响应完成时一次性存储
+            // Architectural_Note (AR): Citations数据与现有消息系统集成
+            // Documentation_Note (DW): Citations数据通过回调存储到ChatMessage.citations字段
+            // }}
+            onCitations(citations) {
+              if (citations && citations.length > 0) {
+                botMessage.citations = citations;
+                commitBotMessage();
+              }
+            },
+            // {{CHENGQI:
+            // Action: Added - Google Parts 回调处理
+            // Timestamp: 2025-11-28 Claude Opus 4.5
+            // Reason: 支持 Google Gemini API 的 thoughtSignature 多轮对话功能
+            // Reference: https://ai.google.dev/gemini-api/docs/thought-signatures
+            // Principle_Applied: 将 thoughtSignature 存储到消息中，用于后续对话
+            // Architectural_Note (AR):
+            //   - googleParts 包含 thoughtSignature 和相关元数据
+            //   - 用于图片生成/编辑的多轮对话中保持签名
+            // Documentation_Note (DW): Google Parts 通过回调存储到 ChatMessage.googleParts 字段
+            // }}
+            onGoogleParts(parts) {
+              if (parts && parts.length > 0) {
+                botMessage.googleParts = parts;
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    "[Google ThoughtSignature] Saved to botMessage:",
+                    {
+                      partsCount: parts.length,
+                      signatures: parts.map((p) =>
+                        p.thoughtSignature ? "yes" : "no",
+                      ),
+                    },
+                  );
+                }
+                commitBotMessage();
+              }
+            },
+            async onFinish(message, _responseRes, usage) {
+              botMessage.streaming = false;
+              // Covers stop/abort too: aborting the controller ends in onFinish.
+              // Removed before the update below so that components re-checking
+              // ChatControllerPool.hasPending() on it see the request gone.
+              ChatControllerPool.remove(session.id, botMessage.id);
+              // The regular update below supersedes any pending streaming flush
+              scheduleStreamingUpdate.cancel();
+              if (usage) {
+                botMessage.usage = usage;
+                const session_ = get().sessions.find(
+                  (s) => s.id === session.id,
+                );
+                if (session_)
+                  session_.stat = addUsageToStat(session_.stat, usage);
+              }
+              if (message) {
+                botMessage.content = message;
+                botMessage.date = new Date().toLocaleString();
+              }
+              // {{CHENGQI:
+              // Action: Fixed - iPad M3 思考内容和引用显示bug
+              // Timestamp: 2025-11-24 Claude 4.5 sonnet
+              // Reason: 节流机制可能导致最后一次thinkingContent/citations更新被吞掉，iPad Safari严格要求React状态同步
+              // Bug_Fixed: onFinish时强制触发一次状态更新，确保所有内容都被渲染
+              // Principle_Applied: KISS - 在流式结束时确保最终状态正确
+              // Optimization: 避免iPad Safari渲染引擎的严格限制
+              // Architectural_Note (AR): iPad Safari对React状态更新要求比macOS Safari更严格
+              // Documentation_Note (DW): 修复iPad M3下ThinkingWindow和Citations不显示的bug
+              // }}
+              // 强制触发一次状态更新，确保思考内容和引用被正确渲染（特别是iPad Safari）
+              // A regular update, also without a final message: it is what
+              // re-renders the page and sidebar once the stream ends.
+              commitBotMessage();
+              try {
+                if (message) {
+                  get().onNewMessage(botMessage, session);
+                }
+              } finally {
+                // Last, so that one write covers the updates above too
+                resumePersist();
+              }
+            },
+            // {{CHENGQI:
+            // Action: Added - OpenAI Response ID 回调处理
+            // Timestamp: 2025-12-21 Claude Opus 4.5
+            // Reason: 存储 OpenAI Responses API 返回的 response id，用于多轮对话
+            // Reference: https://platform.openai.com/docs/api-reference/responses
+            // Architectural_Note (AR): 将 response id 存储到 botMessage，用于下次请求
+            // }}
+            onOpenAIResponseId(responseId: string) {
+              if (responseId) {
+                botMessage.openaiResponseId = responseId;
+                // 触发状态更新以保存 response id
+                commitBotMessage();
+              }
+            },
+            onXAIResponseId(responseId: string) {
+              if (responseId) {
+                botMessage.xaiResponseId = responseId;
+                commitBotMessage();
+              }
+            },
+            // Tools get a new array on each change (not edited in place) so the
+            // rendered message can tell that they changed
+            onBeforeTool(tool: ChatMessageTool) {
+              botMessage.tools = [...(botMessage.tools ?? []), tool];
+              commitBotMessage();
+            },
+            onAfterTool(tool: ChatMessageTool) {
+              botMessage.tools = botMessage.tools?.map((t) =>
+                tool.id == t.id ? { ...tool } : t,
+              );
+              commitBotMessage();
+            },
+            onError(error) {
+              const isAborted = error.message?.includes?.("aborted");
+              botMessage.content +=
+                "\n\n" +
+                prettyObject({
+                  error: true,
+                  message: error.message,
+                });
+              botMessage.streaming = false;
+              userMessage.isError = !isAborted;
+              botMessage.isError = !isAborted;
+              // Same order as onFinish: remove, then one regular update
+              ChatControllerPool.remove(
+                session.id,
+                botMessage.id ?? messageIndex,
+              );
+              scheduleStreamingUpdate.cancel();
+              commitBotMessage();
+              resumePersist();
+
+              console.error("[Chat] failed ", error);
+            },
+            onController(controller) {
+              // collect controller for stop/retry
+              ChatControllerPool.addController(
+                session.id,
+                botMessage.id ?? messageIndex,
+                controller,
+              );
+              // Let stop buttons re-check ChatControllerPool.hasPending()
+              notifyStreaming();
+              // A stop normally ends in onFinish right away; this covers one
+              // that doesn't (e.g. while tool calls run)
+              controller.signal.addEventListener("abort", () =>
+                setTimeout(resumePersist, 0),
+              );
+            },
+          })
+          .catch((error) => {
+            // A request that failed without reaching onError
+            resumePersist();
+            throw error;
+          });
       },
 
       getMemoryPrompt() {

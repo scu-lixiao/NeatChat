@@ -1668,35 +1668,6 @@ export function Settings() {
           </ListItem>
 
           <ListItem
-            title={Locale.Settings.WebGPUAcceleration.Title}
-            subTitle={Locale.Settings.WebGPUAcceleration.SubTitle}
-          >
-            <Select
-              aria-label={Locale.Settings.WebGPUAcceleration.Title}
-              value={config.webgpuAcceleration}
-              onChange={(e) =>
-                updateConfig(
-                  (config) =>
-                    (config.webgpuAcceleration = e.currentTarget.value as any),
-                )
-              }
-            >
-              <option value="auto">
-                {Locale.Settings.WebGPUAcceleration.Auto}
-              </option>
-              <option value="force-webgpu">
-                {Locale.Settings.WebGPUAcceleration.ForceWebGPU}
-              </option>
-              <option value="force-css">
-                {Locale.Settings.WebGPUAcceleration.ForceCSS}
-              </option>
-              <option value="off">
-                {Locale.Settings.WebGPUAcceleration.Off}
-              </option>
-            </Select>
-          </ListItem>
-
-          <ListItem
             title={Locale.Settings.AutoGenerateTitle.Title}
             subTitle={Locale.Settings.AutoGenerateTitle.SubTitle}
           >

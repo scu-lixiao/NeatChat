@@ -208,14 +208,6 @@ const cn = {
       SubTitle: "聊天内容的字体,若置空则应用全局默认字体",
       Placeholder: "字体名称",
     },
-    WebGPUAcceleration: {
-      Title: "GPU 加速 (M4)",
-      SubTitle: "为 M4 iPad Pro 提供 WebGPU 硬件加速",
-      Auto: "自动 (推荐)",
-      ForceWebGPU: "强制 WebGPU",
-      ForceCSS: "使用 CSS (省电)",
-      Off: "关闭特效",
-    },
     InjectSystemPrompts: {
       Title: "注入系统级提示信息",
       SubTitle: "强制给每次请求的消息列表开头添加一个模拟 ChatGPT 的系统提示",
