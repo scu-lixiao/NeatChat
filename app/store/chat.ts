@@ -7,6 +7,7 @@ import {
 
 import { indexedDBStorage } from "@/app/utils/indexedDB-storage";
 import { nanoid } from "nanoid";
+import { shallow } from "zustand/shallow";
 import type {
   ClientApi,
   MultimodalContent,
@@ -645,18 +646,23 @@ export const useChatStore = createPersistStore(
           ]);
         });
 
-        // botMessage is mutated in place by the callbacks below; streamed
-        // content and thinking updates share one frame-throttled re-render.
-        // onFinish/onError flush it so the trailing update is never lost.
-        const scheduleStreamingUpdate = createFrameThrottle(
-          () => {
-            get().updateTargetSession(session, (session) => {
-              // New messages array reference to trigger a React re-render
-              session.messages = session.messages.concat();
-            });
-          },
-          { minIntervalMs: STREAMING_UPDATE_THROTTLE_MS },
-        );
+        // botMessage is mutated in place by the callbacks below.
+        //
+        // Streamed content and thinking share one frame-throttled flush that
+        // only notifies subscribers, without swapping the sessions/messages
+        // arrays. The chat page and sidebar watch those arrays, so they stay
+        // put; the streaming message selects its own fields and re-renders
+        // alone (see ChatMessageItem). Everything else, including the end of
+        // the stream, is a regular update that re-renders the whole page.
+        const notifyStreaming = () => set({});
+        const commitBotMessage = () =>
+          get().updateTargetSession(session, (session) => {
+            // New messages array reference to trigger a React re-render
+            session.messages = session.messages.concat();
+          });
+        const scheduleStreamingUpdate = createFrameThrottle(notifyStreaming, {
+          minIntervalMs: STREAMING_UPDATE_THROTTLE_MS,
+        });
 
         const api: ClientApi = getClientApi(modelConfig.providerName);
         // make request
@@ -712,9 +718,7 @@ export const useChatStore = createPersistStore(
           onCitations(citations) {
             if (citations && citations.length > 0) {
               botMessage.citations = citations;
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
+              commitBotMessage();
             }
           },
           // {{CHENGQI:
@@ -739,41 +743,44 @@ export const useChatStore = createPersistStore(
                   ),
                 });
               }
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
+              commitBotMessage();
             }
           },
           async onFinish(message, _responseRes, usage) {
             botMessage.streaming = false;
-            // Covers stop/abort too: aborting the controller ends in onFinish
-            scheduleStreamingUpdate.flush();
+            // Covers stop/abort too: aborting the controller ends in onFinish.
+            // Removed before the update below so that components re-checking
+            // ChatControllerPool.hasPending() on it see the request gone.
+            ChatControllerPool.remove(session.id, botMessage.id);
+            // The regular update below supersedes any pending streaming flush
+            scheduleStreamingUpdate.cancel();
             if (usage) {
               botMessage.usage = usage;
-              get().updateTargetSession(session, (session) => {
-                session.stat = addUsageToStat(session.stat, usage);
-              });
+              const session_ = get().sessions.find((s) => s.id === session.id);
+              if (session_)
+                session_.stat = addUsageToStat(session_.stat, usage);
             }
             if (message) {
               botMessage.content = message;
               botMessage.date = new Date().toLocaleString();
-              // {{CHENGQI:
-              // Action: Fixed - iPad M3 思考内容和引用显示bug
-              // Timestamp: 2025-11-24 Claude 4.5 sonnet
-              // Reason: 节流机制可能导致最后一次thinkingContent/citations更新被吞掉，iPad Safari严格要求React状态同步
-              // Bug_Fixed: onFinish时强制触发一次状态更新，确保所有内容都被渲染
-              // Principle_Applied: KISS - 在流式结束时确保最终状态正确
-              // Optimization: 避免iPad Safari渲染引擎的严格限制
-              // Architectural_Note (AR): iPad Safari对React状态更新要求比macOS Safari更严格
-              // Documentation_Note (DW): 修复iPad M3下ThinkingWindow和Citations不显示的bug
-              // }}
-              // 强制触发一次状态更新，确保思考内容和引用被正确渲染（特别是iPad Safari）
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
+            }
+            // {{CHENGQI:
+            // Action: Fixed - iPad M3 思考内容和引用显示bug
+            // Timestamp: 2025-11-24 Claude 4.5 sonnet
+            // Reason: 节流机制可能导致最后一次thinkingContent/citations更新被吞掉，iPad Safari严格要求React状态同步
+            // Bug_Fixed: onFinish时强制触发一次状态更新，确保所有内容都被渲染
+            // Principle_Applied: KISS - 在流式结束时确保最终状态正确
+            // Optimization: 避免iPad Safari渲染引擎的严格限制
+            // Architectural_Note (AR): iPad Safari对React状态更新要求比macOS Safari更严格
+            // Documentation_Note (DW): 修复iPad M3下ThinkingWindow和Citations不显示的bug
+            // }}
+            // 强制触发一次状态更新，确保思考内容和引用被正确渲染（特别是iPad Safari）
+            // A regular update, also without a final message: it is what
+            // re-renders the page and sidebar once the stream ends.
+            commitBotMessage();
+            if (message) {
               get().onNewMessage(botMessage, session);
             }
-            ChatControllerPool.remove(session.id, botMessage.id);
           },
           // {{CHENGQI:
           // Action: Added - OpenAI Response ID 回调处理
@@ -786,34 +793,26 @@ export const useChatStore = createPersistStore(
             if (responseId) {
               botMessage.openaiResponseId = responseId;
               // 触发状态更新以保存 response id
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
+              commitBotMessage();
             }
           },
           onXAIResponseId(responseId: string) {
             if (responseId) {
               botMessage.xaiResponseId = responseId;
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
+              commitBotMessage();
             }
           },
+          // Tools get a new array on each change (not edited in place) so the
+          // rendered message can tell that they changed
           onBeforeTool(tool: ChatMessageTool) {
-            (botMessage.tools = botMessage?.tools || []).push(tool);
-            get().updateTargetSession(session, (session) => {
-              session.messages = session.messages.concat();
-            });
+            botMessage.tools = [...(botMessage.tools ?? []), tool];
+            commitBotMessage();
           },
           onAfterTool(tool: ChatMessageTool) {
-            botMessage?.tools?.forEach((t, i, tools) => {
-              if (tool.id == t.id) {
-                tools[i] = { ...tool };
-              }
-            });
-            get().updateTargetSession(session, (session) => {
-              session.messages = session.messages.concat();
-            });
+            botMessage.tools = botMessage.tools?.map((t) =>
+              tool.id == t.id ? { ...tool } : t,
+            );
+            commitBotMessage();
           },
           onError(error) {
             const isAborted = error.message?.includes?.("aborted");
@@ -826,14 +825,13 @@ export const useChatStore = createPersistStore(
             botMessage.streaming = false;
             userMessage.isError = !isAborted;
             botMessage.isError = !isAborted;
-            scheduleStreamingUpdate.flush();
-            get().updateTargetSession(session, (session) => {
-              session.messages = session.messages.concat();
-            });
+            // Same order as onFinish: remove, then one regular update
             ChatControllerPool.remove(
               session.id,
               botMessage.id ?? messageIndex,
             );
+            scheduleStreamingUpdate.cancel();
+            commitBotMessage();
 
             console.error("[Chat] failed ", error);
           },
@@ -844,6 +842,8 @@ export const useChatStore = createPersistStore(
               botMessage.id ?? messageIndex,
               controller,
             );
+            // Let stop buttons re-check ChatControllerPool.hasPending()
+            notifyStreaming();
           },
         });
       },
@@ -1393,3 +1393,29 @@ export const useChatStore = createPersistStore(
     },
   },
 );
+
+/** The current session, clamped like `currentSession()` but without writes. */
+export function selectCurrentSession(state: {
+  sessions: ChatSession[];
+  currentSessionIndex: number;
+}): ChatSession {
+  const { sessions, currentSessionIndex } = state;
+  const index = Math.min(sessions.length - 1, Math.max(0, currentSessionIndex));
+  return sessions[index];
+}
+
+/**
+ * The current session, re-rendering on every chat store update except
+ * streaming flushes.
+ *
+ * Sessions are mutated in place and regular updates swap in a new `sessions`
+ * array, which is the change signal this hook watches. Streaming flushes keep
+ * the arrays (see `onUserInput`), so components using this hook stay put
+ * while a reply streams in.
+ */
+export function useCurrentSession(): ChatSession {
+  return useChatStore(
+    (state) => [selectCurrentSession(state), state.sessions] as const,
+    shallow,
+  )[0];
+}

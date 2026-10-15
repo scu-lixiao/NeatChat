@@ -20,6 +20,7 @@ import {
 } from "./artifacts";
 import { useChatStore } from "../store";
 import { IconButton } from "./button";
+import { useThrottledValue } from "../hooks/useThrottledValue";
 
 import { useAppConfig } from "../store/config";
 import clsx from "clsx";
@@ -316,19 +317,34 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-function _MarkDownContent(props: { content: string }) {
-  const escapedContent = useMemo(() => {
-    return tryWrapHtmlCode(escapeBrackets(props.content));
-  }, [props.content]);
+// While streaming, the markdown (remark-math/gfm, katex, highlight) is
+// re-parsed at most this often instead of on every streamed chunk.
+const STREAMING_PARSE_INTERVAL_MS = 200;
 
-  return (
-    <ReactMarkdown
-      remarkPlugins={REMARK_PLUGINS}
-      rehypePlugins={REHYPE_PLUGINS}
-      components={MARKDOWN_COMPONENTS}
-    >
-      {escapedContent}
-    </ReactMarkdown>
+function _MarkDownContent(props: { content: string; streaming?: boolean }) {
+  // The latest content is rendered as soon as streaming ends
+  const content = useThrottledValue(
+    props.content,
+    STREAMING_PARSE_INTERVAL_MS,
+    !!props.streaming,
+  );
+  const escapedContent = useMemo(() => {
+    return tryWrapHtmlCode(escapeBrackets(content));
+  }, [content]);
+
+  // Returning the same element while the throttled content is unchanged lets
+  // React skip re-rendering (and so re-parsing) ReactMarkdown in between
+  return useMemo(
+    () => (
+      <ReactMarkdown
+        remarkPlugins={REMARK_PLUGINS}
+        rehypePlugins={REHYPE_PLUGINS}
+        components={MARKDOWN_COMPONENTS}
+      >
+        {escapedContent}
+      </ReactMarkdown>
+    ),
+    [escapedContent],
   );
 }
 
@@ -338,6 +354,8 @@ export function Markdown(
   props: {
     content: string;
     loading?: boolean;
+    /** Content is still streaming in: throttle re-parsing */
+    streaming?: boolean;
     fontSize?: number;
     fontFamily?: string;
     parentRef?: RefObject<HTMLDivElement>;
@@ -361,7 +379,7 @@ export function Markdown(
       {props.loading ? (
         <LoadingIcon />
       ) : (
-        <MarkdownContent content={props.content} />
+        <MarkdownContent content={props.content} streaming={props.streaming} />
       )}
     </div>
   );

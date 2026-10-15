@@ -44,22 +44,20 @@ const ChatList = dynamic(async () => (await import("./chat-list")).ChatList, {
 });
 
 export function useHotKey() {
-  const chatStore = useChatStore();
-
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey) {
         if (e.key === "ArrowUp") {
-          chatStore.nextSession(-1);
+          useChatStore.getState().nextSession(-1);
         } else if (e.key === "ArrowDown") {
-          chatStore.nextSession(1);
+          useChatStore.getState().nextSession(1);
         }
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, []);
 }
 
 export function useDragSideBar() {
@@ -230,7 +228,6 @@ export function SideBar(props: { className?: string }) {
   const [showDiscoverySelector, setshowDiscoverySelector] = useState(false);
   const navigate = useNavigate();
   const config = useAppConfig();
-  const chatStore = useChatStore();
   // MCP功能已移除 - 生产环境清理
   const mcpEnabled = false;
 
@@ -303,6 +300,7 @@ export function SideBar(props: { className?: string }) {
                 icon={<DeleteIcon />}
                 onClick={async () => {
                   if (await showConfirm(Locale.Home.DeleteChat)) {
+                    const chatStore = useChatStore.getState();
                     chatStore.deleteSession(chatStore.currentSessionIndex);
                   }
                 }}
@@ -334,7 +332,7 @@ export function SideBar(props: { className?: string }) {
             text={undefined}
             onClick={() => {
               if (config.dontShowMaskSplashScreen) {
-                chatStore.newSession();
+                useChatStore.getState().newSession();
                 navigate(Path.Chat);
               } else {
                 navigate(Path.NewChat);
