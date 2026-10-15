@@ -18,7 +18,6 @@ import { showToast } from "../components/ui-lib";
 import {
   DEFAULT_INPUT_TEMPLATE,
   DEFAULT_MODELS,
-  DEFAULT_SYSTEM_TEMPLATE,
   GEMINI_SUMMARIZE_MODEL,
   DEEPSEEK_SUMMARIZE_MODEL,
   KnowledgeCutOffDate,
@@ -30,6 +29,7 @@ import {
 import Locale, { getLang } from "../locales";
 import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
+import { buildSystemPrompt } from "../utils/system-prompt";
 import { estimateTokenLength } from "../utils/token";
 import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
@@ -714,6 +714,8 @@ export const useChatStore = createPersistStore(
           previousOpenAIResponseId,
           // 传递 previous_response_id 用于 xAI Responses API 多轮对话
           previousXAIResponseId,
+          // 用于生成 OpenAI/xAI 的 prompt_cache_key
+          sessionId: session.id,
           onUpdate(message) {
             botMessage.streaming = true;
             if (
@@ -952,10 +954,7 @@ export const useChatStore = createPersistStore(
             createMessage({
               role: "system",
               content:
-                fillTemplateWith("", {
-                  ...modelConfig,
-                  template: DEFAULT_SYSTEM_TEMPLATE,
-                }) + mcpSystemPrompt,
+                buildSystemPrompt(modelConfig, new Date()) + mcpSystemPrompt,
             }),
           ];
         } else if (mcpEnabled) {

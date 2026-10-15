@@ -19,6 +19,7 @@ import {
 } from "../api";
 import { getClientConfig } from "@/app/config/client";
 import { getTimeoutMSByModel, isXAIImageModel } from "@/app/utils";
+import { getPromptCacheKey } from "@/app/utils/prompt-cache";
 import {
   base64Image2Blob,
   cacheImageToBase64Image,
@@ -708,6 +709,14 @@ export class XAIApi implements LLMApi {
           },
         );
       }
+    }
+
+    const promptCacheKey = getPromptCacheKey(
+      options.sessionId,
+      modelConfig.promptCacheKey,
+    );
+    if (promptCacheKey) {
+      requestPayload.prompt_cache_key = promptCacheKey;
     }
 
     if (requestTools.length > 0) {

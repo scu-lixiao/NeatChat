@@ -25,7 +25,9 @@ import {
   ServiceProvider,
 } from "../constant";
 import { replaceRetiredXAIModels } from "../utils/model";
+import type { PromptCacheKeyMode } from "../utils/prompt-cache";
 import { createPersistStore } from "../utils/store";
+import type { SystemPromptTimeMode } from "../utils/system-prompt";
 import type { Voice } from "rt-client";
 import { nanoid } from "nanoid";
 
@@ -125,6 +127,15 @@ export const DEFAULT_CONFIG = {
     compressModel: "",
     compressProviderName: "",
     enableInjectSystemPrompts: true,
+    // systemPromptTimeMode: 注入系统提示中的时间信息
+    // "none": 不包含时间（默认，利于提示词前缀缓存）
+    // "date": 仅本地日期 YYYY-MM-DD
+    // "full": 完整时间（每次请求都会变化）
+    systemPromptTimeMode: "none" as SystemPromptTimeMode,
+    // promptCacheKey: OpenAI/xAI Responses API 的 prompt_cache_key
+    // "session": 按会话生成稳定的缓存键（默认）
+    // "off": 不发送
+    promptCacheKey: "session" as PromptCacheKeyMode,
     template: config?.template ?? DEFAULT_INPUT_TEMPLATE,
     size: "1024x1024" as ModelSize,
     quality: "standard" as ImageQuality,
@@ -591,7 +602,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.3,
+    version: 4.4,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -662,6 +673,11 @@ export const useAppConfig = createPersistStore(
 
       if (version < 4.3) {
         replaceRetiredXAIModels(state.modelConfig);
+      }
+
+      if (version < 4.4 && state.modelConfig) {
+        state.modelConfig.systemPromptTimeMode ??= "none";
+        state.modelConfig.promptCacheKey ??= "session";
       }
 
       return state as any;

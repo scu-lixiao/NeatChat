@@ -280,8 +280,10 @@ export const DEFAULT_INPUT_TEMPLATE = `{{input}}`; // input / time / model / lan
 // Latex inline: $x^2$
 // Latex block: $$e=mc^2$$
 // `;
+// The {{time}} line is dropped or reduced to a date unless
+// systemPromptTimeMode is "full", so the prompt prefix stays cacheable.
 export const DEFAULT_SYSTEM_TEMPLATE = `
-You are ChatGPT, a large language model trained by {{ServiceProvider}}.
+You are {{model}}, a large language model trained by {{ServiceProvider}}.
 Knowledge cutoff: {{cutoff}}
 Current model: {{model}}
 Current time: {{time}}

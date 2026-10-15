@@ -212,6 +212,16 @@ const cn = {
       Title: "注入系统级提示信息",
       SubTitle: "强制给每次请求的消息列表开头添加一个模拟 ChatGPT 的系统提示",
     },
+    SystemPromptTimeMode: {
+      Title: "系统提示中的时间",
+      SubTitle:
+        "注入的系统提示是否包含当前时间。完整时间每次请求都会变化，会导致提示词缓存失效",
+      Options: {
+        None: "不包含（推荐）",
+        Date: "仅日期",
+        Full: "完整时间",
+      },
+    },
     InputTemplate: {
       Title: "用户输入预处理",
       SubTitle: "用户最新的一条消息会填充到此模板",

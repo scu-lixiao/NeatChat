@@ -214,6 +214,16 @@ const en: LocaleType = {
       Title: "Inject System Prompts",
       SubTitle: "Inject a global system prompt for every request",
     },
+    SystemPromptTimeMode: {
+      Title: "Time in System Prompt",
+      SubTitle:
+        "Whether the injected system prompt includes the current time. Full time changes on every request and defeats prompt caching",
+      Options: {
+        None: "None (Recommended)",
+        Date: "Date only",
+        Full: "Full time",
+      },
+    },
     InputTemplate: {
       Title: "Input Template",
       SubTitle: "Newest message will be filled to this template",

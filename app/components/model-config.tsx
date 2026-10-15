@@ -1398,6 +1398,36 @@ export function ModelConfigList(props: {
             ></input>
           </ListItem>
 
+          {props.modelConfig.enableInjectSystemPrompts && (
+            <ListItem
+              title={Locale.Settings.SystemPromptTimeMode.Title}
+              subTitle={Locale.Settings.SystemPromptTimeMode.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.SystemPromptTimeMode.Title}
+                value={props.modelConfig.systemPromptTimeMode ?? "none"}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.systemPromptTimeMode = e.currentTarget.value as
+                      | "none"
+                      | "date"
+                      | "full";
+                  });
+                }}
+              >
+                <option value="none">
+                  {Locale.Settings.SystemPromptTimeMode.Options.None}
+                </option>
+                <option value="date">
+                  {Locale.Settings.SystemPromptTimeMode.Options.Date}
+                </option>
+                <option value="full">
+                  {Locale.Settings.SystemPromptTimeMode.Options.Full}
+                </option>
+              </Select>
+            </ListItem>
+          )}
+
           <ListItem
             title={Locale.Settings.InputTemplate.Title}
             subTitle={Locale.Settings.InputTemplate.SubTitle}

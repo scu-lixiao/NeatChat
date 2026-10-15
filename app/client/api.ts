@@ -142,6 +142,8 @@ export interface ChatOptions {
   onXAIResponseId?: (responseId: string) => void;
   // 用于多轮对话的上一次 response id（仅 xAI Responses API 使用）
   previousXAIResponseId?: string;
+  // 当前会话 id，用于派生 prompt_cache_key（仅 OpenAI / xAI 使用）
+  sessionId?: string;
 }
 
 export interface LLMUsage {

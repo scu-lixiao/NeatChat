@@ -23,6 +23,7 @@ import {
   usePluginStore,
 } from "@/app/store";
 import { collectModelsWithDefaultModel } from "@/app/utils/model";
+import { getPromptCacheKey } from "@/app/utils/prompt-cache";
 import {
   preProcessImageContent,
   uploadImage,
@@ -172,6 +173,7 @@ export interface ResponsesRequestPayload {
     | { type: "function"; name: string }
     | { type: "image_generation" };
   previous_response_id?: string; // 用于多轮对话引用
+  prompt_cache_key?: string; // 提示词缓存路由键
   reasoning?: {
     effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
     summary?: "auto" | "none" | "concise" | "detailed";
@@ -1648,6 +1650,14 @@ export class ChatGPTApi implements LLMApi {
     // 添加 instructions（如果有 system message）
     if (instructions) {
       requestPayload.instructions = instructions;
+    }
+
+    const promptCacheKey = getPromptCacheKey(
+      options.sessionId,
+      modelConfig.promptCacheKey,
+    );
+    if (promptCacheKey) {
+      requestPayload.prompt_cache_key = promptCacheKey;
     }
 
     // GPT-5.4/5.5 系列模型参数设置
