@@ -19,6 +19,11 @@ import {
 } from "../api";
 import { getClientConfig } from "@/app/config/client";
 import { getTimeoutMSByModel, isXAIImageModel } from "@/app/utils";
+import { getPromptCacheKey } from "@/app/utils/prompt-cache";
+import {
+  extractResponsesStreamUsage,
+  fromResponsesUsage,
+} from "@/app/utils/token-usage";
 import {
   base64Image2Blob,
   cacheImageToBase64Image,
@@ -710,6 +715,14 @@ export class XAIApi implements LLMApi {
       }
     }
 
+    const promptCacheKey = getPromptCacheKey(
+      options.sessionId,
+      modelConfig.promptCacheKey,
+    );
+    if (promptCacheKey) {
+      requestPayload.prompt_cache_key = promptCacheKey;
+    }
+
     if (requestTools.length > 0) {
       requestPayload.tools = requestTools as any;
       requestPayload.include = [];
@@ -923,6 +936,7 @@ export class XAIApi implements LLMApi {
             onThinkingUpdate: options.onThinkingUpdate,
           },
           detectResponsesStreamTermination,
+          extractResponsesStreamUsage,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
@@ -937,7 +951,7 @@ export class XAIApi implements LLMApi {
           options.onCitations(citations);
         }
         const message = await this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(message, res, fromResponsesUsage(resJson?.usage));
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

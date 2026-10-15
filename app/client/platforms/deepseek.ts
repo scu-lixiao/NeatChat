@@ -1,6 +1,11 @@
 "use client";
 // azure and openai, using same models. so using same LLMApi.
-import { ApiPath, DEEPSEEK_BASE_URL, DeepSeek } from "@/app/constant";
+import {
+  ApiPath,
+  DEEPSEEK_BASE_URL,
+  DeepSeek,
+  ServiceProvider,
+} from "@/app/constant";
 import {
   useAccessStore,
   useAppConfig,
@@ -29,6 +34,11 @@ import {
   resolveDeepSeekReasoningEffort,
   type DeepSeekReasoningEffort,
 } from "@/app/utils/model";
+import {
+  extractChatCompletionsStreamUsage,
+  fromChatCompletionsUsage,
+  shouldRequestStreamUsage,
+} from "@/app/utils/token-usage";
 import type { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
 
@@ -140,6 +150,13 @@ export class DeepSeekApi implements LLMApi {
 
     try {
       const chatPath = this.path(DeepSeek.ChatPath);
+      // DeepSeek only reports streaming usage (incl. cache hits) on request
+      if (
+        shouldStream &&
+        shouldRequestStreamUsage(ServiceProvider.DeepSeek, chatPath)
+      ) {
+        requestPayload.stream_options = { include_usage: true };
+      }
       const chatPayload = {
         method: "POST",
         body: JSON.stringify(requestPayload),
@@ -256,6 +273,7 @@ export class DeepSeekApi implements LLMApi {
             onThinkingUpdate: options.onThinkingUpdate,
           },
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
@@ -263,7 +281,11 @@ export class DeepSeekApi implements LLMApi {
 
         const resJson = await res.json();
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

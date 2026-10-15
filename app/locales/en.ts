@@ -35,6 +35,14 @@ const en: LocaleType = {
   },
   Chat: {
     SubTitle: (count: number) => `${count} messages`,
+    TokenUsage: {
+      Input: "in",
+      Cached: "cached",
+      CacheWrite: "cache write",
+      Output: "out",
+      Reasoning: "reasoning",
+      SessionCacheHit: (rate: string) => `cache hit ${rate}`,
+    },
     History: {
       LoadMore: (count: number) => `Load earlier messages (${count})`,
       Loaded: (count: number) => `Loaded ${count} earlier messages`,
@@ -214,6 +222,26 @@ const en: LocaleType = {
       Title: "Inject System Prompts",
       SubTitle: "Inject a global system prompt for every request",
     },
+    SystemPromptTimeMode: {
+      Title: "Time in System Prompt",
+      SubTitle:
+        "Whether the injected system prompt includes the current time. Full time changes on every request and defeats prompt caching",
+      Options: {
+        None: "None (Recommended)",
+        Date: "Date only",
+        Full: "Full time",
+      },
+    },
+    AnthropicPromptCache: {
+      Title: "Anthropic Prompt Caching",
+      SubTitle:
+        "Adds cache breakpoints to tools, the system prompt and history. Cache reads cost 0.1x the input price; cache writes cost 1.25x for 5 minutes and 2x for 1 hour",
+      Options: {
+        FiveMinutes: "5 minutes (Default)",
+        OneHour: "1 hour",
+        Off: "Off",
+      },
+    },
     InputTemplate: {
       Title: "Input Template",
       SubTitle: "Newest message will be filled to this template",
@@ -235,6 +263,11 @@ const en: LocaleType = {
     SendPreviewBubble: {
       Title: "Send Preview Bubble",
       SubTitle: "Preview markdown in bubble",
+    },
+    ShowTokenUsage: {
+      Title: "Show Token Usage",
+      SubTitle:
+        "Show provider-reported token usage and prompt cache hits under replies",
     },
     AutoGenerateTitle: {
       Title: "Auto Generate Title",
@@ -312,6 +345,15 @@ const en: LocaleType = {
         Title: "Edit Prompt",
       },
     },
+    HistoryStrategy: {
+      Title: "History Strategy",
+      SubTitle:
+        "Sliding window sends only the latest messages. Append-only sends the whole history so the request prefix stays the same and hits the prompt cache; near the model's context limit it drops a large chunk of older messages at once",
+      Options: {
+        Window: "Sliding window (Default)",
+        Append: "Append-only (cache-friendly)",
+      },
+    },
     HistoryCount: {
       Title: "Attached Messages Count",
       SubTitle: "Number of sent messages attached per request",
@@ -320,6 +362,8 @@ const en: LocaleType = {
       Title: "History Compression Threshold",
       SubTitle:
         "Will compress if uncompressed messages length exceeds the value",
+      AppendSubTitle:
+        "Not used in append-only mode: older messages are only compressed into the memory when they are dropped",
     },
 
     Usage: {

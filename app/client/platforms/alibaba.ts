@@ -29,6 +29,10 @@ import {
   isVisionModel,
 } from "@/app/utils";
 import { fetch } from "@/app/utils/stream";
+import {
+  extractChatCompletionsStreamUsage,
+  fromChatCompletionsUsage,
+} from "@/app/utils/token-usage";
 
 // {{CHENGQI:
 // Action: Added - 工具函数提取，提高代码可维护性
@@ -364,6 +368,7 @@ export class QwenApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         // 非流式响应
@@ -376,7 +381,11 @@ export class QwenApi implements LLMApi {
 
         const resJson = await res.json();
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.error("[Alibaba] Failed to make chat request:", e);

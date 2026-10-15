@@ -34,6 +34,14 @@ const cn = {
   },
   Chat: {
     SubTitle: (count: number) => `共 ${count} 条对话`,
+    TokenUsage: {
+      Input: "输入",
+      Cached: "缓存",
+      CacheWrite: "缓存写入",
+      Output: "输出",
+      Reasoning: "推理",
+      SessionCacheHit: (rate: string) => `缓存命中 ${rate}`,
+    },
     History: {
       LoadMore: (count: number) => `加载更多历史消息（${count} 条）`,
       Loaded: (count: number) => `已加载 ${count} 条历史消息`,
@@ -212,6 +220,26 @@ const cn = {
       Title: "注入系统级提示信息",
       SubTitle: "强制给每次请求的消息列表开头添加一个模拟 ChatGPT 的系统提示",
     },
+    SystemPromptTimeMode: {
+      Title: "系统提示中的时间",
+      SubTitle:
+        "注入的系统提示是否包含当前时间。完整时间每次请求都会变化，会导致提示词缓存失效",
+      Options: {
+        None: "不包含（推荐）",
+        Date: "仅日期",
+        Full: "完整时间",
+      },
+    },
+    AnthropicPromptCache: {
+      Title: "Anthropic 提示词缓存",
+      SubTitle:
+        "为工具、系统提示和历史消息添加缓存断点。缓存读取按 0.1 倍输入价计费；缓存写入 5 分钟为 1.25 倍，1 小时为 2 倍",
+      Options: {
+        FiveMinutes: "5 分钟（默认）",
+        OneHour: "1 小时",
+        Off: "关闭",
+      },
+    },
     InputTemplate: {
       Title: "用户输入预处理",
       SubTitle: "用户最新的一条消息会填充到此模板",
@@ -233,6 +261,10 @@ const cn = {
     SendPreviewBubble: {
       Title: "预览气泡",
       SubTitle: "在预览气泡中预览 Markdown 内容",
+    },
+    ShowTokenUsage: {
+      Title: "显示 Token 用量",
+      SubTitle: "在回复下方显示服务商返回的 Token 用量和缓存命中率",
     },
     AutoGenerateTitle: {
       Title: "自动生成标题",
@@ -309,6 +341,15 @@ const cn = {
         Title: "编辑提示词",
       },
     },
+    HistoryStrategy: {
+      Title: "历史消息策略",
+      SubTitle:
+        "滑动窗口每次只携带最近的消息；仅追加会携带全部历史，请求前缀保持不变以命中提示词缓存，接近模型上下文上限时一次性裁掉较早的一大段消息",
+      Options: {
+        Window: "滑动窗口（默认）",
+        Append: "仅追加（利于缓存）",
+      },
+    },
     HistoryCount: {
       Title: "附带历史消息数",
       SubTitle: "每次请求携带的历史消息数",
@@ -316,6 +357,8 @@ const cn = {
     CompressThreshold: {
       Title: "历史消息长度压缩阈值",
       SubTitle: "当未压缩的历史消息超过该值时，将进行压缩",
+      AppendSubTitle:
+        "仅追加模式下不使用此阈值：只有裁掉较早的消息时，才会把它们压缩进历史摘要",
     },
 
     Usage: {

@@ -24,6 +24,7 @@ import { InputRange } from "./input-range";
 import { ListItem, Select } from "./ui-lib";
 import { useAllModels } from "../utils/hooks";
 import { formatProviderName } from "../utils/provider";
+import { resolveHistoryStrategy } from "../utils/history-strategy";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import {
@@ -43,6 +44,8 @@ export function ModelConfigList(props: {
   );
   const currentModel = props.modelConfig.model;
   const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
+  const isAnthropicProvider =
+    props.modelConfig.providerName === ServiceProvider.Anthropic;
   const isDeepSeekConfigurableReasoningModel =
     props.modelConfig.providerName === ServiceProvider.DeepSeek &&
     supportsDeepSeekReasoningEffort(currentModel);
@@ -254,6 +257,9 @@ export function ModelConfigList(props: {
       : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
+  const historyStrategy = resolveHistoryStrategy(
+    props.modelConfig.historyStrategy,
+  );
 
   return (
     <>
@@ -641,6 +647,36 @@ export function ModelConfigList(props: {
             </ListItem>
           );
         })()}
+
+      {isAnthropicProvider && (
+        <ListItem
+          title={Locale.Settings.AnthropicPromptCache.Title}
+          subTitle={Locale.Settings.AnthropicPromptCache.SubTitle}
+        >
+          <Select
+            aria-label={Locale.Settings.AnthropicPromptCache.Title}
+            value={props.modelConfig.anthropicPromptCache ?? "5m"}
+            onChange={(e) => {
+              props.updateConfig((config) => {
+                config.anthropicPromptCache = e.currentTarget.value as
+                  | "off"
+                  | "5m"
+                  | "1h";
+              });
+            }}
+          >
+            <option value="5m">
+              {Locale.Settings.AnthropicPromptCache.Options.FiveMinutes}
+            </option>
+            <option value="1h">
+              {Locale.Settings.AnthropicPromptCache.Options.OneHour}
+            </option>
+            <option value="off">
+              {Locale.Settings.AnthropicPromptCache.Options.Off}
+            </option>
+          </Select>
+        </ListItem>
+      )}
 
       {isGpt5ReasoningModel && (
         <>
@@ -1398,6 +1434,36 @@ export function ModelConfigList(props: {
             ></input>
           </ListItem>
 
+          {props.modelConfig.enableInjectSystemPrompts && (
+            <ListItem
+              title={Locale.Settings.SystemPromptTimeMode.Title}
+              subTitle={Locale.Settings.SystemPromptTimeMode.SubTitle}
+            >
+              <Select
+                aria-label={Locale.Settings.SystemPromptTimeMode.Title}
+                value={props.modelConfig.systemPromptTimeMode ?? "none"}
+                onChange={(e) => {
+                  props.updateConfig((config) => {
+                    config.systemPromptTimeMode = e.currentTarget.value as
+                      | "none"
+                      | "date"
+                      | "full";
+                  });
+                }}
+              >
+                <option value="none">
+                  {Locale.Settings.SystemPromptTimeMode.Options.None}
+                </option>
+                <option value="date">
+                  {Locale.Settings.SystemPromptTimeMode.Options.Date}
+                </option>
+                <option value="full">
+                  {Locale.Settings.SystemPromptTimeMode.Options.Full}
+                </option>
+              </Select>
+            </ListItem>
+          )}
+
           <ListItem
             title={Locale.Settings.InputTemplate.Title}
             subTitle={Locale.Settings.InputTemplate.SubTitle}
@@ -1416,27 +1482,58 @@ export function ModelConfigList(props: {
         </>
       )}
       <ListItem
-        title={Locale.Settings.HistoryCount.Title}
-        subTitle={Locale.Settings.HistoryCount.SubTitle}
+        title={Locale.Settings.HistoryStrategy.Title}
+        subTitle={Locale.Settings.HistoryStrategy.SubTitle}
       >
-        <InputRange
-          aria={Locale.Settings.HistoryCount.Title}
-          title={props.modelConfig.historyMessageCount.toString()}
-          value={props.modelConfig.historyMessageCount}
-          min="0"
-          max="64"
-          step="1"
-          onChange={(e) =>
-            props.updateConfig(
-              (config) => (config.historyMessageCount = e.target.valueAsNumber),
-            )
-          }
-        ></InputRange>
+        <Select
+          aria-label={Locale.Settings.HistoryStrategy.Title}
+          value={historyStrategy}
+          onChange={(e) => {
+            props.updateConfig((config) => {
+              config.historyStrategy = resolveHistoryStrategy(
+                e.currentTarget.value,
+              );
+            });
+          }}
+        >
+          <option value="window">
+            {Locale.Settings.HistoryStrategy.Options.Window}
+          </option>
+          <option value="append">
+            {Locale.Settings.HistoryStrategy.Options.Append}
+          </option>
+        </Select>
       </ListItem>
+
+      {historyStrategy === "window" && (
+        <ListItem
+          title={Locale.Settings.HistoryCount.Title}
+          subTitle={Locale.Settings.HistoryCount.SubTitle}
+        >
+          <InputRange
+            aria={Locale.Settings.HistoryCount.Title}
+            title={props.modelConfig.historyMessageCount.toString()}
+            value={props.modelConfig.historyMessageCount}
+            min="0"
+            max="64"
+            step="1"
+            onChange={(e) =>
+              props.updateConfig(
+                (config) =>
+                  (config.historyMessageCount = e.target.valueAsNumber),
+              )
+            }
+          ></InputRange>
+        </ListItem>
+      )}
 
       <ListItem
         title={Locale.Settings.CompressThreshold.Title}
-        subTitle={Locale.Settings.CompressThreshold.SubTitle}
+        subTitle={
+          historyStrategy === "append"
+            ? Locale.Settings.CompressThreshold.AppendSubTitle
+            : Locale.Settings.CompressThreshold.SubTitle
+        }
       >
         <input
           aria-label={Locale.Settings.CompressThreshold.Title}

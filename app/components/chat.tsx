@@ -131,6 +131,12 @@ import clsx from "clsx";
 // MCP actions已移除 - 生产环境清理
 
 import { Citations } from "./citations";
+import {
+  formatCacheHitRate,
+  formatUsageDetails,
+  formatUsageSummary,
+  usageFromStat,
+} from "../utils/token-usage";
 
 const localStorage = safeLocalStorage();
 
@@ -379,10 +385,10 @@ function ClearContextDivider() {
     <div
       className={styles["clear-context"]}
       onClick={() =>
-        chatStore.updateTargetSession(
-          session,
-          (session) => (session.clearContextIndex = undefined),
-        )
+        chatStore.updateTargetSession(session, (session) => {
+          session.clearContextIndex = undefined;
+          session.appendStartIndex = 0;
+        })
       }
     >
       <div className={styles["clear-context-tips"]}>{Locale.Context.Clear}</div>
@@ -724,8 +730,10 @@ export function ChatActions(props: {
             chatStore.updateTargetSession(session, (session) => {
               if (session.clearContextIndex === session.messages.length) {
                 session.clearContextIndex = undefined;
+                session.appendStartIndex = 0;
               } else {
                 session.clearContextIndex = session.messages.length;
+                session.appendStartIndex = session.messages.length;
                 session.memoryPrompt = ""; // will clear memory
               }
             });
@@ -1064,6 +1072,8 @@ function _Chat() {
   const config = useAppConfig();
   const fontSize = config.fontSize;
   const fontFamily = config.fontFamily;
+  const showTokenUsage = config.showTokenUsage !== false;
+  const sessionUsage = usageFromStat(session.stat);
 
   const [showExport, setShowExport] = useState(false);
 
@@ -1247,10 +1257,10 @@ function _Chat() {
     prev: () => chatStore.nextSession(-1),
     next: () => chatStore.nextSession(1),
     clear: () =>
-      chatStore.updateTargetSession(
-        session,
-        (session) => (session.clearContextIndex = session.messages.length),
-      ),
+      chatStore.updateTargetSession(session, (session) => {
+        session.clearContextIndex = session.messages.length;
+        session.appendStartIndex = session.messages.length;
+      }),
     fork: () => chatStore.forkSession(),
     del: () => chatStore.deleteSession(chatStore.currentSessionIndex),
   });
@@ -2015,8 +2025,10 @@ function _Chat() {
         chatStore.updateTargetSession(session, (session) => {
           if (session.clearContextIndex === session.messages.length) {
             session.clearContextIndex = undefined;
+            session.appendStartIndex = 0;
           } else {
             session.clearContextIndex = session.messages.length;
+            session.appendStartIndex = session.messages.length;
             session.memoryPrompt = ""; // will clear memory
           }
         });
@@ -2063,6 +2075,19 @@ function _Chat() {
             </div>
             <div className="window-header-sub-title">
               {Locale.Chat.SubTitle(session.messages.length)}
+              {showTokenUsage && sessionUsage.input > 0 && (
+                <span
+                  title={formatUsageDetails(
+                    sessionUsage,
+                    Locale.Chat.TokenUsage,
+                  )}
+                >
+                  {" · "}
+                  {Locale.Chat.TokenUsage.SessionCacheHit(
+                    formatCacheHitRate(sessionUsage),
+                  )}
+                </span>
+              )}
             </div>
           </div>
           <div className="window-actions">
@@ -2461,6 +2486,21 @@ function _Chat() {
                           {message?.audio_url && (
                             <div className={styles["chat-message-audio"]}>
                               <audio src={message.audio_url} controls />
+                            </div>
+                          )}
+
+                          {showTokenUsage && !isUser && message.usage && (
+                            <div
+                              className={styles["chat-message-usage"]}
+                              title={formatUsageDetails(
+                                message.usage,
+                                Locale.Chat.TokenUsage,
+                              )}
+                            >
+                              {formatUsageSummary(
+                                message.usage,
+                                Locale.Chat.TokenUsage,
+                              )}
                             </div>
                           )}
 

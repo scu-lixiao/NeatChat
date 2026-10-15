@@ -9,6 +9,7 @@ import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth";
 import { isModelNotavailableInServer } from "@/app/utils/model";
+import { shouldRequestStreamUsage } from "@/app/utils/token-usage";
 
 const serverConfig = getServerSideConfig();
 
@@ -78,16 +79,32 @@ async function request(req: NextRequest) {
     signal: controller.signal,
   };
 
+  // The client asks for stream usage assuming this proxy forwards to the
+  // official host; drop it when DEEPSEEK_URL points somewhere else.
+  const stripStreamOptions = !shouldRequestStreamUsage(
+    ServiceProvider.DeepSeek,
+    baseUrl,
+  );
+
   // #1815 try to refuse some request to some models
-  if (serverConfig.customModels && req.body) {
+  if ((serverConfig.customModels || stripStreamOptions) && req.body) {
     try {
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;
 
-      const jsonBody = JSON.parse(clonedBody) as { model?: string };
+      const jsonBody = JSON.parse(clonedBody) as {
+        model?: string;
+        stream_options?: unknown;
+      };
+
+      if (stripStreamOptions && jsonBody?.stream_options !== undefined) {
+        delete jsonBody.stream_options;
+        fetchOptions.body = JSON.stringify(jsonBody);
+      }
 
       // not undefined and is false
       if (
+        serverConfig.customModels &&
         isModelNotavailableInServer(
           serverConfig.customModels,
           jsonBody?.model as string,

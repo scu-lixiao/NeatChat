@@ -42,6 +42,11 @@ import {
 import { prettyObject } from "./format";
 import { fetch as tauriFetch } from "./stream";
 import { streamCleanupManager } from "./stream-cleanup-manager";
+import {
+  createStreamUsageTracker,
+  type StreamUsageExtractor,
+  type TokenUsage,
+} from "./token-usage";
 
 export interface StreamTerminationState {
   completed?: boolean;
@@ -590,6 +595,21 @@ export function withStreamManagement<T>(
     });
 }
 
+// Usage is only passed when known, so callers without usage support still
+// see the original two-argument onFinish call.
+function finishWithUsage(
+  options: any,
+  message: string | MultimodalContent[],
+  responseRes: Response,
+  usage?: TokenUsage,
+) {
+  if (usage) {
+    options.onFinish(message, responseRes, usage);
+  } else {
+    options.onFinish(message, responseRes);
+  }
+}
+
 export function stream(
   chatPath: string,
   requestPayload: any,
@@ -605,6 +625,7 @@ export function stream(
   ) => void,
   options: any,
   detectTermination?: StreamTerminationDetector,
+  extractUsage?: StreamUsageExtractor,
 ) {
   let responseText = "";
   let finished = false;
@@ -612,6 +633,7 @@ export function stream(
   let runTools: any[] = [];
   let responseRes: Response;
   let protocolCompleted = false;
+  const usageTracker = createStreamUsageTracker(extractUsage);
 
   // {{CHENGQI:
   // Action: Enhanced - Claude 4.0 sonnet 性能优化升级
@@ -724,6 +746,7 @@ export function stream(
         };
         running = true;
         runTools.splice(0, runTools.length); // empty runTools
+        usageTracker.nextRequest();
         return Promise.all(
           toolCallMessage.tool_calls.map((tool) => {
             options?.onBeforeTool?.(tool);
@@ -789,7 +812,7 @@ export function stream(
       finished = true;
       // Get any remaining text from buffer before finishing
       flushBufferedResponse();
-      options.onFinish(responseText, responseRes); // 将res传递给onFinish
+      finishWithUsage(options, responseText, responseRes, usageTracker.total());
     }
   };
 
@@ -889,6 +912,8 @@ export function stream(
           );
         }
 
+        usageTracker.observe(text);
+
         try {
           const chunk = parseSSE(text, runTools);
           if (chunk) {
@@ -955,6 +980,7 @@ export function streamWithThink(
   ) => void,
   options: any,
   detectTermination?: StreamTerminationDetector,
+  extractUsage?: StreamUsageExtractor,
 ) {
   let responseText = "";
   let thinkingText = "";
@@ -967,6 +993,7 @@ export function streamWithThink(
   let finalResponseContent: string | MultimodalContent[] | undefined;
   let hasStructuredContent = false;
   let protocolCompleted = false;
+  const usageTracker = createStreamUsageTracker(extractUsage);
 
   // {{CHENGQI:
   // Action: Enhanced - Claude 4.0 sonnet 双流处理优化升级
@@ -1132,6 +1159,7 @@ export function streamWithThink(
         };
         running = true;
         runTools.splice(0, runTools.length); // empty runTools
+        usageTracker.nextRequest();
         return Promise.all(
           toolCallMessage.tool_calls.map((tool) => {
             options?.onBeforeTool?.(tool);
@@ -1207,12 +1235,12 @@ export function streamWithThink(
       // Get any remaining text from buffers before finishing
       flushBufferedContent();
 
-      if (finalResponseContent) {
-        options.onFinish(finalResponseContent, responseRes);
-        return;
-      }
-
-      options.onFinish(responseText, responseRes);
+      finishWithUsage(
+        options,
+        finalResponseContent || responseText,
+        responseRes,
+        usageTracker.total(),
+      );
     }
   };
 
@@ -1311,6 +1339,8 @@ export function streamWithThink(
             ),
           );
         }
+
+        usageTracker.observe(text);
 
         // {{CHENGQI:
         // Action: Debug - 记录所有 SSE 消息

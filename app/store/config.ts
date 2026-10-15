@@ -24,8 +24,17 @@ import {
   StoreKey,
   ServiceProvider,
 } from "../constant";
+import {
+  DEFAULT_HISTORY_STRATEGY,
+  type HistoryStrategy,
+} from "../utils/history-strategy";
 import { replaceRetiredXAIModels } from "../utils/model";
+import type {
+  AnthropicPromptCacheMode,
+  PromptCacheKeyMode,
+} from "../utils/prompt-cache";
 import { createPersistStore } from "../utils/store";
+import type { SystemPromptTimeMode } from "../utils/system-prompt";
 import type { Voice } from "rt-client";
 import { nanoid } from "nanoid";
 
@@ -96,6 +105,8 @@ export const DEFAULT_CONFIG = {
   theme: Theme.Auto as Theme,
   tightBorder: !!config?.isApp,
   sendPreviewBubble: true,
+  // show provider-reported token usage / cache hits under replies
+  showTokenUsage: true,
   enableAutoGenerateTitle: true,
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
 
@@ -122,9 +133,27 @@ export const DEFAULT_CONFIG = {
     sendMemory: true,
     historyMessageCount: 4,
     compressMessageLengthThreshold: 1000,
+    // historyStrategy: 历史消息的发送方式
+    // "window": 滑动窗口，携带最近 historyMessageCount 条消息（默认）
+    // "append": 只追加不滑动，前缀稳定利于提示词缓存，超出上下文时一次性裁掉一大段
+    historyStrategy: DEFAULT_HISTORY_STRATEGY as HistoryStrategy,
     compressModel: "",
     compressProviderName: "",
     enableInjectSystemPrompts: true,
+    // systemPromptTimeMode: 注入系统提示中的时间信息
+    // "none": 不包含时间（默认，利于提示词前缀缓存）
+    // "date": 仅本地日期 YYYY-MM-DD
+    // "full": 完整时间（每次请求都会变化）
+    systemPromptTimeMode: "none" as SystemPromptTimeMode,
+    // promptCacheKey: OpenAI/xAI Responses API 的 prompt_cache_key
+    // "session": 按会话生成稳定的缓存键（默认）
+    // "off": 不发送
+    promptCacheKey: "session" as PromptCacheKeyMode,
+    // anthropicPromptCache: Anthropic Messages API 的 cache_control 缓存断点
+    // "5m": 5 分钟缓存（默认，写入 1.25x）
+    // "1h": 1 小时缓存（写入 2x）
+    // "off": 不发送 cache_control
+    anthropicPromptCache: "5m" as AnthropicPromptCacheMode,
     template: config?.template ?? DEFAULT_INPUT_TEMPLATE,
     size: "1024x1024" as ModelSize,
     quality: "standard" as ImageQuality,
@@ -591,7 +620,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.3,
+    version: 4.6,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -662,6 +691,20 @@ export const useAppConfig = createPersistStore(
 
       if (version < 4.3) {
         replaceRetiredXAIModels(state.modelConfig);
+      }
+
+      if (version < 4.4 && state.modelConfig) {
+        state.modelConfig.systemPromptTimeMode ??= "none";
+        state.modelConfig.promptCacheKey ??= "session";
+      }
+
+      if (version < 4.5 && state.modelConfig) {
+        state.modelConfig.anthropicPromptCache ??= "5m";
+      }
+
+      // append-only history is opt-in; existing users stay on the window.
+      if (version < 4.6 && state.modelConfig) {
+        state.modelConfig.historyStrategy ??= "window";
       }
 
       return state as any;

@@ -31,6 +31,7 @@ import {
   ImageQuality,
   ModelSize,
 } from "../typing";
+import type { TokenUsage } from "../utils/token-usage";
 
 export const ROLES = ["system", "user", "assistant"] as const;
 export type MessageRole = (typeof ROLES)[number];
@@ -87,7 +88,12 @@ export interface ChatOptions {
   config: LLMConfig;
 
   onUpdate?: (message: StreamMessage, chunk: StreamMessage) => void;
-  onFinish: (message: StreamMessage, responseRes: Response) => void;
+  // usage is passed only by platforms that can parse it from the response
+  onFinish: (
+    message: StreamMessage,
+    responseRes: Response,
+    usage?: TokenUsage,
+  ) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
   onBeforeTool?: (tool: ChatMessageTool) => void;
@@ -142,6 +148,8 @@ export interface ChatOptions {
   onXAIResponseId?: (responseId: string) => void;
   // 用于多轮对话的上一次 response id（仅 xAI Responses API 使用）
   previousXAIResponseId?: string;
+  // 当前会话 id，用于派生 prompt_cache_key（仅 OpenAI / xAI 使用）
+  sessionId?: string;
 }
 
 export interface LLMUsage {

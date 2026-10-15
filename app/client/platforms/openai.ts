@@ -23,6 +23,7 @@ import {
   usePluginStore,
 } from "@/app/store";
 import { collectModelsWithDefaultModel } from "@/app/utils/model";
+import { getPromptCacheKey } from "@/app/utils/prompt-cache";
 import {
   preProcessImageContent,
   uploadImage,
@@ -32,6 +33,13 @@ import {
   streamWithThink,
 } from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
+import {
+  extractChatCompletionsStreamUsage,
+  extractResponsesStreamUsage,
+  fromChatCompletionsUsage,
+  fromResponsesUsage,
+  shouldRequestStreamUsage,
+} from "@/app/utils/token-usage";
 import {
   ModelSize,
   DalleQuality,
@@ -88,6 +96,8 @@ export interface RequestPayload {
   top_p: number;
   max_tokens?: number;
   max_completion_tokens?: number;
+  // only sent to official hosts, see shouldRequestStreamUsage
+  stream_options?: { include_usage: boolean };
 }
 
 // OpenAI Responses API 类型定义
@@ -172,6 +182,7 @@ export interface ResponsesRequestPayload {
     | { type: "function"; name: string }
     | { type: "image_generation" };
   previous_response_id?: string; // 用于多轮对话引用
+  prompt_cache_key?: string; // 提示词缓存路由键
   reasoning?: {
     effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
     summary?: "auto" | "none" | "concise" | "detailed";
@@ -1650,6 +1661,14 @@ export class ChatGPTApi implements LLMApi {
       requestPayload.instructions = instructions;
     }
 
+    const promptCacheKey = getPromptCacheKey(
+      options.sessionId,
+      modelConfig.promptCacheKey,
+    );
+    if (promptCacheKey) {
+      requestPayload.prompt_cache_key = promptCacheKey;
+    }
+
     // GPT-5.4/5.5 系列模型参数设置
     // 重要：temperature 和 top_p 只在 reasoning effort 为 "none" 时支持
     if (isGPT5ReasoningModel) {
@@ -2373,6 +2392,7 @@ export class ChatGPTApi implements LLMApi {
           },
           options,
           detectResponsesStreamTermination,
+          extractResponsesStreamUsage,
         );
       } else {
         // 非流式请求
@@ -2455,7 +2475,7 @@ export class ChatGPTApi implements LLMApi {
         }
 
         const message = await this.extractResponsesMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(message, res, fromResponsesUsage(resJson?.usage));
       }
     } catch (e) {
       console.log("[Request] failed to make a responses request", e);
@@ -2634,6 +2654,15 @@ export class ChatGPTApi implements LLMApi {
         );
       }
 
+      if (
+        shouldStream &&
+        shouldRequestStreamUsage(modelConfig.providerName, chatPath)
+      ) {
+        (requestPayload as RequestPayload).stream_options = {
+          include_usage: true,
+        };
+      }
+
       if (shouldStream) {
         let index = -1;
         const [tools, funcs] = usePluginStore
@@ -2715,6 +2744,7 @@ export class ChatGPTApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const chatPayload = {
@@ -2734,7 +2764,11 @@ export class ChatGPTApi implements LLMApi {
 
         const resJson = await res.json();
         const message = await this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
