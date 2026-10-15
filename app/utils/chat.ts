@@ -456,33 +456,96 @@ class TextBuffer {
   }
 }
 
-// Streamed text is revealed on every animation frame, 1/60 of what is still
-// buffered at a time (as upstream NextChat does): one character per frame
-// for small backlogs, gently faster for large bursts such as Gemini/Grok
-// thinking. There is no upper limit, so a burst never falls behind, and no
-// time-based throttle, which skipped random frames on 120Hz displays.
-const TYPING_BACKLOG_DIVISOR = 60;
-
-export function getTypingBatchSize(remaining: number) {
-  return Math.max(1, Math.round(remaining / TYPING_BACKLOG_DIVISOR));
-}
+// Streamed text is revealed on every animation frame, at a speed set by time
+// rather than by frame count, so 60Hz and 120Hz displays type equally fast:
+// each frame shows the share of the buffer that would empty it in
+// TYPING_DRAIN_MS, i.e. the text trails the network by about that much.
+export const TYPING_DRAIN_MS = 300;
 
 // When the network stream ends with text still buffered, the animation loop
-// keeps typing it out, finishing within this many frames (~0.75s at 60Hz)
+// keeps typing it out, evenly, so that it is done this long after the end
 // instead of dumping it in one update, which showed as a jump at the end.
-export const DRAIN_MAX_FRAMES = 45;
+export const END_DRAIN_MS = 250;
 
-// Never slower than normal typing, and done once `framesLeft` reaches 1
-export function getDrainBatchSize(remaining: number, framesLeft: number) {
-  return Math.max(
-    Math.ceil(remaining / TYPING_BACKLOG_DIVISOR),
-    Math.ceil(remaining / Math.max(1, framesLeft)),
+// The first frame of a loop has no previous one to measure from
+export const DEFAULT_FRAME_MS = 1000 / 60;
+
+// A longer frame (a slow render, the page coming back from the background)
+// counts as this long, so it can't reveal a big block of text at once
+export const MAX_FRAME_MS = 50;
+
+export function clampFrameDelta(deltaMs: number) {
+  return deltaMs > 0 ? Math.min(deltaMs, MAX_FRAME_MS) : DEFAULT_FRAME_MS;
+}
+
+// Measures the time between the animation frames of one loop. The call that
+// starts the loop has no timestamp and doesn't start the clock.
+function createFrameClock() {
+  let lastFrameTime: number | undefined;
+  return (frameTime?: number) => {
+    const delta =
+      frameTime !== undefined && lastFrameTime !== undefined
+        ? frameTime - lastFrameTime
+        : NaN;
+    if (frameTime !== undefined) lastFrameTime = frameTime;
+    return clampFrameDelta(delta);
+  };
+}
+
+// The fewest characters a frame shows: 1 for a buffer under 64 characters,
+// 2-3 for a few hundred, up to 8 from 1024, so a short tail doesn't crawl
+export function getMinTypingChars(remaining: number) {
+  return Math.min(8, Math.max(1, Math.floor(Math.sqrt(remaining) / 4)));
+}
+
+// The most characters a frame shows while streaming. It grows with the
+// buffer, so a burst still empties quickly, but a long frame can't jump.
+export function getMaxTypingChars(remaining: number) {
+  return Math.max(24, Math.ceil(remaining / 8));
+}
+
+// Rounds a character count up, ignoring floating-point noise such as
+// 600 * (1000 / 60) / 250 = 40.00000000000001
+function ceilChars(chars: number) {
+  return Math.ceil(chars - 1e-9);
+}
+
+/**
+ * How many buffered characters to show on this animation frame.
+ *
+ * While streaming: `remaining * frameDeltaMs / TYPING_DRAIN_MS`, at least
+ * `getMinTypingChars` and at most `getMaxTypingChars`.
+ *
+ * While draining the tail after the stream ended, pass the time left in
+ * the drain: the rest is spread evenly over that time, never slower than
+ * typing, and everything is shown on the frame where it runs out.
+ */
+export function getTypingBatchSize(
+  remaining: number,
+  frameDeltaMs: number,
+  drainTimeLeftMs?: number,
+) {
+  if (remaining <= 0) return 0;
+  const frameMs = clampFrameDelta(frameDeltaMs);
+  const minChars = getMinTypingChars(remaining);
+
+  if (drainTimeLeftMs !== undefined) {
+    if (drainTimeLeftMs <= frameMs) return remaining;
+    const even = ceilChars((remaining * frameMs) / drainTimeLeftMs);
+    return Math.min(remaining, Math.max(minChars, even));
+  }
+
+  const share = ceilChars((remaining * frameMs) / TYPING_DRAIN_MS);
+  return Math.min(
+    remaining,
+    getMaxTypingChars(remaining),
+    Math.max(minChars, share),
   );
 }
 
 // Hidden pages get no animation frames, so they finish right away
 function shouldDrainTail(remaining: number) {
-  return remaining > 0 && !(typeof document !== "undefined" && document.hidden);
+  return remaining > 0 && typeof document !== "undefined" && !document.hidden;
 }
 
 /**
@@ -580,12 +643,13 @@ export function stream(
   // }}
   const textBuffer = new TextBuffer();
   let animationId = 0;
+  const nextFrameDelta = createFrameClock();
   // The network stream has finished; the loop is draining the buffered tail
   let draining = false;
-  let drainFramesLeft = DRAIN_MAX_FRAMES;
+  let drainTimeLeft = END_DRAIN_MS;
 
   // Types the buffered text out, one batch per animation frame
-  function animateResponseText() {
+  function animateResponseText(frameTime?: number) {
     if (controller.signal.aborted || (finished && !draining)) {
       // Final cleanup - get all remaining content from buffer
       const remainingText = textBuffer.getAllRemaining();
@@ -602,11 +666,14 @@ export function stream(
       return;
     }
 
+    const frameDelta = nextFrameDelta(frameTime);
     const remainingLength = textBuffer.getRemainingLength();
     if (remainingLength > 0) {
-      const fetchCount = draining
-        ? getDrainBatchSize(remainingLength, drainFramesLeft)
-        : getTypingBatchSize(remainingLength);
+      const fetchCount = getTypingBatchSize(
+        remainingLength,
+        frameDelta,
+        draining ? drainTimeLeft : undefined,
+      );
 
       // Consume text from buffer efficiently
       const fetchText = textBuffer.consume(fetchCount);
@@ -620,7 +687,7 @@ export function stream(
         completeFinish();
         return;
       }
-      drainFramesLeft -= 1;
+      drainTimeLeft -= frameDelta;
     }
 
     // Only continue animation if there's content or not finished
@@ -658,8 +725,18 @@ export function stream(
     }
   };
 
+  // A page hidden while draining gets no more animation frames
+  const onHiddenWhileDraining = () => {
+    if (draining && document.hidden) {
+      completeFinish();
+    }
+  };
+
   const completeFinish = () => {
     draining = false;
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", onHiddenWhileDraining);
+    }
     // Get any remaining text from buffer before finishing
     flushBufferedResponse();
     finishWithUsage(options, responseText, responseRes, usageTracker.total());
@@ -753,7 +830,8 @@ export function stream(
       if (!controller.signal.aborted && shouldDrainTail(tailLength)) {
         // animateResponseText calls completeFinish once the buffer is empty
         draining = true;
-        drainFramesLeft = DRAIN_MAX_FRAMES;
+        drainTimeLeft = END_DRAIN_MS;
+        document.addEventListener("visibilitychange", onHiddenWhileDraining);
         return;
       }
       completeFinish();
@@ -958,18 +1036,14 @@ export function streamWithThink(
   const responseBuffer = new TextBuffer();
   const thinkingBuffer = new TextBuffer();
   let animationId = 0;
+  const nextFrameDelta = createFrameClock();
   // The network stream has finished; the loop is draining the buffered tails
   let draining = false;
   // Shared by both buffers, so they finish draining on the same frame
-  let drainFramesLeft = DRAIN_MAX_FRAMES;
-
-  const getBatchSize = (remaining: number) =>
-    draining
-      ? getDrainBatchSize(remaining, drainFramesLeft)
-      : getTypingBatchSize(remaining);
+  let drainTimeLeft = END_DRAIN_MS;
 
   // Unified animation system - combines both response and thinking text animations using TextBuffers
-  function animateContent() {
+  function animateContent(frameTime?: number) {
     if (controller.signal.aborted || (finished && !draining)) {
       // Final cleanup - get all remaining content from buffers
       const remainingResponse = responseBuffer.getAllRemaining();
@@ -1010,10 +1084,17 @@ export function streamWithThink(
       return;
     }
 
+    const frameDelta = nextFrameDelta(frameTime);
+    const drainLeft = draining ? drainTimeLeft : undefined;
+
     // Process response text
     const responseRemaining = responseBuffer.getRemainingLength();
     if (responseRemaining > 0) {
-      const fetchCount = getBatchSize(responseRemaining);
+      const fetchCount = getTypingBatchSize(
+        responseRemaining,
+        frameDelta,
+        drainLeft,
+      );
       const fetchText = responseBuffer.consume(fetchCount);
       responseText += fetchText;
 
@@ -1023,7 +1104,11 @@ export function streamWithThink(
     // Process thinking text
     const thinkingRemaining = thinkingBuffer.getRemainingLength();
     if (thinkingRemaining > 0) {
-      const fetchCount = getBatchSize(thinkingRemaining);
+      const fetchCount = getTypingBatchSize(
+        thinkingRemaining,
+        frameDelta,
+        drainLeft,
+      );
       const fetchText = thinkingBuffer.consume(fetchCount);
       thinkingText += fetchText;
 
@@ -1038,7 +1123,7 @@ export function streamWithThink(
         completeFinish();
         return;
       }
-      drainFramesLeft -= 1;
+      drainTimeLeft -= frameDelta;
     }
 
     // Continue animation only if there's content or not finished
@@ -1088,8 +1173,18 @@ export function streamWithThink(
     }
   };
 
+  // A page hidden while draining gets no more animation frames
+  const onHiddenWhileDraining = () => {
+    if (draining && document.hidden) {
+      completeFinish();
+    }
+  };
+
   const completeFinish = () => {
     draining = false;
+    if (typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", onHiddenWhileDraining);
+    }
     // {{CHENGQI:
     // Action: Fixed - 修复思考内容在流式结束时被截断的问题
     // Timestamp: 2025-11-27 Claude Opus 4.5
@@ -1201,7 +1296,8 @@ export function streamWithThink(
       if (!controller.signal.aborted && shouldDrainTail(tailLength)) {
         // animateContent calls completeFinish once both buffers are empty
         draining = true;
-        drainFramesLeft = DRAIN_MAX_FRAMES;
+        drainTimeLeft = END_DRAIN_MS;
+        document.addEventListener("visibilitychange", onHiddenWhileDraining);
         return;
       }
       completeFinish();

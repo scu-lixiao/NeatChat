@@ -80,11 +80,14 @@ export function Citations({
         </span>
       </button>
 
+      {/* Collapsed, the CSS clips and hides the list; it stays mounted so
+          expanding can animate */}
       <div
         className={clsx(styles["citations-content"], {
           [styles.expanded]: isExpanded,
         })}
         data-expanded={isExpanded ? "true" : "false"}
+        aria-hidden={!isExpanded}
       >
         <div className={styles["citations-list"]}>
           {citations.map((citation, index) => (

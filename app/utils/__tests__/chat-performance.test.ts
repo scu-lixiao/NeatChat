@@ -13,7 +13,7 @@
 /**
  * TextBuffer Performance Tests
  */
-describe('TextBuffer Performance Optimization', () => {
+describe("TextBuffer Performance Optimization", () => {
   // Create a simplified TextBuffer implementation for testing
   class TestTextBuffer {
     private chunks: string[] = [];
@@ -29,11 +29,11 @@ describe('TextBuffer Performance Optimization', () => {
 
     consume(count: number): string {
       if (count <= 0 || this.getRemainingLength() === 0) {
-        return '';
+        return "";
       }
 
       const actualCount = Math.min(count, this.getRemainingLength());
-      let result = '';
+      let result = "";
       let remaining = actualCount;
 
       while (remaining > 0 && this.chunks.length > 0) {
@@ -66,7 +66,7 @@ describe('TextBuffer Performance Optimization', () => {
     }
 
     getAllRemaining(): string {
-      const result = this.chunks.join('');
+      const result = this.chunks.join("");
       this.clear();
       return result;
     }
@@ -78,23 +78,23 @@ describe('TextBuffer Performance Optimization', () => {
     textBuffer = new TestTextBuffer();
   });
 
-  test('should efficiently handle large text chunks', () => {
-    const largeText = 'A'.repeat(1000);
+  test("should efficiently handle large text chunks", () => {
+    const largeText = "A".repeat(1000);
     const chunks = Array(10).fill(largeText);
 
     // Test append performance
     const appendStart = Date.now();
-    chunks.forEach(chunk => textBuffer.append(chunk));
+    chunks.forEach((chunk) => textBuffer.append(chunk));
     const appendEnd = Date.now();
 
     expect(textBuffer.getRemainingLength()).toBe(10000); // 10 * 1000
     expect(appendEnd - appendStart).toBeLessThan(50); // Should be very fast
   });
 
-  test('should efficiently consume text in batches', () => {
+  test("should efficiently consume text in batches", () => {
     // Add test data
-    const testChunks = ['Hello ', 'world! ', 'This is ', 'a test.'];
-    testChunks.forEach(chunk => textBuffer.append(chunk));
+    const testChunks = ["Hello ", "world! ", "This is ", "a test."];
+    testChunks.forEach((chunk) => textBuffer.append(chunk));
 
     // Test consume performance
     const consumeStart = Date.now();
@@ -102,15 +102,15 @@ describe('TextBuffer Performance Optimization', () => {
     const result2 = textBuffer.consume(10);
     const consumeEnd = Date.now();
 
-    expect(result1).toBe('Hello');
-    expect(result2).toBe(' world! Th');
+    expect(result1).toBe("Hello");
+    expect(result2).toBe(" world! Th");
     expect(consumeEnd - consumeStart).toBeLessThan(10);
   });
 
-  test('should handle memory cleanup efficiently', () => {
+  test("should handle memory cleanup efficiently", () => {
     // Add large amount of data
-    const largeChunks = Array(100).fill('Test data ');
-    largeChunks.forEach(chunk => textBuffer.append(chunk));
+    const largeChunks = Array(100).fill("Test data ");
+    largeChunks.forEach((chunk) => textBuffer.append(chunk));
 
     // Consume all data
     const allData = textBuffer.getAllRemaining();
@@ -123,7 +123,7 @@ describe('TextBuffer Performance Optimization', () => {
 /**
  * Performance Optimization Validation
  */
-describe('Chat Performance Optimization Validation', () => {
+describe("Chat Performance Optimization Validation", () => {
   // Create a simplified TextBuffer implementation for testing
   class TestTextBuffer {
     private chunks: string[] = [];
@@ -139,11 +139,11 @@ describe('Chat Performance Optimization Validation', () => {
 
     consume(count: number): string {
       if (count <= 0 || this.getRemainingLength() === 0) {
-        return '';
+        return "";
       }
 
       const actualCount = Math.min(count, this.getRemainingLength());
-      let result = '';
+      let result = "";
       let remaining = actualCount;
 
       while (remaining > 0 && this.chunks.length > 0) {
@@ -176,32 +176,32 @@ describe('Chat Performance Optimization Validation', () => {
     }
 
     getAllRemaining(): string {
-      const result = this.chunks.join('');
+      const result = this.chunks.join("");
       this.clear();
       return result;
     }
   }
 
-  test('should validate optimization classes are working', () => {
+  test("should validate optimization classes are working", () => {
     // This test validates that our optimization approach is sound
     const testBuffer = new TestTextBuffer();
 
     // Test basic functionality
-    testBuffer.append('Hello ');
-    testBuffer.append('World!');
+    testBuffer.append("Hello ");
+    testBuffer.append("World!");
 
     expect(testBuffer.getRemainingLength()).toBe(12);
 
     const consumed = testBuffer.consume(5);
-    expect(consumed).toBe('Hello');
+    expect(consumed).toBe("Hello");
     expect(testBuffer.getRemainingLength()).toBe(7);
 
     const remaining = testBuffer.getAllRemaining();
-    expect(remaining).toBe(' World!');
+    expect(remaining).toBe(" World!");
     expect(testBuffer.getRemainingLength()).toBe(0);
   });
 
-  test('should demonstrate performance characteristics', () => {
+  test("should demonstrate performance characteristics", () => {
     // Test that our optimizations maintain good performance characteristics
     const startTime = Date.now();
 

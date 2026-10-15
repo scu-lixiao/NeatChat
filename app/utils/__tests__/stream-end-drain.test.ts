@@ -4,7 +4,13 @@ const fetchEventSourceMock = jest.fn();
 
 let stream: any;
 let streamWithThink: any;
-let DRAIN_MAX_FRAMES: number;
+let END_DRAIN_MS: number;
+
+const FRAME_MS = 1000 / 60;
+
+// Frames are timers, as in a browser they come after the current task, but
+// their timestamps run on a simulated 60Hz clock
+let frameClock = 0;
 
 describe("smooth drain of the buffered tail when a stream ends", () => {
   const originalRequestAnimationFrame = global.requestAnimationFrame;
@@ -26,13 +32,13 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
     const chatModule = await import("@/app/utils/chat");
     stream = chatModule.stream;
     streamWithThink = chatModule.streamWithThink;
-    DRAIN_MAX_FRAMES = chatModule.DRAIN_MAX_FRAMES;
+    END_DRAIN_MS = chatModule.END_DRAIN_MS;
 
     global.requestAnimationFrame = ((callback: FrameRequestCallback) =>
-      setTimeout(
-        () => callback(performance.now()),
-        0,
-      ) as unknown as number) as typeof requestAnimationFrame;
+      setTimeout(() => {
+        frameClock += FRAME_MS;
+        callback(frameClock);
+      }, 0) as unknown as number) as typeof requestAnimationFrame;
     global.cancelAnimationFrame = ((id: number) =>
       clearTimeout(
         id as unknown as ReturnType<typeof setTimeout>,
@@ -102,11 +108,17 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
     const onUpdate = jest.fn();
     const onThinkingUpdate = jest.fn();
     const onError = jest.fn();
-    // What had been rendered when onFinish was called
-    const atFinish: { text?: unknown; thinking?: unknown } = {};
+    // When the stream started, on the frame clock
+    const startedAt = frameClock;
+    // What had been rendered when onFinish was called, and how long after
+    // the start (the whole text arrives before the first frame, so all
+    // frames are drain frames)
+    const atFinish: { text?: unknown; thinking?: unknown; elapsed?: number } =
+      {};
     const onFinish = jest.fn(() => {
       atFinish.text = onUpdate.mock.calls.at(-1)?.[0];
       atFinish.thinking = onThinkingUpdate.mock.calls.at(-1)?.[0];
+      atFinish.elapsed = frameClock - startedAt;
     });
     return { onUpdate, onThinkingUpdate, onFinish, onError, atFinish };
   }
@@ -114,6 +126,15 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
   // Length of the largest chunk a single update delivered
   function maxDelta(mock: jest.Mock) {
     return Math.max(...mock.mock.calls.map((call) => String(call[1]).length));
+  }
+
+  // Evenly over END_DRAIN_MS at 60Hz: 15 frames of 1/15 of the tail each
+  function evenShare(length: number) {
+    return Math.ceil((length * FRAME_MS) / END_DRAIN_MS - 1e-9);
+  }
+
+  function expectDrainedInTime(callbacks: ReturnType<typeof createCallbacks>) {
+    expect(callbacks.atFinish.elapsed).toBeLessThanOrEqual(END_DRAIN_MS + 1e-6);
   }
 
   test("streamWithThink drains a large tail over several updates, then finishes once", async () => {
@@ -144,14 +165,10 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
     );
     // Everything was rendered before onFinish
     expect(callbacks.atFinish.text).toBe(fullText);
-    // ...evenly over at most DRAIN_MAX_FRAMES frames, not in one dump
+    // ...evenly over END_DRAIN_MS, not in one dump
+    expectDrainedInTime(callbacks);
     expect(callbacks.onUpdate.mock.calls.length).toBeGreaterThan(5);
-    expect(callbacks.onUpdate.mock.calls.length).toBeLessThanOrEqual(
-      DRAIN_MAX_FRAMES,
-    );
-    expect(maxDelta(callbacks.onUpdate)).toBe(
-      Math.ceil(fullText.length / DRAIN_MAX_FRAMES),
-    );
+    expect(maxDelta(callbacks.onUpdate)).toBe(evenShare(fullText.length));
   });
 
   test("streamWithThink drains thinking and response tails together", async () => {
@@ -181,19 +198,15 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
     expect(callbacks.atFinish.text).toBe(answer);
     expect(callbacks.atFinish.thinking).toBe(thinking);
     expect(callbacks.onThinkingUpdate.mock.calls.length).toBeGreaterThan(5);
-    // Both tails finish together, within DRAIN_MAX_FRAMES frames
-    expect(callbacks.onThinkingUpdate.mock.calls.length).toBeLessThanOrEqual(
-      DRAIN_MAX_FRAMES,
-    );
-    expect(callbacks.onUpdate.mock.calls.length).toBeLessThanOrEqual(
-      DRAIN_MAX_FRAMES,
+    // Both tails finish together, within END_DRAIN_MS
+    expectDrainedInTime(callbacks);
+    expect(callbacks.onUpdate.mock.calls.length).toBe(
+      callbacks.onThinkingUpdate.mock.calls.length,
     );
     expect(maxDelta(callbacks.onThinkingUpdate)).toBe(
-      Math.ceil(thinking.length / DRAIN_MAX_FRAMES),
+      evenShare(thinking.length),
     );
-    expect(maxDelta(callbacks.onUpdate)).toBe(
-      Math.ceil(answer.length / DRAIN_MAX_FRAMES),
-    );
+    expect(maxDelta(callbacks.onUpdate)).toBe(evenShare(answer.length));
   });
 
   test("stream drains a large tail over several updates, then finishes once", async () => {
@@ -223,13 +236,9 @@ describe("smooth drain of the buffered tail when a stream ends", () => {
       expect.objectContaining({ status: 200 }),
     );
     expect(callbacks.atFinish.text).toBe(fullText);
+    expectDrainedInTime(callbacks);
     expect(callbacks.onUpdate.mock.calls.length).toBeGreaterThan(5);
-    expect(callbacks.onUpdate.mock.calls.length).toBeLessThanOrEqual(
-      DRAIN_MAX_FRAMES,
-    );
-    expect(maxDelta(callbacks.onUpdate)).toBe(
-      Math.ceil(fullText.length / DRAIN_MAX_FRAMES),
-    );
+    expect(maxDelta(callbacks.onUpdate)).toBe(evenShare(fullText.length));
   });
 
   test("a stream whose text is all shown finishes immediately", async () => {

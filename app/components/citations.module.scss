@@ -8,12 +8,14 @@
 // Documentation_Note (DW): 更新为支持简化链接显示的样式规范
 // }}
 
+$citations-list-max-height: 600px;
+
 .chat-message-citations {
   margin-top: 12px;
   margin-bottom: 0;
   padding: 10px 12px;
   border-radius: 8px;
-  
+
   // {{CHENGQI:
   // Action: Added - iPad Safari GPU加速修复
   // Timestamp: 2025-11-25 Claude 4.5 sonnet
@@ -31,10 +33,10 @@
   will-change: transform, opacity, box-shadow;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
+
   position: relative;
   z-index: 10;
-  
+
   background-color: var(--premium-bg-space);
   border: 1px solid var(--premium-border-void);
   box-shadow: var(--premium-shadow-xs);
@@ -98,19 +100,30 @@
     }
   }
 
-  // The grid row animates between 0 and the list's own height, so nothing is
-  // measured: an expanded list has its full height from the first frame, also
-  // when it mounts again, and follows its content if that changes.
+  // Collapsed, .citations-content itself is clipped to nothing and hidden
+  // (max-height: 0, overflow: hidden, visibility: hidden), which works in
+  // every browser. It doesn't rely on the grid row below, which a browser
+  // may not shrink to 0. Where grid-template-rows can be transitioned, the
+  // row animates between 0 and the list's own height, so nothing is measured.
   .citations-content {
     display: grid;
     grid-template-rows: 0fr;
+    max-height: 0;
+    overflow: hidden;
+    visibility: hidden;
     transition:
       grid-template-rows var(--premium-duration-normal) var(--premium-ease-out),
-      margin-top var(--premium-duration-normal) var(--premium-ease-out);
+      max-height var(--premium-duration-normal) var(--premium-ease-out),
+      margin-top var(--premium-duration-normal) var(--premium-ease-out),
+      visibility 0s linear var(--premium-duration-normal);
 
     &.expanded {
       grid-template-rows: 1fr;
+      max-height: $citations-list-max-height;
       margin-top: 10px;
+      visibility: visible;
+      // Visible as soon as it starts expanding, hidden only once collapsed
+      transition-delay: 0s;
 
       .citations-list {
         overflow-y: auto;
@@ -120,7 +133,7 @@
     .citations-list {
       min-height: 0;
       // In both states, so collapsing a long list starts from what is shown
-      max-height: 600px;
+      max-height: $citations-list-max-height;
       overflow: hidden;
       display: flex;
       flex-direction: column;
