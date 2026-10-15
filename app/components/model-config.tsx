@@ -24,6 +24,7 @@ import { InputRange } from "./input-range";
 import { ListItem, Select } from "./ui-lib";
 import { useAllModels } from "../utils/hooks";
 import { formatProviderName } from "../utils/provider";
+import { resolveHistoryStrategy } from "../utils/history-strategy";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import {
@@ -256,6 +257,9 @@ export function ModelConfigList(props: {
       : "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
+  const historyStrategy = resolveHistoryStrategy(
+    props.modelConfig.historyStrategy,
+  );
 
   return (
     <>
@@ -1478,27 +1482,58 @@ export function ModelConfigList(props: {
         </>
       )}
       <ListItem
-        title={Locale.Settings.HistoryCount.Title}
-        subTitle={Locale.Settings.HistoryCount.SubTitle}
+        title={Locale.Settings.HistoryStrategy.Title}
+        subTitle={Locale.Settings.HistoryStrategy.SubTitle}
       >
-        <InputRange
-          aria={Locale.Settings.HistoryCount.Title}
-          title={props.modelConfig.historyMessageCount.toString()}
-          value={props.modelConfig.historyMessageCount}
-          min="0"
-          max="64"
-          step="1"
-          onChange={(e) =>
-            props.updateConfig(
-              (config) => (config.historyMessageCount = e.target.valueAsNumber),
-            )
-          }
-        ></InputRange>
+        <Select
+          aria-label={Locale.Settings.HistoryStrategy.Title}
+          value={historyStrategy}
+          onChange={(e) => {
+            props.updateConfig((config) => {
+              config.historyStrategy = resolveHistoryStrategy(
+                e.currentTarget.value,
+              );
+            });
+          }}
+        >
+          <option value="window">
+            {Locale.Settings.HistoryStrategy.Options.Window}
+          </option>
+          <option value="append">
+            {Locale.Settings.HistoryStrategy.Options.Append}
+          </option>
+        </Select>
       </ListItem>
+
+      {historyStrategy === "window" && (
+        <ListItem
+          title={Locale.Settings.HistoryCount.Title}
+          subTitle={Locale.Settings.HistoryCount.SubTitle}
+        >
+          <InputRange
+            aria={Locale.Settings.HistoryCount.Title}
+            title={props.modelConfig.historyMessageCount.toString()}
+            value={props.modelConfig.historyMessageCount}
+            min="0"
+            max="64"
+            step="1"
+            onChange={(e) =>
+              props.updateConfig(
+                (config) =>
+                  (config.historyMessageCount = e.target.valueAsNumber),
+              )
+            }
+          ></InputRange>
+        </ListItem>
+      )}
 
       <ListItem
         title={Locale.Settings.CompressThreshold.Title}
-        subTitle={Locale.Settings.CompressThreshold.SubTitle}
+        subTitle={
+          historyStrategy === "append"
+            ? Locale.Settings.CompressThreshold.AppendSubTitle
+            : Locale.Settings.CompressThreshold.SubTitle
+        }
       >
         <input
           aria-label={Locale.Settings.CompressThreshold.Title}

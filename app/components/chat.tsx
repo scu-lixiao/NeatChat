@@ -385,10 +385,10 @@ function ClearContextDivider() {
     <div
       className={styles["clear-context"]}
       onClick={() =>
-        chatStore.updateTargetSession(
-          session,
-          (session) => (session.clearContextIndex = undefined),
-        )
+        chatStore.updateTargetSession(session, (session) => {
+          session.clearContextIndex = undefined;
+          session.appendStartIndex = 0;
+        })
       }
     >
       <div className={styles["clear-context-tips"]}>{Locale.Context.Clear}</div>
@@ -730,8 +730,10 @@ export function ChatActions(props: {
             chatStore.updateTargetSession(session, (session) => {
               if (session.clearContextIndex === session.messages.length) {
                 session.clearContextIndex = undefined;
+                session.appendStartIndex = 0;
               } else {
                 session.clearContextIndex = session.messages.length;
+                session.appendStartIndex = session.messages.length;
                 session.memoryPrompt = ""; // will clear memory
               }
             });
@@ -1255,10 +1257,10 @@ function _Chat() {
     prev: () => chatStore.nextSession(-1),
     next: () => chatStore.nextSession(1),
     clear: () =>
-      chatStore.updateTargetSession(
-        session,
-        (session) => (session.clearContextIndex = session.messages.length),
-      ),
+      chatStore.updateTargetSession(session, (session) => {
+        session.clearContextIndex = session.messages.length;
+        session.appendStartIndex = session.messages.length;
+      }),
     fork: () => chatStore.forkSession(),
     del: () => chatStore.deleteSession(chatStore.currentSessionIndex),
   });
@@ -2023,8 +2025,10 @@ function _Chat() {
         chatStore.updateTargetSession(session, (session) => {
           if (session.clearContextIndex === session.messages.length) {
             session.clearContextIndex = undefined;
+            session.appendStartIndex = 0;
           } else {
             session.clearContextIndex = session.messages.length;
+            session.appendStartIndex = session.messages.length;
             session.memoryPrompt = ""; // will clear memory
           }
         });

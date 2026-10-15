@@ -572,8 +572,10 @@ describe("Anthropic cache usage parsing", () => {
 describe("config migration to 4.5", () => {
   const migrate = useAppConfig.persist.getOptions().migrate!;
 
-  test("is the current config version", () => {
-    expect(useAppConfig.persist.getOptions().version).toBe(4.5);
+  test("anthropicPromptCache still defaults to 5m after later migrations", () => {
+    expect(useAppConfig.persist.getOptions().version).toBeGreaterThanOrEqual(
+      4.5,
+    );
     expect(DEFAULT_CONFIG.modelConfig.anthropicPromptCache).toBe("5m");
   });
 

@@ -24,6 +24,10 @@ import {
   StoreKey,
   ServiceProvider,
 } from "../constant";
+import {
+  DEFAULT_HISTORY_STRATEGY,
+  type HistoryStrategy,
+} from "../utils/history-strategy";
 import { replaceRetiredXAIModels } from "../utils/model";
 import type {
   AnthropicPromptCacheMode,
@@ -129,6 +133,10 @@ export const DEFAULT_CONFIG = {
     sendMemory: true,
     historyMessageCount: 4,
     compressMessageLengthThreshold: 1000,
+    // historyStrategy: 历史消息的发送方式
+    // "window": 滑动窗口，携带最近 historyMessageCount 条消息（默认）
+    // "append": 只追加不滑动，前缀稳定利于提示词缓存，超出上下文时一次性裁掉一大段
+    historyStrategy: DEFAULT_HISTORY_STRATEGY as HistoryStrategy,
     compressModel: "",
     compressProviderName: "",
     enableInjectSystemPrompts: true,
@@ -612,7 +620,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.5,
+    version: 4.6,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -692,6 +700,11 @@ export const useAppConfig = createPersistStore(
 
       if (version < 4.5 && state.modelConfig) {
         state.modelConfig.anthropicPromptCache ??= "5m";
+      }
+
+      // append-only history is opt-in; existing users stay on the window.
+      if (version < 4.6 && state.modelConfig) {
+        state.modelConfig.historyStrategy ??= "window";
       }
 
       return state as any;

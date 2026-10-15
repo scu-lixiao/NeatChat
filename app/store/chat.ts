@@ -28,6 +28,11 @@ import {
 } from "../constant";
 import Locale, { getLang } from "../locales";
 import { prettyObject } from "../utils/format";
+import {
+  selectMessagesToSummarize,
+  selectShortTermHistory,
+  shouldSendLongTermMemory as getShouldSendLongTermMemory,
+} from "../utils/history-strategy";
 import { createPersistStore } from "../utils/store";
 import { buildSystemPrompt } from "../utils/system-prompt";
 import { estimateTokenLength } from "../utils/token";
@@ -235,6 +240,9 @@ export interface ChatSession {
   lastUpdate: number;
   lastSummarizeIndex: number;
   clearContextIndex?: number;
+  // append history strategy: index the sent history starts at after the most
+  // recent trim (missing => 0)
+  appendStartIndex?: number;
 
   mask: Mask;
 }
@@ -369,11 +377,12 @@ function getSummarizeModel(
   return [currentModel, providerName];
 }
 
+function estimateMessageTokens(msg: ChatMessage) {
+  return estimateTokenLength(getMessageTextContent(msg));
+}
+
 function countMessages(msgs: ChatMessage[]) {
-  return msgs.reduce(
-    (pre, cur) => pre + estimateTokenLength(getMessageTextContent(cur)),
-    0,
-  );
+  return msgs.reduce((pre, cur) => pre + estimateMessageTokens(cur), 0);
 }
 
 function fillTemplateWith(input: string, modelConfig: ModelConfig) {
@@ -642,7 +651,7 @@ export const useChatStore = createPersistStore(
         });
 
         // get recent messages
-        const recentMessages = await get().getMessagesWithMemory();
+        const recentMessages = await get().getMessagesWithMemory([userMessage]);
         const sendMessages = recentMessages.concat(userMessage);
         const messageIndex = session.messages.length + 1;
 
@@ -941,7 +950,9 @@ export const useChatStore = createPersistStore(
         }
       },
 
-      async getMessagesWithMemory() {
+      // pendingMessages: the new input about to be sent; it is not returned,
+      // only counted against the append-mode context budget.
+      async getMessagesWithMemory(pendingMessages: ChatMessage[] = []) {
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
         const clearContextIndex = session.clearContextIndex ?? 0;
@@ -989,52 +1000,56 @@ export const useChatStore = createPersistStore(
         }
         const memoryPrompt = get().getMemoryPrompt();
         // long term memory
-        const shouldSendLongTermMemory =
-          modelConfig.sendMemory &&
-          session.memoryPrompt &&
-          session.memoryPrompt.length > 0 &&
-          session.lastSummarizeIndex > clearContextIndex;
+        const shouldSendLongTermMemory = getShouldSendLongTermMemory({
+          sendMemory: modelConfig.sendMemory,
+          memoryPrompt: session.memoryPrompt,
+          lastSummarizeIndex: session.lastSummarizeIndex,
+          clearContextIndex,
+        });
         const longTermMemoryPrompts =
           shouldSendLongTermMemory && memoryPrompt ? [memoryPrompt] : [];
-        const longTermMemoryStartIndex = session.lastSummarizeIndex;
-
-        // short term memory
-        const shortTermMemoryStartIndex = Math.max(
-          0,
-          totalMessageCount - modelConfig.historyMessageCount,
-        );
 
         // lets concat send messages, including 4 parts:
         // 0. system prompt: to get close to OpenAI Web ChatGPT
         // 1. long term memory: summarized memory messages
         // 2. pre-defined in-context prompts
-        // 3. short term memory: latest n messages
+        // 3. short term memory: selected by modelConfig.historyStrategy
         // 4. newest input message
-        const memoryStartIndex = shouldSendLongTermMemory
-          ? Math.min(longTermMemoryStartIndex, shortTermMemoryStartIndex)
-          : shortTermMemoryStartIndex;
-        // and if user has cleared history messages, we should exclude the memory too.
-        const contextStartIndex = Math.max(clearContextIndex, memoryStartIndex);
-        const maxTokenThreshold = modelConfig.max_tokens;
+        const history = selectShortTermHistory({
+          messages,
+          clearContextIndex,
+          lastSummarizeIndex: session.lastSummarizeIndex,
+          sendLongTermMemory: shouldSendLongTermMemory,
+          modelConfig,
+          estimateTokens: estimateMessageTokens,
+          appendStartIndex: session.appendStartIndex,
+          overheadTokens: countMessages([
+            ...systemPrompts,
+            ...longTermMemoryPrompts,
+            ...contextPrompts,
+            ...pendingMessages,
+          ]),
+        });
+        const { contextStartIndex, memoryStartIndex } = history;
 
-        // get recent messages as much as possible
-        const reversedRecentMessages = [];
-        for (
-          let i = totalMessageCount - 1, tokenCount = 0;
-          i >= contextStartIndex && tokenCount < maxTokenThreshold;
-          i -= 1
+        // append mode: remember where a trim moved the history start, so the
+        // following requests keep the same prefix and summarizeSession can
+        // fold the dropped messages into the memory.
+        if (
+          history.strategy === "append" &&
+          history.appendStartIndex !== (session.appendStartIndex ?? 0)
         ) {
-          const msg = messages[i];
-          if (!msg || msg.isError) continue;
-          tokenCount += estimateTokenLength(getMessageTextContent(msg));
-          reversedRecentMessages.push(msg);
+          get().updateTargetSession(session, (session) => {
+            session.appendStartIndex = history.appendStartIndex;
+          });
         }
+
         // concat all messages
         const recentMessages = [
           ...systemPrompts,
           ...longTermMemoryPrompts,
           ...contextPrompts,
-          ...reversedRecentMessages.reverse(),
+          ...history.messages,
         ];
 
         // Debug logging for clear context feature
@@ -1044,9 +1059,12 @@ export const useChatStore = createPersistStore(
           contextStartIndex,
           memoryStartIndex,
           shouldSendLongTermMemory,
+          historyStrategy: history.strategy,
+          appendStartIndex: history.appendStartIndex,
+          trimmed: history.trimmed,
           longTermMemoryCount: longTermMemoryPrompts.length,
           contextPromptsCount: contextPrompts.length,
-          recentMessagesCount: reversedRecentMessages.length,
+          recentMessagesCount: history.messages.length,
           totalSendingMessages: recentMessages.length,
         });
 
@@ -1177,29 +1195,28 @@ export const useChatStore = createPersistStore(
             },
           });
         }
-        const summarizeIndex = Math.max(
-          session.lastSummarizeIndex,
-          session.clearContextIndex ?? 0,
-        );
-        let toBeSummarizedMsgs = messages
-          .filter((msg) => !msg.isError)
-          .slice(summarizeIndex);
+        // window: summarize once the uncompressed history passes
+        // compressMessageLengthThreshold. append: only after a trim dropped
+        // messages the memory doesn't cover yet.
+        const summary = selectMessagesToSummarize({
+          messages,
+          clearContextIndex: session.clearContextIndex ?? 0,
+          lastSummarizeIndex: session.lastSummarizeIndex,
+          modelConfig,
+          estimateTokens: estimateMessageTokens,
+          appendStartIndex: session.appendStartIndex,
+          summarizeModel: model,
+        });
+        const toBeSummarizedMsgs = summary.messages;
+        const historyMsgLength = summary.historyMsgLength;
 
-        const historyMsgLength = countMessages(toBeSummarizedMsgs);
-
-        if (historyMsgLength > (modelConfig?.max_tokens || 4000)) {
-          const n = toBeSummarizedMsgs.length;
-          toBeSummarizedMsgs = toBeSummarizedMsgs.slice(
-            Math.max(0, n - modelConfig.historyMessageCount),
-          );
-        }
         const memoryPrompt = get().getMemoryPrompt();
         if (memoryPrompt) {
           // add memory prompt
           toBeSummarizedMsgs.unshift(memoryPrompt);
         }
 
-        const lastSummarizeIndex = session.messages.length;
+        const lastSummarizeIndex = summary.nextSummarizeIndex;
 
         console.log(
           "[Chat History] ",
@@ -1208,10 +1225,7 @@ export const useChatStore = createPersistStore(
           modelConfig.compressMessageLengthThreshold,
         );
 
-        if (
-          historyMsgLength > modelConfig.compressMessageLengthThreshold &&
-          modelConfig.sendMemory
-        ) {
+        if (summary.shouldSummarize) {
           /** Destruct max_tokens while summarizing
            * this param is just shit
            **/

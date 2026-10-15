@@ -345,6 +345,15 @@ const en: LocaleType = {
         Title: "Edit Prompt",
       },
     },
+    HistoryStrategy: {
+      Title: "History Strategy",
+      SubTitle:
+        "Sliding window sends only the latest messages. Append-only sends the whole history so the request prefix stays the same and hits the prompt cache; near the model's context limit it drops a large chunk of older messages at once",
+      Options: {
+        Window: "Sliding window (Default)",
+        Append: "Append-only (cache-friendly)",
+      },
+    },
     HistoryCount: {
       Title: "Attached Messages Count",
       SubTitle: "Number of sent messages attached per request",
@@ -353,6 +362,8 @@ const en: LocaleType = {
       Title: "History Compression Threshold",
       SubTitle:
         "Will compress if uncompressed messages length exceeds the value",
+      AppendSubTitle:
+        "Not used in append-only mode: older messages are only compressed into the memory when they are dropped",
     },
 
     Usage: {

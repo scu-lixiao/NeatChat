@@ -341,6 +341,15 @@ const cn = {
         Title: "编辑提示词",
       },
     },
+    HistoryStrategy: {
+      Title: "历史消息策略",
+      SubTitle:
+        "滑动窗口每次只携带最近的消息；仅追加会携带全部历史，请求前缀保持不变以命中提示词缓存，接近模型上下文上限时一次性裁掉较早的一大段消息",
+      Options: {
+        Window: "滑动窗口（默认）",
+        Append: "仅追加（利于缓存）",
+      },
+    },
     HistoryCount: {
       Title: "附带历史消息数",
       SubTitle: "每次请求携带的历史消息数",
@@ -348,6 +357,8 @@ const cn = {
     CompressThreshold: {
       Title: "历史消息长度压缩阈值",
       SubTitle: "当未压缩的历史消息超过该值时，将进行压缩",
+      AppendSubTitle:
+        "仅追加模式下不使用此阈值：只有裁掉较早的消息时，才会把它们压缩进历史摘要",
     },
 
     Usage: {
