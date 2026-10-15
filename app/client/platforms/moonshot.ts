@@ -28,6 +28,10 @@ import { getClientConfig } from "@/app/config/client";
 import { getMessageTextContent } from "@/app/utils";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
+import {
+  extractChatCompletionsStreamUsage,
+  fromChatCompletionsUsage,
+} from "@/app/utils/token-usage";
 
 export class MoonshotApi implements LLMApi {
   private disableListModels = true;
@@ -177,6 +181,7 @@ export class MoonshotApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
@@ -184,7 +189,11 @@ export class MoonshotApi implements LLMApi {
 
         const resJson = await res.json();
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

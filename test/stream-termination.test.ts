@@ -176,4 +176,68 @@ describe("stream termination handling", () => {
       expect.objectContaining({ status: 200 }),
     );
   });
+
+  test("passes usage from the final chunk to onFinish", async () => {
+    const onFinish = jest.fn();
+    const onError = jest.fn();
+    const { extractChatCompletionsStreamUsage } = await import(
+      "@/app/utils/token-usage"
+    );
+
+    fetchEventSourceMock.mockImplementation(async (_input: any, init: any) => {
+      await init.onopen?.(createEventStreamResponse());
+      init.onmessage?.({
+        data: JSON.stringify({
+          choices: [{ delta: { content: "hi" }, finish_reason: "stop" }],
+          usage: null,
+        }),
+      });
+      init.onmessage?.({
+        data: JSON.stringify({
+          choices: [],
+          usage: {
+            prompt_tokens: 1500,
+            completion_tokens: 200,
+            prompt_cache_hit_tokens: 1280,
+            prompt_cache_miss_tokens: 220,
+          },
+        }),
+      });
+      init.onmessage?.({ data: "[DONE]" });
+    });
+
+    streamWithThink(
+      "/api/test-usage-stream",
+      {},
+      {},
+      [],
+      {},
+      new AbortController(),
+      (text: string) => {
+        const json = JSON.parse(text);
+        return {
+          isThinking: false,
+          content: json.choices?.[0]?.delta?.content || "",
+        };
+      },
+      () => {},
+      {
+        onUpdate: jest.fn(),
+        onThinkingUpdate: jest.fn(),
+        onFinish,
+        onError,
+      },
+      detectOpenAICompatibleStreamTermination,
+      extractChatCompletionsStreamUsage,
+    );
+
+    await waitForStreamCallbacks();
+
+    expect(onError).not.toHaveBeenCalled();
+    expect(onFinish).toHaveBeenCalledWith(
+      "hi",
+      expect.objectContaining({ status: 200 }),
+      { input: 1500, cachedRead: 1280, cacheWrite: 0, output: 200 },
+    );
+  });
 });

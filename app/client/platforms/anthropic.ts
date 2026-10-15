@@ -16,6 +16,10 @@ import {
   streamWithThink,
 } from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
+import {
+  createAnthropicStreamUsageExtractor,
+  fromAnthropicUsage,
+} from "@/app/utils/token-usage";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
 
@@ -761,6 +765,7 @@ export class ClaudeApi implements LLMApi {
         },
         options,
         detectAnthropicStreamTermination,
+        createAnthropicStreamUsageExtractor(),
       );
     } else {
       const payload = {
@@ -783,7 +788,7 @@ export class ClaudeApi implements LLMApi {
         const resJson = await res.json();
 
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(message, res, fromAnthropicUsage(resJson?.usage));
       } catch (e) {
         console.error("failed to chat", e);
         options.onError?.(e as Error);

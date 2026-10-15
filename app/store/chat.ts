@@ -31,6 +31,11 @@ import { prettyObject } from "../utils/format";
 import { createPersistStore } from "../utils/store";
 import { buildSystemPrompt } from "../utils/system-prompt";
 import { estimateTokenLength } from "../utils/token";
+import {
+  addUsageToStat,
+  type TokenUsage,
+  type UsageStat,
+} from "../utils/token-usage";
 import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
 import {
@@ -188,6 +193,8 @@ export type ChatMessage = RequestMessage & {
   openaiResponseId?: string;
   // xAI Responses API response ID 存储字段
   xaiResponseId?: string;
+  // provider-reported token usage, including prompt cache hits
+  usage?: TokenUsage;
 };
 
 export function createMessage(override: Partial<ChatMessage>): ChatMessage {
@@ -200,7 +207,9 @@ export function createMessage(override: Partial<ChatMessage>): ChatMessage {
   };
 }
 
-export interface ChatStat {
+// Usage accumulators (inputTokens, cachedTokens, ...) are optional so
+// sessions persisted before usage tracking stay valid.
+export interface ChatStat extends UsageStat {
   tokenCount: number;
   wordCount: number;
   charCount: number;
@@ -819,8 +828,14 @@ export const useChatStore = createPersistStore(
               });
             }
           },
-          async onFinish(message) {
+          async onFinish(message, _responseRes, usage) {
             botMessage.streaming = false;
+            if (usage) {
+              botMessage.usage = usage;
+              get().updateTargetSession(session, (session) => {
+                session.stat = addUsageToStat(session.stat, usage);
+              });
+            }
             if (message) {
               botMessage.content = message;
               botMessage.date = new Date().toLocaleString();

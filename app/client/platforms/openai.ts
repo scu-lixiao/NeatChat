@@ -34,6 +34,13 @@ import {
 } from "@/app/utils/chat";
 import { cloudflareAIGatewayUrl } from "@/app/utils/cloudflare";
 import {
+  extractChatCompletionsStreamUsage,
+  extractResponsesStreamUsage,
+  fromChatCompletionsUsage,
+  fromResponsesUsage,
+  shouldRequestStreamUsage,
+} from "@/app/utils/token-usage";
+import {
   ModelSize,
   DalleQuality,
   DalleStyle,
@@ -89,6 +96,8 @@ export interface RequestPayload {
   top_p: number;
   max_tokens?: number;
   max_completion_tokens?: number;
+  // only sent to official hosts, see shouldRequestStreamUsage
+  stream_options?: { include_usage: boolean };
 }
 
 // OpenAI Responses API 类型定义
@@ -2383,6 +2392,7 @@ export class ChatGPTApi implements LLMApi {
           },
           options,
           detectResponsesStreamTermination,
+          extractResponsesStreamUsage,
         );
       } else {
         // 非流式请求
@@ -2465,7 +2475,7 @@ export class ChatGPTApi implements LLMApi {
         }
 
         const message = await this.extractResponsesMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(message, res, fromResponsesUsage(resJson?.usage));
       }
     } catch (e) {
       console.log("[Request] failed to make a responses request", e);
@@ -2644,6 +2654,15 @@ export class ChatGPTApi implements LLMApi {
         );
       }
 
+      if (
+        shouldStream &&
+        shouldRequestStreamUsage(modelConfig.providerName, chatPath)
+      ) {
+        (requestPayload as RequestPayload).stream_options = {
+          include_usage: true,
+        };
+      }
+
       if (shouldStream) {
         let index = -1;
         const [tools, funcs] = usePluginStore
@@ -2725,6 +2744,7 @@ export class ChatGPTApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const chatPayload = {
@@ -2744,7 +2764,11 @@ export class ChatGPTApi implements LLMApi {
 
         const resJson = await res.json();
         const message = await this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

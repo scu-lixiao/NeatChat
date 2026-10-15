@@ -31,6 +31,7 @@ import {
   ImageQuality,
   ModelSize,
 } from "../typing";
+import type { TokenUsage } from "../utils/token-usage";
 
 export const ROLES = ["system", "user", "assistant"] as const;
 export type MessageRole = (typeof ROLES)[number];
@@ -87,7 +88,12 @@ export interface ChatOptions {
   config: LLMConfig;
 
   onUpdate?: (message: StreamMessage, chunk: StreamMessage) => void;
-  onFinish: (message: StreamMessage, responseRes: Response) => void;
+  // usage is passed only by platforms that can parse it from the response
+  onFinish: (
+    message: StreamMessage,
+    responseRes: Response,
+    usage?: TokenUsage,
+  ) => void;
   onError?: (err: Error) => void;
   onController?: (controller: AbortController) => void;
   onBeforeTool?: (tool: ChatMessageTool) => void;

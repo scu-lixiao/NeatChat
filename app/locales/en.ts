@@ -35,6 +35,14 @@ const en: LocaleType = {
   },
   Chat: {
     SubTitle: (count: number) => `${count} messages`,
+    TokenUsage: {
+      Input: "in",
+      Cached: "cached",
+      CacheWrite: "cache write",
+      Output: "out",
+      Reasoning: "reasoning",
+      SessionCacheHit: (rate: string) => `cache hit ${rate}`,
+    },
     History: {
       LoadMore: (count: number) => `Load earlier messages (${count})`,
       Loaded: (count: number) => `Loaded ${count} earlier messages`,
@@ -245,6 +253,11 @@ const en: LocaleType = {
     SendPreviewBubble: {
       Title: "Send Preview Bubble",
       SubTitle: "Preview markdown in bubble",
+    },
+    ShowTokenUsage: {
+      Title: "Show Token Usage",
+      SubTitle:
+        "Show provider-reported token usage and prompt cache hits under replies",
     },
     AutoGenerateTitle: {
       Title: "Auto Generate Title",

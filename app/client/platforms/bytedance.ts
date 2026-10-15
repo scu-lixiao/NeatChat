@@ -28,6 +28,10 @@ import {
   getTimeoutMSByModel,
 } from "@/app/utils";
 import { fetch } from "@/app/utils/stream";
+import {
+  extractChatCompletionsStreamUsage,
+  fromChatCompletionsUsage,
+} from "@/app/utils/token-usage";
 
 export interface OpenAIListModelResponse {
   object: string;
@@ -226,6 +230,7 @@ export class DoubaoApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
@@ -233,7 +238,11 @@ export class DoubaoApi implements LLMApi {
 
         const resJson = await res.json();
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

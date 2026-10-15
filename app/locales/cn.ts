@@ -34,6 +34,14 @@ const cn = {
   },
   Chat: {
     SubTitle: (count: number) => `共 ${count} 条对话`,
+    TokenUsage: {
+      Input: "输入",
+      Cached: "缓存",
+      CacheWrite: "缓存写入",
+      Output: "输出",
+      Reasoning: "推理",
+      SessionCacheHit: (rate: string) => `缓存命中 ${rate}`,
+    },
     History: {
       LoadMore: (count: number) => `加载更多历史消息（${count} 条）`,
       Loaded: (count: number) => `已加载 ${count} 条历史消息`,
@@ -243,6 +251,10 @@ const cn = {
     SendPreviewBubble: {
       Title: "预览气泡",
       SubTitle: "在预览气泡中预览 Markdown 内容",
+    },
+    ShowTokenUsage: {
+      Title: "显示 Token 用量",
+      SubTitle: "在回复下方显示服务商返回的 Token 用量和缓存命中率",
     },
     AutoGenerateTitle: {
       Title: "自动生成标题",

@@ -25,6 +25,11 @@ import {
 } from "@/app/utils/chat";
 import { getClientConfig } from "@/app/config/client";
 import { GEMINI_BASE_URL } from "@/app/constant";
+import {
+  extractGeminiStreamUsage,
+  fromGeminiUsageMetadata,
+  type TokenUsage,
+} from "@/app/utils/token-usage";
 
 import {
   getMessageTextContent,
@@ -1309,7 +1314,7 @@ export class GeminiProApi implements LLMApi {
           },
           {
             ...options,
-            onFinish: (message: string, res: Response) => {
+            onFinish: (message: string, res: Response, usage?: TokenUsage) => {
               // Pass citations to the callback if available
               // console.log("[Google Citations] onFinish - collectedCitations:", collectedCitations);
               if (collectedCitations.length > 0 && options.onCitations) {
@@ -1331,11 +1336,12 @@ export class GeminiProApi implements LLMApi {
                 }
                 options.onGoogleParts(collectedGoogleParts);
               }
-              options.onFinish(message, res);
+              options.onFinish(message, res, usage);
             },
             onThinkingUpdate: options.onThinkingUpdate,
           },
           detectGoogleStreamTermination,
+          extractGeminiStreamUsage,
         );
       } else {
         // {{CHENGQI:
@@ -1487,7 +1493,11 @@ export class GeminiProApi implements LLMApi {
           message = "";
         }
 
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromGeminiUsageMetadata(resJson?.usageMetadata),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);

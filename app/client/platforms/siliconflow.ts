@@ -33,6 +33,10 @@ import {
   getTimeoutMSByModel,
 } from "@/app/utils";
 import { RequestPayload } from "./openai";
+import {
+  extractChatCompletionsStreamUsage,
+  fromChatCompletionsUsage,
+} from "@/app/utils/token-usage";
 
 import { fetch } from "@/app/utils/stream";
 export interface SiliconFlowListModelResponse {
@@ -235,6 +239,7 @@ export class SiliconflowApi implements LLMApi {
           },
           options,
           detectOpenAICompatibleStreamTermination,
+          extractChatCompletionsStreamUsage,
         );
       } else {
         const res = await fetch(chatPath, chatPayload);
@@ -242,7 +247,11 @@ export class SiliconflowApi implements LLMApi {
 
         const resJson = await res.json();
         const message = this.extractMessage(resJson);
-        options.onFinish(message, res);
+        options.onFinish(
+          message,
+          res,
+          fromChatCompletionsUsage(resJson?.usage),
+        );
       }
     } catch (e) {
       console.log("[Request] failed to make a chat request", e);
