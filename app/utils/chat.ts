@@ -556,6 +556,21 @@ const getPerformanceConfig = (() => {
   };
 })();
 
+// When the network stream ends with a large unrendered tail, the animation
+// loop keeps going and drains it in bigger batches (~1/10 of the rest per
+// frame) instead of dumping it in one update, which showed as a jump at the
+// end. Hidden pages get no animation frames, so they finish right away.
+function shouldDrainTail(remaining: number, maxBatchSize: number) {
+  return (
+    remaining > maxBatchSize &&
+    !(typeof document !== "undefined" && document.hidden)
+  );
+}
+
+function getDrainBatchSize(remaining: number, maxBatchSize: number) {
+  return Math.max(maxBatchSize, Math.ceil(remaining / 10));
+}
+
 /**
  * 增强的流管理包装函数
  *
@@ -655,10 +670,12 @@ export function stream(
   const batchCalculator = new BatchCalculator(perfConfig);
   let lastUpdateTime = 0;
   let animationId = 0;
+  // The network stream has finished; the loop is draining the buffered tail
+  let draining = false;
 
   // Optimized animation with intelligent batching and throttling using TextBuffer
   function animateResponseText() {
-    if (finished || controller.signal.aborted) {
+    if (controller.signal.aborted || (finished && !draining)) {
       // Final cleanup - get all remaining content from buffer
       const remainingText = textBuffer.getAllRemaining();
       responseText += remainingText;
@@ -686,7 +703,9 @@ export function stream(
     const remainingLength = textBuffer.getRemainingLength();
     if (remainingLength > 0) {
       // Use intelligent batch size calculation with caching
-      const fetchCount = batchCalculator.calculateBatchSize(remainingLength);
+      const fetchCount = draining
+        ? getDrainBatchSize(remainingLength, perfConfig.maxBatchSize)
+        : batchCalculator.calculateBatchSize(remainingLength);
 
       // Consume text from buffer efficiently
       const fetchText = textBuffer.consume(fetchCount);
@@ -694,6 +713,11 @@ export function stream(
 
       options.onUpdate?.(responseText, fetchText);
       lastUpdateTime = now;
+    }
+
+    if (draining && textBuffer.getRemainingLength() === 0) {
+      completeFinish();
+      return;
     }
 
     // Only continue animation if there's content or not finished
@@ -713,7 +737,13 @@ export function stream(
   };
 
   // Enhanced abort handling
-  controller.signal.addEventListener("abort", cleanup);
+  controller.signal.addEventListener("abort", () => {
+    // Aborted while draining the tail: deliver the rest at once
+    if (draining) {
+      completeFinish();
+    }
+    cleanup();
+  });
 
   // start animation
   animateResponseText();
@@ -724,6 +754,13 @@ export function stream(
       responseText += remainingText;
       options.onUpdate?.(responseText, remainingText);
     }
+  };
+
+  const completeFinish = () => {
+    draining = false;
+    // Get any remaining text from buffer before finishing
+    flushBufferedResponse();
+    finishWithUsage(options, responseText, responseRes, usageTracker.total());
   };
 
   const failStream = (error: Error) => {
@@ -810,9 +847,16 @@ export function stream(
       }
       console.debug("[ChatAPI] end");
       finished = true;
-      // Get any remaining text from buffer before finishing
-      flushBufferedResponse();
-      finishWithUsage(options, responseText, responseRes, usageTracker.total());
+      const tailLength = textBuffer.getRemainingLength();
+      if (
+        !controller.signal.aborted &&
+        shouldDrainTail(tailLength, perfConfig.maxBatchSize)
+      ) {
+        // animateResponseText calls completeFinish once the buffer is empty
+        draining = true;
+        return;
+      }
+      completeFinish();
     }
   };
 
@@ -1017,10 +1061,17 @@ export function streamWithThink(
   const batchCalculator = new BatchCalculator(perfConfig);
   let lastUpdateTime = 0;
   let animationId = 0;
+  // The network stream has finished; the loop is draining the buffered tails
+  let draining = false;
+
+  const getBatchSize = (remaining: number) =>
+    draining
+      ? getDrainBatchSize(remaining, perfConfig.maxBatchSize)
+      : batchCalculator.calculateBatchSize(remaining);
 
   // Unified animation system - combines both response and thinking text animations using TextBuffers
   function animateContent() {
-    if (finished || controller.signal.aborted) {
+    if (controller.signal.aborted || (finished && !draining)) {
       // Final cleanup - get all remaining content from buffers
       const remainingResponse = responseBuffer.getAllRemaining();
       const remainingThinking = thinkingBuffer.getAllRemaining();
@@ -1074,7 +1125,7 @@ export function streamWithThink(
     // Process response text with intelligent batching
     const responseRemaining = responseBuffer.getRemainingLength();
     if (responseRemaining > 0) {
-      const fetchCount = batchCalculator.calculateBatchSize(responseRemaining);
+      const fetchCount = getBatchSize(responseRemaining);
       const fetchText = responseBuffer.consume(fetchCount);
       responseText += fetchText;
 
@@ -1085,7 +1136,7 @@ export function streamWithThink(
     // Process thinking text with intelligent batching
     const thinkingRemaining = thinkingBuffer.getRemainingLength();
     if (thinkingRemaining > 0) {
-      const fetchCount = batchCalculator.calculateBatchSize(thinkingRemaining);
+      const fetchCount = getBatchSize(thinkingRemaining);
       const fetchText = thinkingBuffer.consume(fetchCount);
       thinkingText += fetchText;
 
@@ -1095,6 +1146,15 @@ export function streamWithThink(
 
     if (hasUpdates) {
       lastUpdateTime = now;
+    }
+
+    if (
+      draining &&
+      responseBuffer.getRemainingLength() === 0 &&
+      thinkingBuffer.getRemainingLength() === 0
+    ) {
+      completeFinish();
+      return;
     }
 
     // Continue animation only if there's content or not finished
@@ -1119,7 +1179,13 @@ export function streamWithThink(
   };
 
   // Enhanced abort handling
-  controller.signal.addEventListener("abort", cleanup);
+  controller.signal.addEventListener("abort", () => {
+    // Aborted while draining the tails: deliver the rest at once
+    if (draining) {
+      completeFinish();
+    }
+    cleanup();
+  });
 
   // start unified animation
   animateContent();
@@ -1137,6 +1203,28 @@ export function streamWithThink(
       responseText += remainingResponse;
       options.onUpdate?.(responseText, remainingResponse);
     }
+  };
+
+  const completeFinish = () => {
+    draining = false;
+    // {{CHENGQI:
+    // Action: Fixed - 修复思考内容在流式结束时被截断的问题
+    // Timestamp: 2025-11-27 Claude Opus 4.5
+    // Reason: 流式结束时，thinkingBuffer 中可能还有未消费的内容
+    // Bug_Fixed: finish() 只获取 responseBuffer 剩余内容，thinkingBuffer 被忽略
+    // Principle_Applied:
+    //   - Robustness: 确保所有缓冲区内容在结束时被正确处理
+    //   - Completeness: 思考内容和响应内容都需要完整输出
+    // }}
+    // Get any remaining text from buffers before finishing
+    flushBufferedContent();
+
+    finishWithUsage(
+      options,
+      finalResponseContent || responseText,
+      responseRes,
+      usageTracker.total(),
+    );
   };
 
   const failStream = (error: Error) => {
@@ -1223,24 +1311,19 @@ export function streamWithThink(
       }
       console.debug("[ChatAPI] end");
       finished = true;
-      // {{CHENGQI:
-      // Action: Fixed - 修复思考内容在流式结束时被截断的问题
-      // Timestamp: 2025-11-27 Claude Opus 4.5
-      // Reason: 流式结束时，thinkingBuffer 中可能还有未消费的内容
-      // Bug_Fixed: finish() 只获取 responseBuffer 剩余内容，thinkingBuffer 被忽略
-      // Principle_Applied:
-      //   - Robustness: 确保所有缓冲区内容在结束时被正确处理
-      //   - Completeness: 思考内容和响应内容都需要完整输出
-      // }}
-      // Get any remaining text from buffers before finishing
-      flushBufferedContent();
-
-      finishWithUsage(
-        options,
-        finalResponseContent || responseText,
-        responseRes,
-        usageTracker.total(),
+      const tailLength = Math.max(
+        responseBuffer.getRemainingLength(),
+        thinkingBuffer.getRemainingLength(),
       );
+      if (
+        !controller.signal.aborted &&
+        shouldDrainTail(tailLength, perfConfig.maxBatchSize)
+      ) {
+        // animateContent calls completeFinish once both buffers are empty
+        draining = true;
+        return;
+      }
+      completeFinish();
     }
   };
 

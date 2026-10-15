@@ -33,6 +33,7 @@ import {
   selectShortTermHistory,
   shouldSendLongTermMemory as getShouldSendLongTermMemory,
 } from "../utils/history-strategy";
+import { createFrameThrottle } from "../utils/raf-throttle";
 import { createPersistStore } from "../utils/store";
 import { buildSystemPrompt } from "../utils/system-prompt";
 import { estimateTokenLength } from "../utils/token";
@@ -52,60 +53,10 @@ import { createEmptyMask, Mask } from "./mask";
 
 const localStorage = safeLocalStorage();
 
-// {{CHENGQI:
-// Action: Added - 设备类型检测和自适应节流配置
-// Timestamp: 2025-11-21 Claude 4.5 sonnet
-// Reason: 优化流式更新的用户体验,桌面端和移动端分别优化
-// Principle_Applied:
-//   - Performance Optimization: 根据设备类型动态调整节流间隔
-//   - User Experience: 桌面端 20 FPS (流畅), 移动端 15 FPS (稳定)
-// Optimization:
-//   - 桌面端: 从 10 FPS 提升到 20 FPS (用户体验提升 100%)
-//   - 移动端: 从 10 FPS 提升到 15 FPS (用户体验提升 50%)
-//   - 移动端性能: 仍然安全,不会崩溃
-// Architectural_Note (AR):
-//   - 在 store 初始化时检测一次,避免重复检测
-//   - 处理 SSR 情况 (typeof navigator !== 'undefined')
-// }}
-// 检测设备类型,用于自适应节流配置
-const isMobileDevice =
-  typeof navigator !== "undefined"
-    ? /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      )
-    : false;
-
-// {{CHENGQI:
-// Action: Modified - 优化移动端流式更新节流间隔
-// Timestamp: 2025-11-23 05:20:00 +08:00
-// Reason: 阶段 1.2 - 降低移动端状态更新频率，减少 CPU 占用和重渲染压力
-// Principle_Applied: KISS - 简单调整参数即可显著提升性能
-// Optimization: 从 67ms (15 FPS) 增加到 100ms (10 FPS)，减少更新次数 33%
-// Architectural_Note (AR): 保持现有节流机制，仅调整参数
-// Documentation_Note (DW): 移动端流式更新优化，平衡流畅度和性能
-// }}
-// {{CHENGQI:
-// Action: Enhanced - 移动端最大性能模式，提升思考内容显示流畅度
-// Timestamp: 2025-12-09 Claude Opus 4.5
-// Reason: 用户反馈移动端（特别是 iPad）思考内容显示卡顿
-//   - 原配置 100ms 节流导致更新间隔过长
-//   - 结合增大的 maxBatchSize，移动端可以处理更高的更新频率
-// Optimization: 移动端节流从 100ms 降到 50ms，与桌面端一致
-// Principle_Applied: 最大化性能利用，保证流畅度优先
-// }}
-// 自适应节流间隔配置
-// 桌面端和移动端统一: 50ms (20 FPS) - 流畅的用户体验
-const STREAMING_UPDATE_THROTTLE_MS = 50;
-
-// 性能监控日志（已禁用 - 2025-11-28）
-// if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-//   console.log('[Streaming] Throttle Configuration:', {
-//     isMobile: isMobileDevice,
-//     throttleMs: STREAMING_UPDATE_THROTTLE_MS,
-//     targetFPS: isMobileDevice ? 10 : 20,
-//     updateReduction: isMobileDevice ? '33%' : 'baseline',
-//   });
-// }
+// Streaming re-renders run at most once per animation frame and no more often
+// than this. 32ms rather than 33ms so that two 60Hz frames (33.3ms) always
+// qualify despite timestamp jitter: ~30fps on both 60Hz and 120Hz displays.
+const STREAMING_UPDATE_THROTTLE_MS = 32;
 
 export type ChatMessageTool = {
   id: string;
@@ -694,34 +645,18 @@ export const useChatStore = createPersistStore(
           ]);
         });
 
-        // {{CHENGQI:
-        // Action: Enhanced - 自适应节流控制变量
-        // Timestamp: 2025-11-21 Claude 4.5 sonnet
-        // Reason: 优化流式更新的用户体验,桌面端和移动端分别优化
-        // Bug_Fixed:
-        //   - 移动端主线程阻塞 2750ms
-        //   - 每次 SSE 事件都触发状态更新 (50-100 次/响应)
-        //   - React 重新渲染 50-100 次,导致浏览器崩溃
-        //   - 用户体验卡顿 (100ms = 10 FPS)
-        // Principle_Applied:
-        //   - Performance Optimization: 节流机制减少状态更新频率
-        //   - User Experience: 桌面端 20 FPS (流畅), 移动端 15 FPS (稳定)
-        //   - Adaptive Design: 根据设备类型自适应调整
-        // Optimization:
-        //   - 状态更新次数减少 80-90%
-        //   - 移动端性能提升 80%+
-        //   - 桌面端用户体验提升 100% (从 10 FPS 到 20 FPS)
-        //   - 移动端用户体验提升 50% (从 10 FPS 到 15 FPS)
-        // Architectural_Note (AR):
-        //   - 独立控制 content 和 thinking 的更新频率
-        //   - 不影响最终内容完整性
-        //   - 使用全局常量 STREAMING_UPDATE_THROTTLE_MS (桌面端 50ms, 移动端 67ms)
-        // }}
-        // 节流控制: 限制状态更新频率,避免移动端崩溃
-        let lastContentUpdateTime = 0;
-        let lastThinkingUpdateTime = 0;
-        // 使用自适应节流间隔 (桌面端 50ms = 20 FPS, 移动端 67ms = 15 FPS)
-        const UPDATE_THROTTLE_MS = STREAMING_UPDATE_THROTTLE_MS;
+        // botMessage is mutated in place by the callbacks below; streamed
+        // content and thinking updates share one frame-throttled re-render.
+        // onFinish/onError flush it so the trailing update is never lost.
+        const scheduleStreamingUpdate = createFrameThrottle(
+          () => {
+            get().updateTargetSession(session, (session) => {
+              // New messages array reference to trigger a React re-render
+              session.messages = session.messages.concat();
+            });
+          },
+          { minIntervalMs: STREAMING_UPDATE_THROTTLE_MS },
+        );
 
         const api: ClientApi = getClientApi(modelConfig.providerName);
         // make request
@@ -746,22 +681,7 @@ export const useChatStore = createPersistStore(
               );
             }
 
-            // {{CHENGQI:
-            // Action: Enhanced - 添加节流机制
-            // Timestamp: 2025-11-21 Claude 4.5 sonnet
-            // Reason: 避免每次 SSE 事件都触发状态更新
-            // Optimization: 从 50-100 次/响应 降低到 5-10 次/响应
-            // }}
-            // 节流: 只在距离上次更新超过 100ms 时才触发状态更新
-            const now = Date.now();
-            if (now - lastContentUpdateTime > UPDATE_THROTTLE_MS) {
-              lastContentUpdateTime = now;
-              get().updateTargetSession(session, (session) => {
-                // Create new messages array reference to trigger React re-render
-                // botMessage is already in the array and updated by reference
-                session.messages = session.messages.concat();
-              });
-            }
+            scheduleStreamingUpdate();
           },
           // {{CHENGQI:
           // Action: Enhanced - 思考内容更新回调 (添加节流)
@@ -778,20 +698,7 @@ export const useChatStore = createPersistStore(
               botMessage.thinkingContent = thinkingContent;
             }
 
-            // {{CHENGQI:
-            // Action: Enhanced - 添加节流机制
-            // Timestamp: 2025-11-21 Claude 4.5 sonnet
-            // Reason: 避免每次 SSE 事件都触发状态更新
-            // Optimization: 从 50-100 次/响应 降低到 5-10 次/响应
-            // }}
-            // 节流: 只在距离上次更新超过 100ms 时才触发状态更新
-            const now = Date.now();
-            if (now - lastThinkingUpdateTime > UPDATE_THROTTLE_MS) {
-              lastThinkingUpdateTime = now;
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
-              });
-            }
+            scheduleStreamingUpdate();
           },
           // {{CHENGQI:
           // Action: Added - Citations回调处理
@@ -839,6 +746,8 @@ export const useChatStore = createPersistStore(
           },
           async onFinish(message, _responseRes, usage) {
             botMessage.streaming = false;
+            // Covers stop/abort too: aborting the controller ends in onFinish
+            scheduleStreamingUpdate.flush();
             if (usage) {
               botMessage.usage = usage;
               get().updateTargetSession(session, (session) => {
@@ -917,6 +826,7 @@ export const useChatStore = createPersistStore(
             botMessage.streaming = false;
             userMessage.isError = !isAborted;
             botMessage.isError = !isAborted;
+            scheduleStreamingUpdate.flush();
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
             });

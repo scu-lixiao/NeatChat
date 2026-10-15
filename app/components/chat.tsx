@@ -119,6 +119,8 @@ import { ContextPrompts, MaskAvatar, MaskConfig } from "./mask";
 import { useMaskStore } from "../store/mask";
 import { ChatCommandPrefix, useChatCommand, useCommand } from "../command";
 import { prettyObject } from "../utils/format";
+import { createFrameThrottle } from "../utils/raf-throttle";
+import { isNearBottom, shouldFollowBottom } from "../utils/scroll";
 import { getClientConfig } from "../config/client";
 import { useAllModels } from "../utils/hooks";
 import { ClientApi, MultimodalContent } from "../client/api";
@@ -454,66 +456,63 @@ function useScrollToBottom(
   messages: ChatMessage[],
   isLoading: boolean = false,
 ) {
-  // for auto-scroll
-  const [autoScroll, setAutoScroll] = useState(true);
-  const scrollDomToBottom = useCallback(() => {
+  // Whether to keep the view pinned to the bottom. Tracked from scroll events
+  // in a ref, never by reading layout during render: scrolling up detaches,
+  // scrolling back to the bottom re-attaches.
+  const autoScrollRef = useRef(true);
+  const setAutoScroll = useCallback((enabled: boolean) => {
+    autoScrollRef.current = enabled;
+  }, []);
+
+  useEffect(() => {
     const dom = scrollRef.current;
-    if (dom) {
-      requestAnimationFrame(() => {
-        dom.scrollTo(0, dom.scrollHeight);
-      });
-    }
+    if (!dom) return;
+    let lastScrollTop = dom.scrollTop;
+    const onScroll = () => {
+      const { scrollTop, clientHeight, scrollHeight } = dom;
+      autoScrollRef.current = shouldFollowBottom(
+        autoScrollRef.current,
+        lastScrollTop,
+        scrollTop,
+        clientHeight,
+        scrollHeight,
+      );
+      lastScrollTop = scrollTop;
+    };
+    dom.addEventListener("scroll", onScroll, { passive: true });
+    return () => dom.removeEventListener("scroll", onScroll);
   }, [scrollRef]);
 
-  // auto scroll - 只在autoScroll或detach状态变化时执行
-  useEffect(() => {
-    if (autoScroll && !detach) {
-      scrollDomToBottom();
-    }
-  }, [autoScroll, detach, scrollDomToBottom]);
+  // At most one scroll per frame, run after React has committed the DOM
+  const scrollDomToBottom = useMemo(
+    () =>
+      createFrameThrottle(() => {
+        const dom = scrollRef.current;
+        dom?.scrollTo(0, dom.scrollHeight);
+      }),
+    [scrollRef],
+  );
+  useEffect(() => () => scrollDomToBottom.cancel(), [scrollDomToBottom]);
 
-  // auto scroll when messages length changes - 只有在autoScroll为true时才滚动
-  const lastMessagesLength = useRef(messages.length);
-  useEffect(() => {
-    if (messages.length > lastMessagesLength.current && !detach && autoScroll) {
-      scrollDomToBottom();
-    }
-    lastMessagesLength.current = messages.length;
-  }, [messages.length, detach, autoScroll, scrollDomToBottom]);
-
-  // Keep following the bottom while a reply is streaming. The interval only
-  // depends on whether something is streaming, so it isn't torn down and
-  // recreated on every streamed update.
-  const isStreaming = isLoading || messages.some((msg) => msg.streaming);
-  useEffect(() => {
-    if (isStreaming && autoScroll && !detach) {
-      const scrollInterval = setInterval(scrollDomToBottom, 100);
-      return () => clearInterval(scrollInterval);
-    }
-  }, [isStreaming, autoScroll, detach, scrollDomToBottom]);
-
-  // Scroll when the tail of the conversation changes. A cheap signature of the
-  // last message replaces joining every message's content on each update,
-  // which was O(history size) per streamed token.
+  // Follow the tail of the conversation: new messages, streamed content and
+  // thinking. A cheap signature of the last message keeps this O(1) per
+  // streamed update instead of O(history size).
   const lastMessage = messages.at(-1);
   const tailSignature = [
     messages.length,
     lastMessage?.id,
     lastMessage?.content.length ?? 0,
     lastMessage?.thinkingContent?.length ?? 0,
+    lastMessage?.streaming,
     isLoading,
   ].join(":");
   useEffect(() => {
-    if (autoScroll && !detach) {
-      // wait for the DOM to update before scrolling
-      const timer = setTimeout(scrollDomToBottom, 50);
-      return () => clearTimeout(timer);
+    if (autoScrollRef.current && !detach) {
+      scrollDomToBottom();
     }
-  }, [tailSignature, autoScroll, detach, scrollDomToBottom]);
+  }, [tailSignature, detach, scrollDomToBottom]);
 
   return {
-    scrollRef,
-    autoScroll,
     setAutoScroll,
     scrollDomToBottom,
   };
@@ -1124,12 +1123,6 @@ function _Chat() {
   }, []);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isScrolledToBottom = scrollRef?.current
-    ? Math.abs(
-        scrollRef.current.scrollHeight -
-          (scrollRef.current.scrollTop + scrollRef.current.clientHeight),
-      ) <= 1
-    : false;
   const isAttachWithTop = useMemo(() => {
     const lastMessage = scrollRef.current?.lastElementChild as HTMLElement;
     // if scrolllRef is not ready or no message, return false
@@ -1713,8 +1706,12 @@ function _Chat() {
 
       const isTouchTopEdge = e.scrollTop <= edgeThreshold;
       const isTouchBottomEdge = bottomHeight >= e.scrollHeight - edgeThreshold;
-      const isHitBottom =
-        bottomHeight >= e.scrollHeight - (isMobileScreen ? 4 : 10);
+      const isHitBottom = isNearBottom(
+        e.scrollTop,
+        e.clientHeight,
+        e.scrollHeight,
+        isMobileScreen ? 4 : 10,
+      );
 
       const prevPageMsgIndex = msgRenderIndex - CHAT_PAGE_SIZE;
       const nextPageMsgIndex = msgRenderIndex + CHAT_PAGE_SIZE;
@@ -1725,53 +1722,23 @@ function _Chat() {
         setMsgRenderIndex(nextPageMsgIndex);
       }
 
+      // Auto-scroll attach/detach is tracked by useScrollToBottom's own
+      // passive scroll listener
       setHitBottom(isHitBottom);
-
-      // {{CHENGQI:
-      // Action: Modified - 智能化自动滚动控制，避免流式更新时错误禁用
-      // Timestamp: 2025-01-02 17:40:00 +08:00
-      // Reason: 修复流式更新时autoScroll被错误设置为false的问题
-      // Principle_Applied: SOLID - 智能化滚动状态管理，区分用户主动滚动和流式更新
-      // Optimization: 检测streaming状态，在流式更新期间优先保持自动滚动
-      // Architectural_Note (AR): 保持现有滚动检测逻辑，增加智能判断
-      // Documentation_Note (DW): 流式更新期间更智能的滚动状态管理
-      // }}
-      // 检测是否有流式更新的消息
-      const hasStreamingMessage =
-        session.messages.some((msg) => msg.streaming) || isLoading;
-
-      // 如果有流式更新且用户没有明显向上滚动，保持自动滚动
-      if (hasStreamingMessage) {
-        // 用户向上滚动超过一定距离才禁用自动滚动
-        const scrolledUpDistance = e.scrollHeight - bottomHeight;
-        const significantScrollUp = scrolledUpDistance > 200; // 超过200px认为是主动向上滚动
-
-        if (!significantScrollUp) {
-          // 流式更新期间，如果用户没有明显向上滚动，保持自动滚动
-          setAutoScroll(true);
-        } else {
-          // 用户明显向上滚动了，禁用自动滚动
-          setAutoScroll(false);
-        }
-      } else {
-        // 没有流式更新时，按原逻辑处理
-        setAutoScroll(isHitBottom);
-      }
     },
-    [
-      isMobileScreen,
-      msgRenderIndex,
-      session.messages,
-      isLoading,
-      setAutoScroll,
-      setMsgRenderIndex,
-    ],
+    [isMobileScreen, msgRenderIndex, setMsgRenderIndex],
   );
 
   const scrollToBottom = useCallback(() => {
     setMsgRenderIndex(renderMessages.length - CHAT_PAGE_SIZE);
+    setAutoScroll(true);
     scrollDomToBottom();
-  }, [renderMessages.length, scrollDomToBottom, setMsgRenderIndex]);
+  }, [
+    renderMessages.length,
+    scrollDomToBottom,
+    setAutoScroll,
+    setMsgRenderIndex,
+  ]);
 
   // clear context index = context length + index in messages
   const clearContextIndex =
@@ -2403,15 +2370,6 @@ function _Chat() {
                                     console.log(
                                       `[ThinkingWindow] toggled: ${expanded}`,
                                     );
-                                  }}
-                                  onContentUpdate={() => {
-                                    // 只在流式更新时触发主页面滚动
-                                    if (message.streaming) {
-                                      // 使用小延迟确保思考窗口的DOM更新完成
-                                      setTimeout(() => {
-                                        scrollDomToBottom();
-                                      }, 50);
-                                    }
                                   }}
                                 />
                               </div>
