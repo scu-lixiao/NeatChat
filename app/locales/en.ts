@@ -232,6 +232,16 @@ const en: LocaleType = {
         Full: "Full time",
       },
     },
+    AnthropicPromptCache: {
+      Title: "Anthropic Prompt Caching",
+      SubTitle:
+        "Adds cache breakpoints to tools, the system prompt and history. Cache reads cost 0.1x the input price; cache writes cost 1.25x for 5 minutes and 2x for 1 hour",
+      Options: {
+        FiveMinutes: "5 minutes (Default)",
+        OneHour: "1 hour",
+        Off: "Off",
+      },
+    },
     InputTemplate: {
       Title: "Input Template",
       SubTitle: "Newest message will be filled to this template",

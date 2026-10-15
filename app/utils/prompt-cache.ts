@@ -2,6 +2,9 @@ import { hash } from "./hmac";
 
 export type PromptCacheKeyMode = "session" | "off";
 
+// Anthropic cache_control TTL; "off" sends no breakpoints.
+export type AnthropicPromptCacheMode = "off" | "5m" | "1h";
+
 // Stable per-session cache routing key for OpenAI/xAI prompt caching. The
 // session id is hashed so the raw id never leaves the client.
 export function getPromptCacheKey(

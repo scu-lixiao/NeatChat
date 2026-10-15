@@ -1,5 +1,11 @@
 import { Anthropic, ApiPath } from "@/app/constant";
-import { ChatOptions, getHeaders, LLMApi, SpeechOptions } from "../api";
+import {
+  ChatOptions,
+  getHeaders,
+  LLMApi,
+  RequestMessage,
+  SpeechOptions,
+} from "../api";
 import {
   useAccessStore,
   useAppConfig,
@@ -20,8 +26,14 @@ import {
   createAnthropicStreamUsageExtractor,
   fromAnthropicUsage,
 } from "@/app/utils/token-usage";
+import type { AnthropicPromptCacheMode } from "@/app/utils/prompt-cache";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
+
+export type AnthropicCacheControl = {
+  type: "ephemeral";
+  ttl?: "1h";
+};
 
 export type MultiBlockContent = {
   type: "image" | "text";
@@ -31,6 +43,20 @@ export type MultiBlockContent = {
     data: string;
   };
   text?: string;
+  cache_control?: AnthropicCacheControl;
+};
+
+export type AnthropicSystemBlock = {
+  type: "text";
+  text: string;
+  cache_control?: AnthropicCacheControl;
+};
+
+export type AnthropicTool = {
+  name: string;
+  description?: string;
+  input_schema?: unknown;
+  cache_control?: AnthropicCacheControl;
 };
 
 export type AnthropicMessage = {
@@ -167,7 +193,9 @@ type AnthropicReasoningEffort =
 
 export interface AnthropicChatRequest {
   model: string; // The model that will complete your prompt.
+  system?: AnthropicSystemBlock[]; // System prompts; Anthropic has no system role in messages.
   messages: AnthropicMessage[]; // The prompt that you want Claude to complete.
+  tools?: AnthropicTool[];
   max_tokens: number; // The maximum number of tokens to generate before stopping.
   stop_sequences?: string[]; // Sequences that will cause the model to stop generating completion text.
   temperature?: number; // Amount of randomness injected into the response.
@@ -207,7 +235,6 @@ export type ChatStreamResponse = ChatResponse & {
 const ClaudeMapper = {
   assistant: "assistant",
   user: "user",
-  system: "user",
 } as const;
 
 const keys = ["claude-2, claude-instant-1"];
@@ -414,6 +441,229 @@ export function resolveAnthropicMaxTokens(model: string, maxTokens: number) {
     : Math.min(maxTokens, modelMaxTokens);
 }
 
+export type AnthropicInputMessage = Omit<RequestMessage, "role"> & {
+  role: keyof typeof ClaudeMapper;
+};
+
+// Anthropic takes system prompts as a top-level `system` field, so pull them
+// out of the conversation (in order) instead of sending them as user turns.
+export function splitAnthropicSystem(messages: RequestMessage[]): {
+  system: AnthropicSystemBlock[];
+  messages: AnthropicInputMessage[];
+} {
+  const system: AnthropicSystemBlock[] = [];
+  const rest: AnthropicInputMessage[] = [];
+
+  for (const message of messages) {
+    if (message.role === "system") {
+      const text = getMessageTextContent(message);
+      if (text.trim()) system.push({ type: "text", text });
+    } else {
+      rest.push({ role: message.role, content: message.content });
+    }
+  }
+
+  return { system, messages: rest };
+}
+
+export function buildAnthropicMessages(
+  messages: AnthropicInputMessage[],
+  visionModel: boolean,
+): AnthropicMessage[] {
+  // roles must alternate between "user" and "assistant" in claude, so add a fake assistant message between two user messages
+  const alternating: AnthropicInputMessage[] = [];
+  messages.forEach((message, i) => {
+    alternating.push(message);
+    if (message.role === "user" && messages[i + 1]?.role === "user") {
+      alternating.push({ role: "assistant", content: ";" });
+    }
+  });
+
+  const prompt: AnthropicMessage[] = alternating
+    .filter((v) => {
+      if (!v.content) return false;
+      if (typeof v.content === "string" && !v.content.trim()) return false;
+      return true;
+    })
+    .map((v) => {
+      const { role, content } = v;
+      const insideRole = ClaudeMapper[role];
+
+      if (!visionModel || typeof content === "string") {
+        return {
+          role: insideRole,
+          content: getMessageTextContent(v),
+        };
+      }
+      return {
+        role: insideRole,
+        content: content
+          .filter((v) => v.image_url || v.text)
+          .map(({ type, text, image_url }) => {
+            if (type === "text") {
+              return {
+                type,
+                text: text!,
+              };
+            }
+            const { url = "" } = image_url || {};
+            const colonIndex = url.indexOf(":");
+            const semicolonIndex = url.indexOf(";");
+            const comma = url.indexOf(",");
+
+            const mimeType = url.slice(colonIndex + 1, semicolonIndex);
+            const encodeType = url.slice(semicolonIndex + 1, comma);
+            const data = url.slice(comma + 1);
+
+            return {
+              type: "image" as const,
+              source: {
+                type: encodeType,
+                media_type: mimeType,
+                data,
+              },
+            };
+          }),
+      };
+    });
+
+  if (prompt[0]?.role === "assistant") {
+    prompt.unshift({
+      role: "user",
+      content: ";",
+    });
+  }
+
+  // A trailing assistant turn would be sent as a prefill. That happens when the
+  // request ended with a system message (e.g. the summarize instruction), which
+  // now lives in the top-level system field.
+  if (prompt[prompt.length - 1]?.role === "assistant") {
+    prompt.push({
+      role: "user",
+      content: ";",
+    });
+  }
+
+  return prompt;
+}
+
+// Anthropic rejects cache_control on thinking / redacted_thinking blocks.
+const ANTHROPIC_CACHEABLE_BLOCK_TYPES = new Set([
+  "text",
+  "image",
+  "document",
+  "tool_use",
+  "tool_result",
+]);
+
+export function resolveAnthropicPromptCacheMode(
+  mode?: string,
+): AnthropicPromptCacheMode {
+  return mode === "off" || mode === "1h" ? mode : "5m";
+}
+
+function isAnthropicCacheableBlock(block: { type: string; text?: unknown }) {
+  if (!ANTHROPIC_CACHEABLE_BLOCK_TYPES.has(block?.type)) return false;
+  return (
+    block.type !== "text" ||
+    (typeof block.text === "string" && block.text.trim().length > 0)
+  );
+}
+
+function anthropicCacheControl(
+  mode: AnthropicPromptCacheMode,
+): AnthropicCacheControl | undefined {
+  if (mode === "off") return undefined;
+  return mode === "1h"
+    ? { type: "ephemeral", ttl: "1h" }
+    : { type: "ephemeral" };
+}
+
+type AnthropicCacheable = { cache_control?: AnthropicCacheControl };
+
+// Copy of item carrying exactly the given cache_control (none if omitted).
+function withCacheControl<T extends AnthropicCacheable>(
+  item: T,
+  cacheControl?: AnthropicCacheControl,
+): T {
+  const copy: AnthropicCacheable = { ...item };
+  delete copy.cache_control;
+  if (cacheControl) copy.cache_control = { ...cacheControl };
+  return copy as T;
+}
+
+function withCacheControlOnLast<T extends AnthropicCacheable>(
+  items: T[],
+  cacheControl?: AnthropicCacheControl,
+): T[] {
+  return items.map((item, index) =>
+    withCacheControl(
+      item,
+      index === items.length - 1 ? cacheControl : undefined,
+    ),
+  );
+}
+
+function withCacheControlOnLastCacheableBlock(
+  message: AnthropicMessage,
+  cacheControl: AnthropicCacheControl,
+): AnthropicMessage {
+  const content: MultiBlockContent[] =
+    typeof message.content === "string"
+      ? [{ type: "text", text: message.content }]
+      : message.content;
+
+  for (let index = content.length - 1; index >= 0; index--) {
+    if (isAnthropicCacheableBlock(content[index])) {
+      const marked = content.slice();
+      marked[index] = withCacheControl(content[index], cacheControl);
+      return { ...message, content: marked };
+    }
+  }
+
+  return message;
+}
+
+// Places prompt-cache breakpoints on the last tool, the last system block and
+// the message before the final turn: at most 3 of Anthropic's 4 per request.
+// The history breakpoint lets the next request read this one's prefix through
+// the 20-block lookback. Existing markers are replaced, so re-applying after
+// appending tool turns moves the history breakpoint forward. Returns a copy.
+export function applyAnthropicCacheControl(
+  body: AnthropicChatRequest,
+  mode?: AnthropicPromptCacheMode,
+): AnthropicChatRequest {
+  const cacheControl = anthropicCacheControl(
+    resolveAnthropicPromptCacheMode(mode),
+  );
+
+  const messages: AnthropicMessage[] = body.messages.map((message) =>
+    typeof message.content === "string"
+      ? { ...message }
+      : {
+          ...message,
+          content: message.content.map((block) => withCacheControl(block)),
+        },
+  );
+
+  const historyIndex = messages.length - 2;
+  if (cacheControl && historyIndex >= 0) {
+    messages[historyIndex] = withCacheControlOnLastCacheableBlock(
+      messages[historyIndex],
+      cacheControl,
+    );
+  }
+
+  const result: AnthropicChatRequest = { ...body, messages };
+  if (body.tools) {
+    result.tools = withCacheControlOnLast(body.tools, cacheControl);
+  }
+  if (body.system) {
+    result.system = withCacheControlOnLast(body.system, cacheControl);
+  }
+  return result;
+}
+
 export class ClaudeApi implements LLMApi {
   speech(options: SpeechOptions): Promise<ArrayBuffer> {
     throw new Error("Method not implemented.");
@@ -448,79 +698,8 @@ export class ClaudeApi implements LLMApi {
       messages.push({ role: v.role, content });
     }
 
-    const keys = ["system", "user"];
-
-    // roles must alternate between "user" and "assistant" in claude, so add a fake assistant message between two user messages
-    for (let i = 0; i < messages.length - 1; i++) {
-      const message = messages[i];
-      const nextMessage = messages[i + 1];
-
-      if (keys.includes(message.role) && keys.includes(nextMessage.role)) {
-        messages[i] = [
-          message,
-          {
-            role: "assistant",
-            content: ";",
-          },
-        ] as any;
-      }
-    }
-
-    const prompt = messages
-      .flat()
-      .filter((v) => {
-        if (!v.content) return false;
-        if (typeof v.content === "string" && !v.content.trim()) return false;
-        return true;
-      })
-      .map((v) => {
-        const { role, content } = v;
-        const insideRole = ClaudeMapper[role] ?? "user";
-
-        if (!visionModel || typeof content === "string") {
-          return {
-            role: insideRole,
-            content: getMessageTextContent(v),
-          };
-        }
-        return {
-          role: insideRole,
-          content: content
-            .filter((v) => v.image_url || v.text)
-            .map(({ type, text, image_url }) => {
-              if (type === "text") {
-                return {
-                  type,
-                  text: text!,
-                };
-              }
-              const { url = "" } = image_url || {};
-              const colonIndex = url.indexOf(":");
-              const semicolonIndex = url.indexOf(";");
-              const comma = url.indexOf(",");
-
-              const mimeType = url.slice(colonIndex + 1, semicolonIndex);
-              const encodeType = url.slice(semicolonIndex + 1, comma);
-              const data = url.slice(comma + 1);
-
-              return {
-                type: "image" as const,
-                source: {
-                  type: encodeType,
-                  media_type: mimeType,
-                  data,
-                },
-              };
-            }),
-        };
-      });
-
-    if (prompt[0]?.role === "assistant") {
-      prompt.unshift({
-        role: "user",
-        content: ";",
-      });
-    }
+    const { system, messages: chatMessages } = splitAnthropicSystem(messages);
+    const prompt = buildAnthropicMessages(chatMessages, visionModel);
 
     const maxTokens = resolveAnthropicMaxTokens(
       modelConfig.model,
@@ -535,8 +714,12 @@ export class ClaudeApi implements LLMApi {
       modelConfig.model,
       modelConfig.temperature,
     );
+    const promptCacheMode = resolveAnthropicPromptCacheMode(
+      modelConfig.anthropicPromptCache,
+    );
 
     const requestBody: AnthropicChatRequest = {
+      ...(system.length > 0 ? { system } : {}),
       messages: prompt,
       stream: shouldStream,
 
@@ -562,19 +745,27 @@ export class ClaudeApi implements LLMApi {
         .getAsTools(
           useChatStore.getState().currentSession().mask?.plugin || [],
         );
+      const anthropicTools: AnthropicTool[] = (tools as any[]).map((tool) => ({
+        name: tool?.function?.name,
+        description: tool?.function?.description,
+        input_schema: tool?.function?.parameters,
+      }));
+      // Tools go into the body (not only streamWithThink's fallback) so the
+      // last tool definition can carry a cache breakpoint.
+      const streamRequestBody = applyAnthropicCacheControl(
+        anthropicTools.length > 0
+          ? { ...requestBody, tools: anthropicTools }
+          : requestBody,
+        promptCacheMode,
+      );
       return streamWithThink(
         path,
-        requestBody,
+        streamRequestBody,
         {
           ...getHeaders(),
           "anthropic-version": accessStore.anthropicApiVersion,
         },
-        // @ts-ignore
-        tools.map((tool) => ({
-          name: tool?.function?.name,
-          description: tool?.function?.description,
-          input_schema: tool?.function?.parameters,
-        })),
+        anthropicTools,
         funcs,
         controller,
         // parseSSE
@@ -762,6 +953,15 @@ export class ClaudeApi implements LLMApi {
               ],
             })),
           );
+          // The follow-up request reuses this payload; move the history
+          // breakpoint to the turn before the new tool results.
+          Object.assign(
+            requestPayload,
+            applyAnthropicCacheControl(
+              requestPayload as unknown as AnthropicChatRequest,
+              promptCacheMode,
+            ),
+          );
         },
         options,
         detectAnthropicStreamTermination,
@@ -770,7 +970,9 @@ export class ClaudeApi implements LLMApi {
     } else {
       const payload = {
         method: "POST",
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(
+          applyAnthropicCacheControl(requestBody, promptCacheMode),
+        ),
         signal: controller.signal,
         headers: {
           ...getHeaders(), // get common headers

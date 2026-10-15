@@ -43,6 +43,8 @@ export function ModelConfigList(props: {
   );
   const currentModel = props.modelConfig.model;
   const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
+  const isAnthropicProvider =
+    props.modelConfig.providerName === ServiceProvider.Anthropic;
   const isDeepSeekConfigurableReasoningModel =
     props.modelConfig.providerName === ServiceProvider.DeepSeek &&
     supportsDeepSeekReasoningEffort(currentModel);
@@ -641,6 +643,36 @@ export function ModelConfigList(props: {
             </ListItem>
           );
         })()}
+
+      {isAnthropicProvider && (
+        <ListItem
+          title={Locale.Settings.AnthropicPromptCache.Title}
+          subTitle={Locale.Settings.AnthropicPromptCache.SubTitle}
+        >
+          <Select
+            aria-label={Locale.Settings.AnthropicPromptCache.Title}
+            value={props.modelConfig.anthropicPromptCache ?? "5m"}
+            onChange={(e) => {
+              props.updateConfig((config) => {
+                config.anthropicPromptCache = e.currentTarget.value as
+                  | "off"
+                  | "5m"
+                  | "1h";
+              });
+            }}
+          >
+            <option value="5m">
+              {Locale.Settings.AnthropicPromptCache.Options.FiveMinutes}
+            </option>
+            <option value="1h">
+              {Locale.Settings.AnthropicPromptCache.Options.OneHour}
+            </option>
+            <option value="off">
+              {Locale.Settings.AnthropicPromptCache.Options.Off}
+            </option>
+          </Select>
+        </ListItem>
+      )}
 
       {isGpt5ReasoningModel && (
         <>

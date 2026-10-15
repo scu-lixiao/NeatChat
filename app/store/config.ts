@@ -25,7 +25,10 @@ import {
   ServiceProvider,
 } from "../constant";
 import { replaceRetiredXAIModels } from "../utils/model";
-import type { PromptCacheKeyMode } from "../utils/prompt-cache";
+import type {
+  AnthropicPromptCacheMode,
+  PromptCacheKeyMode,
+} from "../utils/prompt-cache";
 import { createPersistStore } from "../utils/store";
 import type { SystemPromptTimeMode } from "../utils/system-prompt";
 import type { Voice } from "rt-client";
@@ -138,6 +141,11 @@ export const DEFAULT_CONFIG = {
     // "session": 按会话生成稳定的缓存键（默认）
     // "off": 不发送
     promptCacheKey: "session" as PromptCacheKeyMode,
+    // anthropicPromptCache: Anthropic Messages API 的 cache_control 缓存断点
+    // "5m": 5 分钟缓存（默认，写入 1.25x）
+    // "1h": 1 小时缓存（写入 2x）
+    // "off": 不发送 cache_control
+    anthropicPromptCache: "5m" as AnthropicPromptCacheMode,
     template: config?.template ?? DEFAULT_INPUT_TEMPLATE,
     size: "1024x1024" as ModelSize,
     quality: "standard" as ImageQuality,
@@ -604,7 +612,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.4,
+    version: 4.5,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -680,6 +688,10 @@ export const useAppConfig = createPersistStore(
       if (version < 4.4 && state.modelConfig) {
         state.modelConfig.systemPromptTimeMode ??= "none";
         state.modelConfig.promptCacheKey ??= "session";
+      }
+
+      if (version < 4.5 && state.modelConfig) {
+        state.modelConfig.anthropicPromptCache ??= "5m";
       }
 
       return state as any;

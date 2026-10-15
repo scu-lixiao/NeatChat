@@ -230,6 +230,16 @@ const cn = {
         Full: "完整时间",
       },
     },
+    AnthropicPromptCache: {
+      Title: "Anthropic 提示词缓存",
+      SubTitle:
+        "为工具、系统提示和历史消息添加缓存断点。缓存读取按 0.1 倍输入价计费；缓存写入 5 分钟为 1.25 倍，1 小时为 2 倍",
+      Options: {
+        FiveMinutes: "5 分钟（默认）",
+        OneHour: "1 小时",
+        Off: "关闭",
+      },
+    },
     InputTemplate: {
       Title: "用户输入预处理",
       SubTitle: "用户最新的一条消息会填充到此模板",
