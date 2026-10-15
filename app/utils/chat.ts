@@ -456,119 +456,33 @@ class TextBuffer {
   }
 }
 
-/**
- * 智能批处理计算器 - 缓存计算结果，避免重复运算
- */
-class BatchCalculator {
-  private cache = new Map<string, number>();
-  private perfConfig: any;
+// Streamed text is revealed on every animation frame, 1/60 of what is still
+// buffered at a time (as upstream NextChat does): one character per frame
+// for small backlogs, gently faster for large bursts such as Gemini/Grok
+// thinking. There is no upper limit, so a burst never falls behind, and no
+// time-based throttle, which skipped random frames on 120Hz displays.
+const TYPING_BACKLOG_DIVISOR = 60;
 
-  constructor(perfConfig: any) {
-    this.perfConfig = perfConfig;
-  }
-
-  /**
-   * 计算批处理大小，使用缓存避免重复计算
-   */
-  calculateBatchSize(remainLength: number): number {
-    // 创建缓存键，考虑长度范围而不是精确值
-    const lengthRange = Math.floor(remainLength / 10) * 10;
-    const cacheKey = `${lengthRange}_${this.perfConfig.batchDivisor}`;
-
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey)!;
-    }
-
-    // 计算批处理大小
-    const baseCount = Math.round(remainLength / this.perfConfig.batchDivisor);
-    const fetchCount = Math.max(
-      this.perfConfig.minBatchSize,
-      Math.min(this.perfConfig.maxBatchSize, baseCount),
-    );
-
-    // 缓存结果
-    this.cache.set(cacheKey, fetchCount);
-
-    // 限制缓存大小，避免内存泄漏
-    if (this.cache.size > 50) {
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) {
-        this.cache.delete(firstKey);
-      }
-    }
-
-    return fetchCount;
-  }
-
-  /**
-   * 清理缓存
-   */
-  clearCache(): void {
-    this.cache.clear();
-  }
+export function getTypingBatchSize(remaining: number) {
+  return Math.max(1, Math.round(remaining / TYPING_BACKLOG_DIVISOR));
 }
 
-// Performance configuration based on device type
-const getPerformanceConfig = (() => {
-  let config: any = null;
-  return () => {
-    if (config === null) {
-      const isMobileDevice = /iPad|iPhone|iPod|Android/i.test(
-        navigator.userAgent,
-      );
-      const isLowEndDevice =
-        navigator.hardwareConcurrency <= 4 ||
-        (navigator as any).deviceMemory <= 4;
+// When the network stream ends with text still buffered, the animation loop
+// keeps typing it out, finishing within this many frames (~0.75s at 60Hz)
+// instead of dumping it in one update, which showed as a jump at the end.
+export const DRAIN_MAX_FRAMES = 45;
 
-      config = {
-        isMobile: isMobileDevice,
-        isLowEnd: isLowEndDevice,
-        // Mobile devices use more conservative animation parameters
-        // {{CHENGQI:
-        // Action: Modified - 提升移动端批处理吞吐量
-        // Timestamp: 2025-11-24 Claude 4.5 sonnet
-        // Reason: 修复移动端在高速流式输出时缓冲区积压导致的"卡顿/不完整"问题
-        // Optimization:
-        //   - batchDivisor: 80 -> 20 (更积极地计算批次大小)
-        //   - maxBatchSize: 5 -> 50 (允许每帧消费更多字符)
-        // }}
-        // {{CHENGQI:
-        // Action: Enhanced - 优化桌面端和移动端批处理参数修复思考内容显示卡顿
-        // Timestamp: 2025-12-09 Claude Opus 4.5
-        // Reason: Google Gemini 流式响应中思考内容显示卡顿
-        //   - 思考内容是批量到达的（每次 100-500+ 字符）
-        //   - 原配置消费速度远低于到达速度
-        // Optimization:
-        //   - 桌面端和移动端统一使用高性能配置
-        //   - batchDivisor: 30 (激进的批次计算)
-        //   - maxBatchSize: 120 (允许每帧消费大量字符)
-        //   - animationThrottle: 8ms (高帧率动画)
-        //   - 吞吐量可达 ~15000 字符/秒
-        // Principle_Applied: 最大化性能利用，流畅度优先
-        // }}
-        batchDivisor: 30,
-        minBatchSize: 1,
-        maxBatchSize: 120,
-        animationThrottle: 8, // ms between updates - 统一高帧率
-      };
-    }
-    return config;
-  };
-})();
-
-// When the network stream ends with a large unrendered tail, the animation
-// loop keeps going and drains it in bigger batches (~1/10 of the rest per
-// frame) instead of dumping it in one update, which showed as a jump at the
-// end. Hidden pages get no animation frames, so they finish right away.
-function shouldDrainTail(remaining: number, maxBatchSize: number) {
-  return (
-    remaining > maxBatchSize &&
-    !(typeof document !== "undefined" && document.hidden)
+// Never slower than normal typing, and done once `framesLeft` reaches 1
+export function getDrainBatchSize(remaining: number, framesLeft: number) {
+  return Math.max(
+    Math.ceil(remaining / TYPING_BACKLOG_DIVISOR),
+    Math.ceil(remaining / Math.max(1, framesLeft)),
   );
 }
 
-function getDrainBatchSize(remaining: number, maxBatchSize: number) {
-  return Math.max(maxBatchSize, Math.ceil(remaining / 10));
+// Hidden pages get no animation frames, so they finish right away
+function shouldDrainTail(remaining: number) {
+  return remaining > 0 && !(typeof document !== "undefined" && document.hidden);
 }
 
 /**
@@ -660,20 +574,17 @@ export function stream(
   //   - KISS: 简化字符串操作，提升效率
   // Optimization:
   //   - TextBuffer 替代频繁的字符串slice操作
-  //   - BatchCalculator 缓存批处理计算结果
   //   - 优化内存管理和动画循环
   // Architectural_Note (AR): 集成优化类，建立高效的流式处理架构
   // Documentation_Note (DW): Claude 4.0 sonnet 优化版本，性能提升30-50%
   // }}
-  const perfConfig = getPerformanceConfig();
   const textBuffer = new TextBuffer();
-  const batchCalculator = new BatchCalculator(perfConfig);
-  let lastUpdateTime = 0;
   let animationId = 0;
   // The network stream has finished; the loop is draining the buffered tail
   let draining = false;
+  let drainFramesLeft = DRAIN_MAX_FRAMES;
 
-  // Optimized animation with intelligent batching and throttling using TextBuffer
+  // Types the buffered text out, one batch per animation frame
   function animateResponseText() {
     if (controller.signal.aborted || (finished && !draining)) {
       // Final cleanup - get all remaining content from buffer
@@ -691,33 +602,25 @@ export function stream(
       return;
     }
 
-    const now = performance.now();
-    const timeDelta = now - lastUpdateTime;
-
-    // Throttle updates for mobile devices
-    if (timeDelta < perfConfig.animationThrottle) {
-      animationId = requestAnimationFrame(animateResponseText);
-      return;
-    }
-
     const remainingLength = textBuffer.getRemainingLength();
     if (remainingLength > 0) {
-      // Use intelligent batch size calculation with caching
       const fetchCount = draining
-        ? getDrainBatchSize(remainingLength, perfConfig.maxBatchSize)
-        : batchCalculator.calculateBatchSize(remainingLength);
+        ? getDrainBatchSize(remainingLength, drainFramesLeft)
+        : getTypingBatchSize(remainingLength);
 
       // Consume text from buffer efficiently
       const fetchText = textBuffer.consume(fetchCount);
       responseText += fetchText;
 
       options.onUpdate?.(responseText, fetchText);
-      lastUpdateTime = now;
     }
 
-    if (draining && textBuffer.getRemainingLength() === 0) {
-      completeFinish();
-      return;
+    if (draining) {
+      if (textBuffer.getRemainingLength() === 0) {
+        completeFinish();
+        return;
+      }
+      drainFramesLeft -= 1;
     }
 
     // Only continue animation if there's content or not finished
@@ -733,7 +636,6 @@ export function stream(
       animationId = 0;
     }
     textBuffer.clear();
-    batchCalculator.clearCache();
   };
 
   // Enhanced abort handling
@@ -848,12 +750,10 @@ export function stream(
       console.debug("[ChatAPI] end");
       finished = true;
       const tailLength = textBuffer.getRemainingLength();
-      if (
-        !controller.signal.aborted &&
-        shouldDrainTail(tailLength, perfConfig.maxBatchSize)
-      ) {
+      if (!controller.signal.aborted && shouldDrainTail(tailLength)) {
         // animateResponseText calls completeFinish once the buffer is empty
         draining = true;
+        drainFramesLeft = DRAIN_MAX_FRAMES;
         return;
       }
       completeFinish();
@@ -1055,19 +955,18 @@ export function streamWithThink(
   // Architectural_Note (AR): 完整的双流优化架构，支持高效的思考模式处理
   // Documentation_Note (DW): Claude 4.0 sonnet 双流优化版本，性能提升50-80%
   // }}
-  const perfConfig = getPerformanceConfig();
   const responseBuffer = new TextBuffer();
   const thinkingBuffer = new TextBuffer();
-  const batchCalculator = new BatchCalculator(perfConfig);
-  let lastUpdateTime = 0;
   let animationId = 0;
   // The network stream has finished; the loop is draining the buffered tails
   let draining = false;
+  // Shared by both buffers, so they finish draining on the same frame
+  let drainFramesLeft = DRAIN_MAX_FRAMES;
 
   const getBatchSize = (remaining: number) =>
     draining
-      ? getDrainBatchSize(remaining, perfConfig.maxBatchSize)
-      : batchCalculator.calculateBatchSize(remaining);
+      ? getDrainBatchSize(remaining, drainFramesLeft)
+      : getTypingBatchSize(remaining);
 
   // Unified animation system - combines both response and thinking text animations using TextBuffers
   function animateContent() {
@@ -1111,18 +1010,7 @@ export function streamWithThink(
       return;
     }
 
-    const now = performance.now();
-    const timeDelta = now - lastUpdateTime;
-
-    // Throttle updates for performance
-    if (timeDelta < perfConfig.animationThrottle) {
-      animationId = requestAnimationFrame(animateContent);
-      return;
-    }
-
-    let hasUpdates = false;
-
-    // Process response text with intelligent batching
+    // Process response text
     const responseRemaining = responseBuffer.getRemainingLength();
     if (responseRemaining > 0) {
       const fetchCount = getBatchSize(responseRemaining);
@@ -1130,10 +1018,9 @@ export function streamWithThink(
       responseText += fetchText;
 
       options.onUpdate?.(responseText, fetchText);
-      hasUpdates = true;
     }
 
-    // Process thinking text with intelligent batching
+    // Process thinking text
     const thinkingRemaining = thinkingBuffer.getRemainingLength();
     if (thinkingRemaining > 0) {
       const fetchCount = getBatchSize(thinkingRemaining);
@@ -1141,20 +1028,17 @@ export function streamWithThink(
       thinkingText += fetchText;
 
       options.onThinkingUpdate?.(thinkingText, fetchText);
-      hasUpdates = true;
     }
 
-    if (hasUpdates) {
-      lastUpdateTime = now;
-    }
-
-    if (
-      draining &&
-      responseBuffer.getRemainingLength() === 0 &&
-      thinkingBuffer.getRemainingLength() === 0
-    ) {
-      completeFinish();
-      return;
+    if (draining) {
+      if (
+        responseBuffer.getRemainingLength() === 0 &&
+        thinkingBuffer.getRemainingLength() === 0
+      ) {
+        completeFinish();
+        return;
+      }
+      drainFramesLeft -= 1;
     }
 
     // Continue animation only if there's content or not finished
@@ -1175,7 +1059,6 @@ export function streamWithThink(
     }
     responseBuffer.clear();
     thinkingBuffer.clear();
-    batchCalculator.clearCache();
   };
 
   // Enhanced abort handling
@@ -1315,12 +1198,10 @@ export function streamWithThink(
         responseBuffer.getRemainingLength(),
         thinkingBuffer.getRemainingLength(),
       );
-      if (
-        !controller.signal.aborted &&
-        shouldDrainTail(tailLength, perfConfig.maxBatchSize)
-      ) {
+      if (!controller.signal.aborted && shouldDrainTail(tailLength)) {
         // animateContent calls completeFinish once both buffers are empty
         draining = true;
+        drainFramesLeft = DRAIN_MAX_FRAMES;
         return;
       }
       completeFinish();

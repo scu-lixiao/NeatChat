@@ -47,6 +47,15 @@
   }
 
   .citations-header {
+    // A native button, without its default look
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -89,17 +98,30 @@
     }
   }
 
+  // The grid row animates between 0 and the list's own height, so nothing is
+  // measured: an expanded list has its full height from the first frame, also
+  // when it mounts again, and follows its content if that changes.
   .citations-content {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height var(--premium-duration-normal) var(--premium-ease-out);
+    display: grid;
+    grid-template-rows: 0fr;
+    transition:
+      grid-template-rows var(--premium-duration-normal) var(--premium-ease-out),
+      margin-top var(--premium-duration-normal) var(--premium-ease-out);
 
     &.expanded {
+      grid-template-rows: 1fr;
       margin-top: 10px;
-      overflow-y: auto;
+
+      .citations-list {
+        overflow-y: auto;
+      }
     }
 
     .citations-list {
+      min-height: 0;
+      // In both states, so collapsing a long list starts from what is shown
+      max-height: 600px;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
       gap: 6px;

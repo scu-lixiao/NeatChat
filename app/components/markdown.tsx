@@ -20,7 +20,7 @@ import {
 } from "./artifacts";
 import { useChatStore } from "../store";
 import { IconButton } from "./button";
-import { useThrottledValue } from "../hooks/useThrottledValue";
+import { useAdaptiveThrottledValue } from "../hooks/useAdaptiveThrottledValue";
 
 import { useAppConfig } from "../store/config";
 import clsx from "clsx";
@@ -317,17 +317,12 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-// While streaming, the markdown (remark-math/gfm, katex, highlight) is
-// re-parsed at most this often instead of on every streamed chunk.
-const STREAMING_PARSE_INTERVAL_MS = 200;
-
 function _MarkDownContent(props: { content: string; streaming?: boolean }) {
-  // The latest content is rendered as soon as streaming ends
-  const content = useThrottledValue(
-    props.content,
-    STREAMING_PARSE_INTERVAL_MS,
-    !!props.streaming,
-  );
+  // While streaming, the markdown (remark-math/gfm, katex, highlight) is
+  // re-parsed at an interval that follows the cost of the last parse instead
+  // of on every streamed chunk: often for short replies, less often as they
+  // grow. The latest content is rendered as soon as streaming ends.
+  const content = useAdaptiveThrottledValue(props.content, !!props.streaming);
   const escapedContent = useMemo(() => {
     return tryWrapHtmlCode(escapeBrackets(content));
   }, [content]);

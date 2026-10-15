@@ -55,9 +55,11 @@ import { createEmptyMask, Mask } from "./mask";
 const localStorage = safeLocalStorage();
 
 // Streaming re-renders run at most once per animation frame and no more often
-// than this. 32ms rather than 33ms so that two 60Hz frames (33.3ms) always
-// qualify despite timestamp jitter: ~30fps on both 60Hz and 120Hz displays.
-const STREAMING_UPDATE_THROTTLE_MS = 32;
+// than this. Well under a 60Hz frame (16.7ms), so every 60Hz frame qualifies
+// despite timestamp jitter, while 120Hz displays update on every other frame:
+// at most ~60 re-renders per second. The text is typed out per frame, so
+// skipping 60Hz frames showed up as uneven steps.
+const STREAMING_UPDATE_THROTTLE_MS = 12;
 
 export type ChatMessageTool = {
   id: string;

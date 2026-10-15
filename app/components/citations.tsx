@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { Citation } from "../store/chat";
+import { useState } from "react";
+import clsx from "clsx";
+import type { Citation } from "../store/chat";
 import styles from "./citations.module.scss";
 import Locale from "../locales";
 
@@ -13,31 +14,45 @@ import Locale from "../locales";
 // Documentation_Note (DW): 更新Citations组件为简化的链接显示模式
 // }}
 
+// Expanded state of each message's citations, kept outside the component so
+// that a remount (the message leaving the rendered window and coming back, a
+// session switch) doesn't reset it. In memory only: it isn't part of the chat
+// store, so a toggle neither re-renders the chat nor gets persisted.
+const expandedByMessage = new Map<string, boolean>();
+
 export interface CitationsProps {
   citations: Citation[];
+  /** Keeps the expanded state across remounts, per message */
+  messageId?: string;
+  /** Initial state when nothing is remembered for `messageId` */
   expanded?: boolean;
   onToggle?: (expanded: boolean) => void;
 }
 
-export function Citations({ citations, expanded = false, onToggle }: CitationsProps) {
-  const [isExpanded, setIsExpanded] = useState(expanded);
-  const [contentHeight, setContentHeight] = useState(0);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      const height = contentRef.current.scrollHeight;
-      setContentHeight(height);
-    }
-  }, [citations, isExpanded]);
+export function Citations({
+  citations,
+  messageId,
+  expanded = false,
+  onToggle,
+}: CitationsProps) {
+  const [isExpanded, setIsExpanded] = useState(
+    () =>
+      (messageId === undefined
+        ? undefined
+        : expandedByMessage.get(messageId)) ?? expanded,
+  );
 
   if (!citations || citations.length === 0) {
     return null;
   }
 
-  const toggleExpanded = () => {
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
     const newExpanded = !isExpanded;
     setIsExpanded(newExpanded);
+    if (messageId !== undefined) {
+      expandedByMessage.set(messageId, newExpanded);
+    }
     onToggle?.(newExpanded);
   };
 
@@ -49,30 +64,32 @@ export function Citations({ citations, expanded = false, onToggle }: CitationsPr
 
   return (
     <div className={styles["chat-message-citations"]}>
-      <div className={styles["citations-header"]} onClick={toggleExpanded}>
+      <button
+        type="button"
+        className={styles["citations-header"]}
+        onClick={toggleExpanded}
+        aria-expanded={isExpanded}
+      >
         <span className={styles["citations-title"]}>
           {Locale.Chat.Citations.Title} ({citations.length})
         </span>
         <span className={styles["citations-toggle"]}>
-          {isExpanded ? Locale.Chat.Citations.Collapse : Locale.Chat.Citations.Expand}
+          {isExpanded
+            ? Locale.Chat.Citations.Collapse
+            : Locale.Chat.Citations.Expand}
         </span>
-      </div>
-      
-      <div 
-        className={`${styles["citations-content"]} ${isExpanded ? styles["expanded"] : ""}`}
-        style={{
-          maxHeight: isExpanded ? `${Math.min(contentHeight + 20, 600)}px` : '0px'
-        }}
+      </button>
+
+      <div
+        className={clsx(styles["citations-content"], {
+          [styles.expanded]: isExpanded,
+        })}
+        data-expanded={isExpanded ? "true" : "false"}
       >
-        <div ref={contentRef} className={styles["citations-list"]}>
+        <div className={styles["citations-list"]}>
           {citations.map((citation, index) => (
-            <div
-              key={index}
-              className={styles["citation-item"]}
-            >
-              <div className={styles["citation-index"]}>
-                {index + 1}
-              </div>
+            <div key={index} className={styles["citation-item"]}>
+              <div className={styles["citation-index"]}>{index + 1}</div>
               <div className={styles["citation-content"]}>
                 <a
                   href={citation.url}
@@ -90,4 +107,4 @@ export function Citations({ citations, expanded = false, onToggle }: CitationsPr
       </div>
     </div>
   );
-} 
+}
