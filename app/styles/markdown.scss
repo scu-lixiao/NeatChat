@@ -358,8 +358,14 @@
 .markdown-body kbd {
   display: inline-block;
   padding: 3px 5px;
-  font: 11px ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas,
-    Liberation Mono, monospace;
+  font:
+    11px ui-monospace,
+    SFMono-Regular,
+    SF Mono,
+    Menlo,
+    Consolas,
+    Liberation Mono,
+    monospace;
   line-height: 10px;
   color: var(--color-fg-default);
   vertical-align: middle;
@@ -449,16 +455,32 @@
 .markdown-body code,
 .markdown-body samp {
   // Apple HIG推荐的等宽字体栈 - 优先使用SF Mono
-  font-family: var(--premium-font-mono, "SF Mono", Monaco, "Cascadia Code",
-    ui-monospace, SFMono-Regular, "Roboto Mono", Consolas, "Courier New", monospace);
+  font-family: var(
+    --premium-font-mono,
+    "SF Mono",
+    Monaco,
+    "Cascadia Code",
+    ui-monospace,
+    SFMono-Regular,
+    "Roboto Mono",
+    Consolas,
+    "Courier New",
+    monospace
+  );
   font-size: max(13px, 0.8em); // 确保最小可读性，符合Apple 11pt标准
 }
 
 .markdown-body pre {
   margin-top: 0;
   margin-bottom: 0;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas,
-    Liberation Mono, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SF Mono,
+    Menlo,
+    Consolas,
+    Liberation Mono,
+    monospace;
   font-size: 12px;
   word-wrap: normal;
 }
@@ -894,6 +916,22 @@
 
 .markdown-body [data-footnote-ref]::after {
   content: "]";
+}
+
+/* Inline citation markers linked by app/utils/citation-links.ts */
+.markdown-body a.citation-ref {
+  padding: 0 0.1em;
+  font-size: 0.75em;
+  line-height: 0;
+  vertical-align: super;
+  white-space: nowrap;
+  color: var(--color-accent-fg);
+  text-decoration: none;
+}
+
+.markdown-body a.citation-ref:hover {
+  text-decoration: none;
+  opacity: 0.8;
 }
 
 .markdown-body .footnotes {

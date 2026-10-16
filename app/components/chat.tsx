@@ -1287,6 +1287,7 @@ const ChatMessageItem = React.memo(function ChatMessageItem(
             key={view.streaming ? "loading" : "done"}
             content={textContent}
             streaming={view.streaming}
+            citations={isUser ? undefined : view.citations}
             loading={
               (view.preview || view.streaming) &&
               view.content.length === 0 &&

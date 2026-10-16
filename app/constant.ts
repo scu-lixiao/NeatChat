@@ -280,6 +280,11 @@ export const DEFAULT_INPUT_TEMPLATE = `{{input}}`; // input / time / model / lan
 // Latex inline: $x^2$
 // Latex block: $$e=mc^2$$
 // `;
+// The chat UI lists a reply's sources itself (Citations) and links [n]
+// markers in the text to them (app/utils/citation-links.ts). Keep this static,
+// without {{variables}}, so it doesn't change the cached prompt prefix.
+export const CITATION_SYSTEM_PROMPT =
+  "When sources or citations are available, cite them inline with numbered markers like [1] or [1][2] and do not write your own references or sources list in the reply, because the sources are shown to the user separately.";
 // The {{time}} line is dropped or reduced to a date unless
 // systemPromptTimeMode is "full", so the prompt prefix stays cacheable.
 export const DEFAULT_SYSTEM_TEMPLATE = `
@@ -289,6 +294,7 @@ Current model: {{model}}
 Current time: {{time}}
 Latex inline: \\(x^2\\) 
 Latex block: $$e=mc^2$$
+${CITATION_SYSTEM_PROMPT}
 `;
 
 // MCP模板常量已移除 - 生产环境清理

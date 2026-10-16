@@ -23,6 +23,11 @@ import { IconButton } from "./button";
 import { useAdaptiveThrottledValue } from "../hooks/useAdaptiveThrottledValue";
 
 import { useAppConfig } from "../store/config";
+import type { Citation } from "../store/chat";
+import {
+  CITATION_LINK_CLASS,
+  remarkCitationLinks,
+} from "../utils/citation-links";
 import clsx from "clsx";
 
 export function Mermaid(props: { code: string }) {
@@ -275,7 +280,7 @@ function tryWrapHtmlCode(text: string) {
 // Keep plugins and component overrides referentially stable: inline arrow
 // components would be new component types on every render, making React
 // remount every paragraph/link (and reload audio/video) on each streamed token.
-const REMARK_PLUGINS: Options["remarkPlugins"] = [
+const REMARK_PLUGINS: NonNullable<Options["remarkPlugins"]> = [
   RemarkMath,
   RemarkGfm,
   RemarkBreaks,
@@ -296,6 +301,10 @@ const MARKDOWN_COMPONENTS: Components = {
   code: CustomCode,
   p: (pProps) => <p {...pProps} dir="auto" />,
   a: (aProps) => {
+    // Inline citation markers (remarkCitationLinks) stay links even to media
+    if (aProps.className === CITATION_LINK_CLASS) {
+      return <a {...aProps} />;
+    }
     const href = aProps.href || "";
     if (/\.(aac|mp3|opus|wav)$/.test(href)) {
       return (
@@ -317,7 +326,11 @@ const MARKDOWN_COMPONENTS: Components = {
   },
 };
 
-function _MarkDownContent(props: { content: string; streaming?: boolean }) {
+function _MarkDownContent(props: {
+  content: string;
+  streaming?: boolean;
+  citations?: Citation[];
+}) {
   // While streaming, the markdown (remark-math/gfm, katex, highlight) is
   // re-parsed at an interval that follows the cost of the last parse instead
   // of on every streamed chunk: often for short replies, less often as they
@@ -327,19 +340,30 @@ function _MarkDownContent(props: { content: string; streaming?: boolean }) {
     return tryWrapHtmlCode(escapeBrackets(content));
   }, [content]);
 
+  // Citations usually arrive once, at the end of the stream. A new plugin
+  // list only then re-renders the markdown with linked [n] markers.
+  const { citations } = props;
+  const remarkPlugins = useMemo<typeof REMARK_PLUGINS>(
+    () =>
+      citations?.length
+        ? [...REMARK_PLUGINS, [remarkCitationLinks, { citations }]]
+        : REMARK_PLUGINS,
+    [citations],
+  );
+
   // Returning the same element while the throttled content is unchanged lets
   // React skip re-rendering (and so re-parsing) ReactMarkdown in between
   return useMemo(
     () => (
       <ReactMarkdown
-        remarkPlugins={REMARK_PLUGINS}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={REHYPE_PLUGINS}
         components={MARKDOWN_COMPONENTS}
       >
         {escapedContent}
       </ReactMarkdown>
     ),
-    [escapedContent],
+    [escapedContent, remarkPlugins],
   );
 }
 
@@ -351,6 +375,8 @@ export function Markdown(
     loading?: boolean;
     /** Content is still streaming in: throttle re-parsing */
     streaming?: boolean;
+    /** Sources that [n] markers in the content link to */
+    citations?: Citation[];
     fontSize?: number;
     fontFamily?: string;
     parentRef?: RefObject<HTMLDivElement>;
@@ -374,7 +400,11 @@ export function Markdown(
       {props.loading ? (
         <LoadingIcon />
       ) : (
-        <MarkdownContent content={props.content} streaming={props.streaming} />
+        <MarkdownContent
+          content={props.content}
+          streaming={props.streaming}
+          citations={props.citations}
+        />
       )}
     </div>
   );
