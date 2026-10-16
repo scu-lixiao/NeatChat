@@ -1,4 +1,5 @@
 import { buildSystemPrompt } from "../system-prompt";
+import { CITATION_SYSTEM_PROMPT } from "../../constant";
 import { DEFAULT_CONFIG, useAppConfig } from "../../store/config";
 
 const morning = new Date(2026, 9, 15, 8, 5, 30);
@@ -59,6 +60,27 @@ describe("buildSystemPrompt", () => {
       morning,
     );
     expect(prompt).toContain("trained by XAI.");
+  });
+
+  test("asks for inline [n] citations with the same static line everywhere", () => {
+    const prompts = [
+      buildSystemPrompt(gpt, morning),
+      buildSystemPrompt({ ...gpt, systemPromptTimeMode: "none" }, nextDay),
+      buildSystemPrompt({ ...gpt, systemPromptTimeMode: "date" }, morning),
+      buildSystemPrompt({ ...gpt, systemPromptTimeMode: "full" }, evening),
+      buildSystemPrompt({ ...grok, systemPromptTimeMode: "full" }, nextDay),
+      buildSystemPrompt({ model: "grok-custom", providerName: "XAI" }, morning),
+    ];
+
+    for (const prompt of prompts) {
+      const lines = prompt.split("\n").filter((line) => line.includes("[1]"));
+      expect(lines).toEqual([CITATION_SYSTEM_PROMPT]);
+    }
+    expect(CITATION_SYSTEM_PROMPT).not.toMatch(/{{|}}/);
+    expect(CITATION_SYSTEM_PROMPT).toContain("inline with numbered markers");
+    expect(CITATION_SYSTEM_PROMPT).toContain(
+      "do not write your own references or sources list",
+    );
   });
 });
 

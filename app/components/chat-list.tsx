@@ -14,8 +14,11 @@ import Locale from "../locales";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Path } from "../constant";
 import { MaskAvatar } from "./mask";
-import { Mask } from "../store/mask";
 import { memo, useCallback, useRef, useEffect } from "react";
+import {
+  areChatListItemsEqual,
+  selectChatListItems,
+} from "../utils/chat-render";
 import { showConfirm } from "./ui-lib";
 import { useMobileScreen } from "../utils";
 import clsx from "clsx";
@@ -30,7 +33,8 @@ export const ChatItem = memo(function ChatItem(props: {
   id: string;
   index: number;
   narrow?: boolean;
-  mask: Mask;
+  avatar: string;
+  model: string;
 }) {
   const draggableRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -65,10 +69,7 @@ export const ChatItem = memo(function ChatItem(props: {
           {props.narrow ? (
             <div className={styles["chat-item-narrow"]}>
               <div className={clsx(styles["chat-item-avatar"], "no-dark")}>
-                <MaskAvatar
-                  avatar={props.mask.avatar}
-                  model={props.mask.modelConfig.model}
-                />
+                <MaskAvatar avatar={props.avatar} model={props.model} />
               </div>
               <div className={styles["chat-item-narrow-count"]}>
                 {props.count}
@@ -103,14 +104,12 @@ export const ChatItem = memo(function ChatItem(props: {
 });
 
 export function ChatList(props: { narrow?: boolean }) {
-  const [sessions, selectedIndex, selectSession, moveSession] = useChatStore(
-    (state) => [
-      state.sessions,
-      state.currentSessionIndex,
-      state.selectSession,
-      state.moveSession,
-    ],
-  );
+  // Only the fields the list shows, so streaming into a session (which
+  // changes none of them) doesn't re-render the list
+  const items = useChatStore(selectChatListItems, areChatListItemsEqual);
+  const selectedIndex = useChatStore((state) => state.currentSessionIndex);
+  const selectSession = useChatStore((state) => state.selectSession);
+  const moveSession = useChatStore((state) => state.moveSession);
   const deleteSession = useChatStore((state) => state.deleteSession);
   const navigate = useNavigate();
   const isMobileScreen = useMobileScreen();
@@ -161,11 +160,11 @@ export function ChatList(props: { narrow?: boolean }) {
             ref={provided.innerRef}
             {...provided.droppableProps}
           >
-            {sessions.map((item, i) => (
+            {items.map((item, i) => (
               <ChatItem
                 title={item.topic}
                 time={new Date(item.lastUpdate).toLocaleString()}
-                count={item.messages.length}
+                count={item.messageCount}
                 key={item.id}
                 id={item.id}
                 index={i}
@@ -173,7 +172,8 @@ export function ChatList(props: { narrow?: boolean }) {
                 onClick={onSelect}
                 onDelete={onDelete}
                 narrow={props.narrow}
-                mask={item.mask}
+                avatar={item.avatar}
+                model={item.model}
               />
             ))}
             {provided.placeholder}

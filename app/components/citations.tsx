@@ -19,7 +19,11 @@ export interface CitationsProps {
   onToggle?: (expanded: boolean) => void;
 }
 
-export function Citations({ citations, expanded = false, onToggle }: CitationsProps) {
+export function Citations({
+  citations,
+  expanded = false,
+  onToggle,
+}: CitationsProps) {
   const [isExpanded, setIsExpanded] = useState(expanded);
   const [contentHeight, setContentHeight] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -54,25 +58,26 @@ export function Citations({ citations, expanded = false, onToggle }: CitationsPr
           {Locale.Chat.Citations.Title} ({citations.length})
         </span>
         <span className={styles["citations-toggle"]}>
-          {isExpanded ? Locale.Chat.Citations.Collapse : Locale.Chat.Citations.Expand}
+          {isExpanded
+            ? Locale.Chat.Citations.Collapse
+            : Locale.Chat.Citations.Expand}
         </span>
       </div>
-      
-      <div 
-        className={`${styles["citations-content"]} ${isExpanded ? styles["expanded"] : ""}`}
+
+      <div
+        className={`${styles["citations-content"]} ${
+          isExpanded ? styles["expanded"] : ""
+        }`}
         style={{
-          maxHeight: isExpanded ? `${Math.min(contentHeight + 20, 600)}px` : '0px'
+          maxHeight: isExpanded
+            ? `${Math.min(contentHeight + 20, 600)}px`
+            : "0px",
         }}
       >
         <div ref={contentRef} className={styles["citations-list"]}>
           {citations.map((citation, index) => (
-            <div
-              key={index}
-              className={styles["citation-item"]}
-            >
-              <div className={styles["citation-index"]}>
-                {index + 1}
-              </div>
+            <div key={index} className={styles["citation-item"]}>
+              <div className={styles["citation-index"]}>{index + 1}</div>
               <div className={styles["citation-content"]}>
                 <a
                   href={citation.url}
@@ -90,4 +95,4 @@ export function Citations({ citations, expanded = false, onToggle }: CitationsPr
       </div>
     </div>
   );
-} 
+}

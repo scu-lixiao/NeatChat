@@ -41,6 +41,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import styles from "./thinking-window.module.scss";
 import clsx from "clsx";
 import BrainIcon from "../icons/brain.svg";
+import { createFrameThrottle } from "../utils/raf-throttle";
 
 // {{CHENGQI:
 // Action: Added - 轻量代码块格式化函数（移到组件外部）
@@ -168,7 +169,21 @@ export function ThinkingWindow({
   // Optimization: 使用 ref 跟踪上次滚动时间，实现节流
   // }}
   const lastScrollTimeRef = useRef(0);
-  const SCROLL_THROTTLE_MS = 100; // 滚动节流间隔
+
+  // Pin the text to its bottom, at most once per animation frame. The
+  // optional callback runs right after the scroll.
+  const scrollTextToBottom = useMemo(
+    () =>
+      createFrameThrottle((afterScroll?: () => void) => {
+        if (textRef.current) {
+          lastScrollTimeRef.current = Date.now();
+          textRef.current.scrollTop = textRef.current.scrollHeight;
+        }
+        afterScroll?.();
+      }),
+    [],
+  );
+  useEffect(() => () => scrollTextToBottom.cancel(), [scrollTextToBottom]);
 
   // 检查内容是否超过200px高度 - 增加节流
   useEffect(() => {
@@ -185,42 +200,12 @@ export function ThinkingWindow({
     }
   }, [content, isStreaming]);
 
-  // 自动滚动到底部（流式更新时）- 增加节流
+  // 自动滚动到底部（流式更新时）
   useEffect(() => {
     if (isStreaming && textRef.current) {
-      // {{CHENGQI:
-      // Action: Fixed - iPad 性能优化 + 滚动节流
-      // Timestamp: 2025-11-24 Claude 4.5 sonnet (enhanced 2025-11-29)
-      // Reason: iPad下thinking mode卡住,由频繁的setTimeout + requestAnimationFrame导致
-      // Bug_Fixed: 移除requestAnimationFrame,只保留简单的setTimeout
-      // Principle_Applied: KISS - iPad性能限制,避免复杂的动画队列
-      // Optimization:
-      //   - 减少事件循环压力
-      //   - 增加滚动节流，减少布局重计算
-      // Architectural_Note (AR): iPad Safari对嵌套的async调用有性能限制
-      // Documentation_Note (DW): thinking window iPad优化 + 滚动节流
-      // }}
-      // 滚动节流：避免每次 content 更新都触发滚动
-      const now = Date.now();
-      if (now - lastScrollTimeRef.current < SCROLL_THROTTLE_MS) {
-        return; // 跳过此次滚动
-      }
-
-      const timer = setTimeout(() => {
-        if (textRef.current) {
-          lastScrollTimeRef.current = Date.now();
-          textRef.current.scrollTop = textRef.current.scrollHeight;
-        }
-
-        // 直接调用,不使用requestAnimationFrame
-        if (onContentUpdate) {
-          onContentUpdate();
-        }
-      }, 16); // 使用单个动画帧的时间
-
-      return () => clearTimeout(timer);
+      scrollTextToBottom(onContentUpdate);
     }
-  }, [content, isStreaming, onContentUpdate]);
+  }, [content, isStreaming, onContentUpdate, scrollTextToBottom]);
 
   const handleToggle = () => {
     const newExpanded = !isExpanded;
@@ -229,11 +214,7 @@ export function ThinkingWindow({
 
     // 展开时滚动到底部显示最新内容
     if (newExpanded && textRef.current) {
-      setTimeout(() => {
-        if (textRef.current) {
-          textRef.current.scrollTop = textRef.current.scrollHeight;
-        }
-      }, 100); // 等待动画完成
+      setTimeout(() => scrollTextToBottom(), 100); // 等待动画完成
     }
   };
 
@@ -242,11 +223,7 @@ export function ThinkingWindow({
     onToggle?.(true);
 
     // 展开时滚动到底部显示最新内容
-    setTimeout(() => {
-      if (textRef.current) {
-        textRef.current.scrollTop = textRef.current.scrollHeight;
-      }
-    }, 100); // 等待动画完成
+    setTimeout(() => scrollTextToBottom(), 100); // 等待动画完成
   };
 
   // {{CHENGQI:
