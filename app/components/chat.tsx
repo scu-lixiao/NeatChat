@@ -459,9 +459,6 @@ export function ChatAction(props: {
   );
 }
 
-// How long a user expand/collapse keeps the next auto-scroll from running
-const USER_TOGGLE_SKIP_SCROLL_MS = 300;
-
 function useScrollToBottom(
   scrollRef: RefObject<HTMLDivElement>,
   detach: boolean = false,
@@ -506,23 +503,7 @@ function useScrollToBottom(
   );
   useEffect(() => () => scrollDomToBottom.cancel(), [scrollDomToBottom]);
 
-  // The user expanded or collapsed a section of a message (citations), which
-  // changes the content height on purpose. Drop a pending scroll and skip the
-  // next one, so the section doesn't move away under the user's finger. A mark
-  // that isn't used soon expires, so it can't swallow an unrelated later
-  // scroll, such as the one for the next message.
-  const skipFollowUntilRef = useRef(0);
-  const skipNextAutoScroll = useCallback(() => {
-    scrollDomToBottom.cancel();
-    skipFollowUntilRef.current = performance.now() + USER_TOGGLE_SKIP_SCROLL_MS;
-  }, [scrollDomToBottom]);
-
   const followTail = useCallback(() => {
-    if (skipFollowUntilRef.current > 0) {
-      const skip = performance.now() < skipFollowUntilRef.current;
-      skipFollowUntilRef.current = 0;
-      if (skip) return;
-    }
     if (autoScrollRef.current && !detach) {
       scrollDomToBottom();
     }
@@ -554,7 +535,6 @@ function useScrollToBottom(
   return {
     setAutoScroll,
     scrollDomToBottom,
-    skipNextAutoScroll,
   };
 }
 
@@ -1149,8 +1129,6 @@ interface ChatMessageItemProps {
   onStop: (messageId: string) => void;
   onSpeech: (text: string) => void;
   onFillInput: (text: string) => void;
-  /** The user expanded or collapsed a section of the message */
-  onSectionToggle: () => void;
   showTokenUsage: boolean;
 }
 
@@ -1355,8 +1333,9 @@ const ChatMessageItem = React.memo(function ChatMessageItem(
           {!isUser && view.citations && view.citations.length > 0 && (
             <Citations
               citations={view.citations}
-              messageId={message.id}
-              onToggle={props.onSectionToggle}
+              onToggle={(expanded) => {
+                console.log(`[Citations] toggled: ${expanded}`);
+              }}
             />
           )}
         </div>
@@ -1464,13 +1443,12 @@ function _Chat() {
   // Architectural_Note (AR): 保持现有滚动系统架构，增强对流式更新的支持
   // Documentation_Note (DW): 修改滚动逻辑，支持所有类型的内容流式更新
   // }}
-  const { setAutoScroll, scrollDomToBottom, skipNextAutoScroll } =
-    useScrollToBottom(
-      scrollRef,
-      false, // 移除过于严格的条件，让useScrollToBottom内部逻辑处理自动滚动
-      session.id,
-      isLoading, // 传递加载状态以支持流式更新检测
-    );
+  const { setAutoScroll, scrollDomToBottom } = useScrollToBottom(
+    scrollRef,
+    false, // 移除过于严格的条件，让useScrollToBottom内部逻辑处理自动滚动
+    session.id,
+    isLoading, // 传递加载状态以支持流式更新检测
+  );
   const [hitBottom, setHitBottom] = useState(true);
   const isMobileScreen = useMobileScreen();
   const navigate = useNavigate();
@@ -2559,7 +2537,6 @@ function _Chat() {
                         onStop={onUserStop}
                         onSpeech={openaiSpeech}
                         onFillInput={setUserInput}
-                        onSectionToggle={skipNextAutoScroll}
                         showTokenUsage={showTokenUsage}
                       />
                       {i === clearContextIndex - 1 && <ClearContextDivider />}
