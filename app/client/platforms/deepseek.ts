@@ -45,7 +45,11 @@ import {
   getDeepSeekErrorMessage,
   getFetchableUrl,
   getSearchQuestion,
+  isUrlInSources,
   joinDeepSeekUrl,
+  DEEPSEEK_TOOL_TIMEOUT_MS,
+  FETCH_CONTENT_MAX_CHARS,
+  FETCH_TOTAL_MAX_CHARS,
   type DeepSeekBalance,
   type DeepSeekFetchResult,
   type DeepSeekSearchResult,
@@ -68,6 +72,11 @@ type DeepSeekRequestPayload = RequestPayload & {
 
 // The chat store keeps an assistant message's reasoning for DeepSeek
 type DeepSeekHistoryMessage = RequestMessage & { thinkingContent?: string };
+
+// A Search or Fetch API result, or the tool error the model gets instead
+type ToolResponse<T> =
+  | { json: T; error?: undefined }
+  | { json?: undefined; error: { status: number; data: string } };
 
 // Stands in for reasoning DeepSeek requires but a message doesn't have (from
 // another model, say). An empty string is rejected by some models.
@@ -207,11 +216,14 @@ export class DeepSeekApi implements LLMApi {
         headers: getHeaders(),
       };
 
-      // make a fetch request
-      const requestTimeoutId = setTimeout(
-        () => controller.abort(),
-        getTimeoutMSByModel(options.config.model),
-      );
+      // make a fetch request. A streaming reply times out once it stalls, so
+      // tool rounds can make it as long as they need.
+      const timeoutMs = getTimeoutMSByModel(options.config.model);
+      let requestTimeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      const extendTimeout = () => {
+        clearTimeout(requestTimeoutId);
+        requestTimeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      };
 
       if (shouldStream) {
         // This request's reasoning and text, sent back with its tool calls
@@ -227,6 +239,7 @@ export class DeepSeekApi implements LLMApi {
           // parseSSE
           (text: string, runTools: ChatMessageTool[]) => {
             // console.log("parseSSE", text, runTools);
+            extendTimeout();
             const json = JSON.parse(text);
             const choices = json.choices as Array<{
               delta: {
@@ -370,26 +383,91 @@ export class DeepSeekApi implements LLMApi {
     const question = lastUserMessage
       ? getSearchQuestion(getMessageTextContent(lastUserMessage))
       : undefined;
+    // What web_fetch may read URLs from: the user's messages, then each
+    // search and fetch result the model is given
+    const urlSources = options.messages
+      .filter((m) => m.role === "user")
+      .map((m) => getMessageTextContent(m));
+    let pageCharsRead = 0;
 
     // The tool functions resolve like a plugin call: status >= 300 marks the
     // tool as failed and hands the message to the model
-    const post = async <T>(path: string, body: object) => {
-      const res = await fetch(this.path(path), {
-        method: "POST",
-        headers: getHeaders(false, ServiceProvider.DeepSeek),
-        body: JSON.stringify(body),
-        signal: controller.signal,
+    const post = async <T>(
+      path: string,
+      body: object,
+      isResult: (json: any) => boolean,
+    ): Promise<ToolResponse<T>> => {
+      // Its own signal, so a stalled call can time out without stopping the
+      // reply
+      const toolController = new AbortController();
+      const abort = () => toolController.abort();
+      if (controller.signal.aborted) abort();
+      controller.signal.addEventListener("abort", abort);
+
+      // Raced as well as aborted: the app's fetch only aborts a request once
+      // its headers have arrived
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<ToolResponse<T>>((resolve) => {
+        timeoutId = setTimeout(() => {
+          abort();
+          resolve({
+            error: {
+              status: 504,
+              data: `no answer within ${
+                DEEPSEEK_TOOL_TIMEOUT_MS / 1000
+              } seconds`,
+            },
+          });
+        }, DEEPSEEK_TOOL_TIMEOUT_MS);
       });
-      const text = await res.text();
-      return res.ok
-        ? { json: JSON.parse(text) as T }
-        : {
+
+      const request = async (): Promise<ToolResponse<T>> => {
+        const res = await fetch(this.path(path), {
+          method: "POST",
+          headers: getHeaders(false, ServiceProvider.DeepSeek),
+          body: JSON.stringify(body),
+          signal: toolController.signal,
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          return {
             error: {
               status: res.status,
-              data: getDeepSeekErrorMessage(text) || res.statusText,
+              // The app's fetch answers a network failure with an empty 599
+              data:
+                getDeepSeekErrorMessage(text) ||
+                `${res.status} ${res.statusText}`.trim(),
             },
           };
+        }
+
+        let json: unknown;
+        try {
+          json = JSON.parse(text);
+        } catch {}
+        // The proxy answers 200 with an error message when its own request
+        // fails
+        return isResult(json)
+          ? { json: json as T }
+          : {
+              error: {
+                status: 502,
+                data: `unexpected response: ${
+                  getDeepSeekErrorMessage(text) || "empty body"
+                }`,
+              },
+            };
+      };
+
+      try {
+        return await Promise.race([request(), timeout]);
+      } finally {
+        clearTimeout(timeoutId);
+        controller.signal.removeEventListener("abort", abort);
+      }
     };
+    const isObject = (json: unknown): json is Record<string, unknown> =>
+      !!json && typeof json === "object" && !Array.isArray(json);
 
     tools.push(DEEPSEEK_WEB_SEARCH_TOOL, DEEPSEEK_WEB_FETCH_TOOL);
 
@@ -402,6 +480,9 @@ export class DeepSeekApi implements LLMApi {
       const res = await post<{ results?: DeepSeekSearchResult[] }>(
         DeepSeek.SearchPath,
         { query, ...(question ? { ori_question: question } : {}) },
+        (json) =>
+          isObject(json) &&
+          (json.results === undefined || Array.isArray(json.results)),
       );
       if (res.error) return res.error;
 
@@ -409,24 +490,50 @@ export class DeepSeekApi implements LLMApi {
       if (numbered.length > 0) {
         options.onCitations?.([...citations]);
       }
-      return { status: 200, data: formatSearchResults(query, numbered) };
+      const data = formatSearchResults(query, numbered);
+      urlSources.push(data);
+      return { status: 200, data };
     };
 
     funcs[DEEPSEEK_WEB_FETCH_TOOL_NAME] = async (args: { url?: string }) => {
-      const url = getFetchableUrl(String(args?.url ?? ""));
-      if (!url) {
+      const rawUrl = String(args?.url ?? "");
+      const checked = getFetchableUrl(rawUrl);
+      if ("error" in checked) {
+        return { status: 400, data: checked.error };
+      }
+      const { url } = checked;
+      if (!isUrlInSources(rawUrl, url, urlSources)) {
         return {
-          status: 400,
-          data: "url must be an http or https URL without credentials",
+          status: 403,
+          data: `only URLs from the user's messages or from earlier ${DEEPSEEK_WEB_SEARCH_TOOL_NAME} and ${DEEPSEEK_WEB_FETCH_TOOL_NAME} results can be read; search for the page first`,
+        };
+      }
+      const charsLeft = FETCH_TOTAL_MAX_CHARS - pageCharsRead;
+      if (charsLeft <= 0) {
+        return {
+          status: 413,
+          data: `this reply has read ${FETCH_TOTAL_MAX_CHARS} characters of pages, as much as it can; answer with what you have`,
         };
       }
 
-      const res = await post<DeepSeekFetchResult>(DeepSeek.FetchPath, { url });
+      const res = await post<DeepSeekFetchResult>(
+        DeepSeek.FetchPath,
+        { url },
+        (json) => isObject(json) && typeof json.content === "string",
+      );
       if (res.error) return res.error;
 
       const number = citeSource(citations, url, res.json.title);
       options.onCitations?.([...citations]);
-      return { status: 200, data: formatFetchedPage(number, url, res.json) };
+      const data = formatFetchedPage(
+        number,
+        url,
+        res.json,
+        Math.min(FETCH_CONTENT_MAX_CHARS, charsLeft),
+      );
+      pageCharsRead += data.length;
+      urlSources.push(data);
+      return { status: 200, data };
     };
 
     return [tools, funcs];

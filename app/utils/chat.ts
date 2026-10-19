@@ -766,15 +766,18 @@ export function stream(
         return Promise.all(
           toolCallMessage.tool_calls.map((tool) => {
             options?.onBeforeTool?.(tool);
-            return Promise.resolve(
-              // @ts-ignore
-              funcs[tool.function.name](
+            // Called inside then(), so a throw (arguments that aren't JSON,
+            // an unknown tool) fails this tool instead of the whole loop
+            return Promise.resolve()
+              .then(() =>
                 // @ts-ignore
-                tool?.function?.arguments
-                  ? JSON.parse(tool?.function?.arguments)
-                  : {},
-              ),
-            )
+                funcs[tool.function.name](
+                  // @ts-ignore
+                  tool?.function?.arguments
+                    ? JSON.parse(tool?.function?.arguments)
+                    : {},
+                ),
+              )
               .then((res) => {
                 let content = res.data || res?.statusText;
                 // hotfix #5614
@@ -783,9 +786,12 @@ export function stream(
                     ? content
                     : JSON.stringify(content);
                 if (res.status >= 300) {
-                  return Promise.reject(content);
+                  // Rejecting with nothing would stop the loop in catch()
+                  return Promise.reject(
+                    content || `tool failed with status ${res.status}`,
+                  );
                 }
-                return content;
+                return content ?? "";
               })
               .then((content) => {
                 options?.onAfterTool?.({
@@ -796,12 +802,13 @@ export function stream(
                 return content;
               })
               .catch((e) => {
+                const errorMsg = e ? String(e) : "tool failed";
                 options?.onAfterTool?.({
                   ...tool,
                   isError: true,
-                  errorMsg: e.toString(),
+                  errorMsg,
                 });
-                return e.toString();
+                return errorMsg;
               })
               .then((content) => ({
                 name: tool.function.name,
@@ -1229,15 +1236,18 @@ export function streamWithThink(
         return Promise.all(
           toolCallMessage.tool_calls.map((tool) => {
             options?.onBeforeTool?.(tool);
-            return Promise.resolve(
-              // @ts-ignore
-              funcs[tool.function.name](
+            // Called inside then(), so a throw (arguments that aren't JSON,
+            // an unknown tool) fails this tool instead of the whole loop
+            return Promise.resolve()
+              .then(() =>
                 // @ts-ignore
-                tool?.function?.arguments
-                  ? JSON.parse(tool?.function?.arguments)
-                  : {},
-              ),
-            )
+                funcs[tool.function.name](
+                  // @ts-ignore
+                  tool?.function?.arguments
+                    ? JSON.parse(tool?.function?.arguments)
+                    : {},
+                ),
+              )
               .then((res) => {
                 let content = res.data || res?.statusText;
                 // hotfix #5614
@@ -1246,9 +1256,12 @@ export function streamWithThink(
                     ? content
                     : JSON.stringify(content);
                 if (res.status >= 300) {
-                  return Promise.reject(content);
+                  // Rejecting with nothing would stop the loop in catch()
+                  return Promise.reject(
+                    content || `tool failed with status ${res.status}`,
+                  );
                 }
-                return content;
+                return content ?? "";
               })
               .then((content) => {
                 options?.onAfterTool?.({
@@ -1259,12 +1272,13 @@ export function streamWithThink(
                 return content;
               })
               .catch((e) => {
+                const errorMsg = e ? String(e) : "tool failed";
                 options?.onAfterTool?.({
                   ...tool,
                   isError: true,
-                  errorMsg: e.toString(),
+                  errorMsg,
                 });
-                return e.toString();
+                return errorMsg;
               })
               .then((content) => ({
                 name: tool.function.name,

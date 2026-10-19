@@ -52,6 +52,11 @@ const FETCH_URL_MAX_CHARS = 8192;
 // How much of a fetched page the model reads, so one long page doesn't
 // crowd out the rest of the context
 export const FETCH_CONTENT_MAX_CHARS = 20000;
+// How much page content one reply reads in all (three full pages): every
+// later round of the reply sends the pages again
+export const FETCH_TOTAL_MAX_CHARS = 3 * FETCH_CONTENT_MAX_CHARS;
+// How long a Search or Fetch call may take before it fails as a tool error
+export const DEEPSEEK_TOOL_TIMEOUT_MS = 60 * 1000;
 
 // Function tools the client runs against the Search and Fetch APIs. Results
 // are numbered for the reply's [n] citation markers (see citeSource).
@@ -83,6 +88,7 @@ export const DEEPSEEK_WEB_FETCH_TOOL = {
     name: DEEPSEEK_WEB_FETCH_TOOL_NAME,
     description:
       "Read a web page and get its title and content as Markdown: a search result in full, or a page the user links to. " +
+      `Only URLs from the user's messages or from earlier ${DEEPSEEK_WEB_SEARCH_TOOL_NAME} and ${DEEPSEEK_WEB_FETCH_TOOL_NAME} results can be read; search for any other page first. ` +
       "Some sites refuse to be read. The page is numbered like search results; cite it inline by its number.",
     parameters: {
       type: "object",
@@ -179,44 +185,93 @@ export function formatSearchResults(
 }
 
 /**
- * A URL the Fetch API accepts (http or https, with a host, no credentials),
- * or undefined
+ * The URL to send the Fetch API, as the URL parser normalizes it (the string
+ * that was checked), or why the API won't read it: it takes http and https
+ * URLs with a host and no credentials, of up to 8192 characters
  */
-export function getFetchableUrl(url: string) {
+export function getFetchableUrl(
+  url: string,
+): { url: string } | { error: string } {
   const trimmed = url.trim();
-  if (!trimmed || trimmed.length > FETCH_URL_MAX_CHARS) return undefined;
+  if (!trimmed) return { error: "url must not be empty" };
 
   let parsed: URL;
   try {
     parsed = new URL(trimmed);
   } catch {
-    return undefined;
+    return { error: "url must be an absolute URL" };
   }
 
-  const fetchable =
-    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-    !!parsed.hostname &&
-    !parsed.username &&
-    !parsed.password;
-  return fetchable ? trimmed : undefined;
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { error: "url must be an http or https URL" };
+  }
+  if (!parsed.hostname) return { error: "url must have a host" };
+  if (parsed.username || parsed.password) {
+    return { error: "url must not contain credentials" };
+  }
+  if (parsed.href.length > FETCH_URL_MAX_CHARS) {
+    return { error: `url must be at most ${FETCH_URL_MAX_CHARS} characters` };
+  }
+  return { url: parsed.href };
 }
 
-/** The tool result the model reads, cut to FETCH_CONTENT_MAX_CHARS */
+/**
+ * Whether a URL appears in the sources (the user's messages, earlier search
+ * and fetch results). Reading only those keeps an injected instruction from
+ * sending conversation data out in a URL the model makes up. Any part of a
+ * source counts, so a URL typed without its scheme, with text right after
+ * it, or encoded differently still matches.
+ */
+export function isUrlInSources(
+  url: string,
+  normalizedUrl: string,
+  sources: string[],
+) {
+  const forms = new Set<string>();
+  for (const form of [url, normalizedUrl, safeDecodeURI(normalizedUrl)]) {
+    const bare = form
+      .trim()
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+    if (bare) forms.add(bare);
+  }
+  const text = sources.join("\n").toLowerCase();
+  return [...forms].some((form) => text.includes(form));
+}
+
+function safeDecodeURI(url: string) {
+  try {
+    return decodeURI(url);
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * The tool result the model reads, cut to maxChars without splitting a
+ * surrogate pair
+ */
 export function formatFetchedPage(
   number: number,
   url: string,
   page: DeepSeekFetchResult,
+  maxChars = FETCH_CONTENT_MAX_CHARS,
 ) {
   const content = (page.content ?? "").trim();
-  const truncated = content.length > FETCH_CONTENT_MAX_CHARS;
+  let shown = content.slice(0, maxChars);
+  if (/[\uD800-\uDBFF]$/.test(shown)) {
+    shown = shown.slice(0, -1);
+  }
+  const truncated = shown.length < content.length;
 
   return [
     `[${number}] ${page.title || url}`,
     `URL: ${url}`,
     "",
-    truncated ? content.slice(0, FETCH_CONTENT_MAX_CHARS) : content,
+    shown,
     truncated
-      ? `\n[Truncated: the first ${FETCH_CONTENT_MAX_CHARS} of ${content.length} characters]`
+      ? `\n[Truncated: the first ${shown.length} of ${content.length} characters]`
       : "",
   ]
     .join("\n")
