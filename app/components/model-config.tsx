@@ -46,9 +46,10 @@ export function ModelConfigList(props: {
   const isXAIProvider = props.modelConfig.providerName === ServiceProvider.XAI;
   const isAnthropicProvider =
     props.modelConfig.providerName === ServiceProvider.Anthropic;
+  const isDeepSeekProvider =
+    props.modelConfig.providerName === ServiceProvider.DeepSeek;
   const isDeepSeekConfigurableReasoningModel =
-    props.modelConfig.providerName === ServiceProvider.DeepSeek &&
-    supportsDeepSeekReasoningEffort(currentModel);
+    isDeepSeekProvider && supportsDeepSeekReasoningEffort(currentModel);
   const isGeminiConfigurableThinkingModel =
     props.modelConfig.providerName === ServiceProvider.Google &&
     currentModel === "gemini-4-argon";
@@ -259,6 +260,24 @@ export function ModelConfigList(props: {
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
   const historyStrategy = resolveHistoryStrategy(
     props.modelConfig.historyStrategy,
+  );
+  // 网络搜索工具: built in for GPT-5 and Grok, the Search API for DeepSeek
+  const webSearchToggle = (
+    <ListItem
+      title={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
+      subTitle={Locale.Settings.GPT5Tools.EnableWebSearch.SubTitle}
+    >
+      <input
+        aria-label={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
+        type="checkbox"
+        checked={props.modelConfig.enableWebSearch ?? false}
+        onChange={(e) =>
+          props.updateConfig(
+            (config) => (config.enableWebSearch = e.currentTarget.checked),
+          )
+        }
+      ></input>
+    </ListItem>
   );
 
   return (
@@ -742,26 +761,12 @@ export function ModelConfigList(props: {
         </>
       )}
 
+      {isDeepSeekProvider && webSearchToggle}
+
       {/* Responses API 内置工具配置 */}
       {(isGpt5ReasoningModel || supportsXaiToolControls) && (
         <>
-          {/* 网络搜索工具 */}
-          <ListItem
-            title={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
-            subTitle={Locale.Settings.GPT5Tools.EnableWebSearch.SubTitle}
-          >
-            <input
-              aria-label={Locale.Settings.GPT5Tools.EnableWebSearch.Title}
-              type="checkbox"
-              checked={props.modelConfig.enableWebSearch ?? false}
-              onChange={(e) =>
-                props.updateConfig(
-                  (config) =>
-                    (config.enableWebSearch = e.currentTarget.checked),
-                )
-              }
-            ></input>
-          </ListItem>
+          {webSearchToggle}
 
           {/* 网络搜索配置（仅当启用时显示） */}
           {isGpt5ReasoningModel && props.modelConfig.enableWebSearch && (

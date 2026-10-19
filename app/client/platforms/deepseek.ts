@@ -17,11 +17,13 @@ import {
   detectOpenAICompatibleStreamTermination,
   streamWithThink,
 } from "@/app/utils/chat";
+import type { Citation } from "@/app/store/chat";
 import {
   ChatOptions,
   getHeaders,
   LLMApi,
   LLMModel,
+  RequestMessage,
   SpeechOptions,
 } from "../api";
 import { getClientConfig } from "@/app/config/client";
@@ -30,6 +32,17 @@ import {
   getMessageTextContentWithoutThinking,
   getTimeoutMSByModel,
 } from "@/app/utils";
+import {
+  addSearchCitations,
+  clampSearchQuery,
+  DEEPSEEK_WEB_SEARCH_TOOL,
+  DEEPSEEK_WEB_SEARCH_TOOL_NAME,
+  formatSearchResults,
+  getDeepSeekErrorMessage,
+  getSearchQuestion,
+  type DeepSeekBalance,
+  type DeepSeekSearchResult,
+} from "@/app/utils/deepseek";
 import {
   resolveDeepSeekReasoningEffort,
   type DeepSeekReasoningEffort,
@@ -45,6 +58,13 @@ import { fetch } from "@/app/utils/stream";
 type DeepSeekRequestPayload = RequestPayload & {
   reasoning_effort?: DeepSeekReasoningEffort;
 };
+
+// The chat store keeps an assistant message's reasoning for DeepSeek
+type DeepSeekHistoryMessage = RequestMessage & { thinkingContent?: string };
+
+// Stands in for reasoning DeepSeek requires but a message doesn't have (from
+// another model, say). An empty string is rejected by some models.
+const MISSING_REASONING = " ";
 
 export class DeepSeekApi implements LLMApi {
   private disableListModels = true;
@@ -85,11 +105,45 @@ export class DeepSeekApi implements LLMApi {
   }
 
   async chat(options: ChatOptions) {
-    const messages: ChatOptions["messages"] = [];
-    for (const v of options.messages) {
+    const modelConfig = {
+      ...useAppConfig.getState().modelConfig,
+      ...useChatStore.getState().currentSession().mask.modelConfig,
+      ...{
+        model: options.config.model,
+        providerName: options.config.providerName,
+      },
+    };
+
+    const reasoningEffort = resolveDeepSeekReasoningEffort(
+      modelConfig.model,
+      modelConfig.reasoningEffort,
+    );
+
+    const shouldStream = !!options.config.stream;
+    const controller = new AbortController();
+    options.onController?.(controller);
+
+    // Tools only run in the streaming tool loop (streamWithThink)
+    const [tools, funcs]: [any[], Record<string, Function>] = shouldStream
+      ? this.getTools(options, !!modelConfig.enableWebSearch, controller)
+      : [[], {}];
+
+    // In thinking mode, a request with tools must send the reasoning of every
+    // assistant message back, or the API answers 400
+    // https://api-docs.deepseek.com/guides/thinking_mode
+    const passBackReasoning = tools.length > 0 && reasoningEffort !== "none";
+
+    const messages: Array<RequestMessage & { reasoning_content?: string }> = [];
+    for (const v of options.messages as DeepSeekHistoryMessage[]) {
       if (v.role === "assistant") {
         const content = getMessageTextContentWithoutThinking(v);
-        messages.push({ role: v.role, content });
+        messages.push({
+          role: v.role,
+          content,
+          ...(passBackReasoning
+            ? { reasoning_content: v.thinkingContent || MISSING_REASONING }
+            : {}),
+        });
       } else {
         const content = getMessageTextContent(v);
         messages.push({ role: v.role, content });
@@ -97,7 +151,7 @@ export class DeepSeekApi implements LLMApi {
     }
 
     // 检测并修复消息顺序，确保除system外的第一个消息是user
-    const filteredMessages: ChatOptions["messages"] = [];
+    const filteredMessages: typeof messages = [];
     let hasFoundFirstUser = false;
 
     for (const msg of messages) {
@@ -115,20 +169,6 @@ export class DeepSeekApi implements LLMApi {
       // If hasFoundFirstUser is false and it is not a system message, it will be skipped.
     }
 
-    const modelConfig = {
-      ...useAppConfig.getState().modelConfig,
-      ...useChatStore.getState().currentSession().mask.modelConfig,
-      ...{
-        model: options.config.model,
-        providerName: options.config.providerName,
-      },
-    };
-
-    const reasoningEffort = resolveDeepSeekReasoningEffort(
-      modelConfig.model,
-      modelConfig.reasoningEffort,
-    );
-
     const requestPayload: DeepSeekRequestPayload = {
       messages: filteredMessages,
       stream: options.config.stream,
@@ -143,10 +183,6 @@ export class DeepSeekApi implements LLMApi {
     };
 
     console.log("[Request] openai payload: ", requestPayload);
-
-    const shouldStream = !!options.config.stream;
-    const controller = new AbortController();
-    options.onController?.(controller);
 
     try {
       const chatPath = this.path(DeepSeek.ChatPath);
@@ -171,16 +207,14 @@ export class DeepSeekApi implements LLMApi {
       );
 
       if (shouldStream) {
-        const [tools, funcs] = usePluginStore
-          .getState()
-          .getAsTools(
-            useChatStore.getState().currentSession().mask?.plugin || [],
-          );
+        // This request's reasoning and text, sent back with its tool calls
+        let roundReasoning = "";
+        let roundContent = "";
         return streamWithThink(
           chatPath,
           requestPayload,
           getHeaders(),
-          tools as any,
+          tools,
           funcs,
           controller,
           // parseSSE
@@ -228,11 +262,13 @@ export class DeepSeekApi implements LLMApi {
             }
 
             if (reasoning && reasoning.length > 0) {
+              roundReasoning += reasoning;
               return {
                 isThinking: true,
                 content: reasoning,
               };
             } else if (content && content.length > 0) {
+              roundContent += content;
               return {
                 isThinking: false,
                 content: content,
@@ -250,6 +286,15 @@ export class DeepSeekApi implements LLMApi {
             toolCallMessage: any,
             toolCallResult: any[],
           ) => {
+            if (roundContent) {
+              toolCallMessage.content = roundContent;
+            }
+            if (passBackReasoning) {
+              toolCallMessage.reasoning_content =
+                roundReasoning || MISSING_REASONING;
+            }
+            roundReasoning = "";
+            roundContent = "";
             // @ts-ignore
             requestPayload?.messages?.splice(
               // @ts-ignore
@@ -292,11 +337,89 @@ export class DeepSeekApi implements LLMApi {
       options.onError?.(e as Error);
     }
   }
+
+  // Mask plugins, plus web search through DeepSeek's Search API
+  private getTools(
+    options: ChatOptions,
+    enableWebSearch: boolean,
+    controller: AbortController,
+  ): [any[], Record<string, Function>] {
+    const [pluginTools, pluginFuncs] = usePluginStore
+      .getState()
+      .getAsTools(useChatStore.getState().currentSession().mask?.plugin || []);
+    const tools: any[] = [...(pluginTools as any[])];
+    const funcs: Record<string, Function> = { ...pluginFuncs };
+
+    if (!enableWebSearch) {
+      return [tools, funcs];
+    }
+
+    // Every search of this reply adds to the same numbered sources
+    const citations: Citation[] = [];
+    const lastUserMessage = [...options.messages]
+      .reverse()
+      .find((m) => m.role === "user");
+    const question = lastUserMessage
+      ? getSearchQuestion(getMessageTextContent(lastUserMessage))
+      : undefined;
+
+    tools.push(DEEPSEEK_WEB_SEARCH_TOOL);
+    // Resolves like a plugin call: status >= 300 marks the tool as failed
+    funcs[DEEPSEEK_WEB_SEARCH_TOOL_NAME] = async (args: { query?: string }) => {
+      const query = clampSearchQuery(String(args?.query ?? ""));
+      if (!query) {
+        return { status: 400, data: "query must not be empty" };
+      }
+
+      const res = await fetch(this.path(DeepSeek.SearchPath), {
+        method: "POST",
+        headers: getHeaders(false, ServiceProvider.DeepSeek),
+        body: JSON.stringify({
+          query,
+          ...(question ? { ori_question: question } : {}),
+        }),
+        signal: controller.signal,
+      });
+      const body = await res.text();
+      if (!res.ok) {
+        return {
+          status: res.status,
+          data: getDeepSeekErrorMessage(body) || res.statusText,
+        };
+      }
+
+      const { results = [] } = JSON.parse(body) as {
+        results?: DeepSeekSearchResult[];
+      };
+      const numbered = addSearchCitations(citations, results);
+      if (numbered.length > 0) {
+        options.onCitations?.([...citations]);
+      }
+      return { status: 200, data: formatSearchResults(query, numbered) };
+    };
+
+    return [tools, funcs];
+  }
+
   async usage() {
     return {
       used: 0,
       total: 0,
     };
+  }
+
+  async balance(): Promise<DeepSeekBalance> {
+    const res = await fetch(this.path(DeepSeek.BalancePath), {
+      method: "GET",
+      headers: getHeaders(false, ServiceProvider.DeepSeek),
+    });
+    const body = await res.text();
+    if (!res.ok) {
+      throw new Error(
+        getDeepSeekErrorMessage(body) || `${res.status} ${res.statusText}`,
+      );
+    }
+    return JSON.parse(body);
   }
 
   async models(): Promise<LLMModel[]> {

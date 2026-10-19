@@ -1029,6 +1029,7 @@ export const useChatStore = createPersistStore(
           // 基础字段：只保留 API 需要的字段
           const cleanedMsg: RequestMessage & {
             googleParts?: typeof msg.googleParts;
+            thinkingContent?: string;
           } = {
             role: msg.role,
             content: msg.content,
@@ -1038,6 +1039,16 @@ export const useChatStore = createPersistStore(
           // 参考: https://ai.google.dev/gemini-api/docs/thought-signatures
           if (msg.googleParts && msg.googleParts.length > 0) {
             cleanedMsg.googleParts = msg.googleParts;
+          }
+
+          // DeepSeek needs earlier reasoning back when a request has tools
+          // (web search, plugins). The platform sends it only then.
+          if (
+            modelConfig.providerName === ServiceProvider.DeepSeek &&
+            msg.role === "assistant" &&
+            msg.thinkingContent
+          ) {
+            cleanedMsg.thinkingContent = msg.thinkingContent;
           }
 
           return cleanedMsg;

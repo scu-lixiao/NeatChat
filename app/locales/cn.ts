@@ -363,6 +363,17 @@ const cn = {
       NoAccess: "输入 API Key 或访问密码查看余额",
     },
 
+    DeepSeekBalance: {
+      Title: "DeepSeek 余额",
+      SubTitle(total: string, granted: string, toppedUp: string) {
+        return `可用 ${total}（赠送 ${granted}，充值 ${toppedUp}）`;
+      },
+      Unavailable: "余额不足，无法调用 API",
+      Failed: (message: string) => `查询失败：${message}`,
+      IsChecking: "正在查询…",
+      Check: "查询",
+    },
+
     Access: {
       SaasStart: {
         Title: "使用 NextChat AI",

@@ -1,7 +1,9 @@
 import { getServerSideConfig } from "@/app/config/server";
 import {
+  ACCESS_CODE_PREFIX,
   DEEPSEEK_BASE_URL,
   ApiPath,
+  DeepSeek,
   ModelProvider,
   ServiceProvider,
 } from "@/app/constant";
@@ -23,6 +25,20 @@ export async function handle(
     return NextResponse.json({ body: "OK" }, { status: 200 });
   }
 
+  // Without the user's own key, auth() would answer with the server key's
+  // balance, which only ENABLE_BALANCE_QUERY makes public
+  const subpath = req.nextUrl.pathname.replaceAll(ApiPath.DeepSeek, "");
+  if (
+    subpath === `/${DeepSeek.BalancePath}` &&
+    serverConfig.hideBalanceQuery &&
+    !hasUserApiKey(req)
+  ) {
+    return NextResponse.json(
+      { error: true, message: "balance query is disabled on this server" },
+      { status: 403 },
+    );
+  }
+
   const authResult = auth(req, ModelProvider.DeepSeek);
   if (authResult.error) {
     return NextResponse.json(authResult, {
@@ -37,6 +53,13 @@ export async function handle(
     console.error("[DeepSeek] ", e);
     return NextResponse.json(prettyObject(e));
   }
+}
+
+function hasUserApiKey(req: NextRequest) {
+  const token = (req.headers.get("Authorization") ?? "")
+    .replace("Bearer ", "")
+    .trim();
+  return !!token && !token.startsWith(ACCESS_CODE_PREFIX);
 }
 
 async function request(req: NextRequest) {
@@ -102,12 +125,13 @@ async function request(req: NextRequest) {
         fetchOptions.body = JSON.stringify(jsonBody);
       }
 
-      // not undefined and is false
+      // not undefined and is false; Search requests carry no model
       if (
         serverConfig.customModels &&
+        jsonBody?.model &&
         isModelNotavailableInServer(
           serverConfig.customModels,
-          jsonBody?.model as string,
+          jsonBody.model,
           ServiceProvider.DeepSeek as string,
         )
       ) {
