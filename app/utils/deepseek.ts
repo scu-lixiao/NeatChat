@@ -234,6 +234,20 @@ export function formatBalanceAmount(currency: string, amount: string) {
 }
 
 /**
+ * An endpoint under a DeepSeek base URL. The Search and Fetch paths start with
+ * v1/, so a base URL given as https://api.deepseek.com/v1 (which chat accepts)
+ * would otherwise end up at /v1/v1/tools/search.
+ */
+export function joinDeepSeekUrl(baseUrl: string, path: string) {
+  const base = baseUrl.replace(/\/+$/, "");
+  let rest = path.replace(/^\/+/, "");
+  if (base.endsWith("/v1") && rest.startsWith("v1/")) {
+    rest = rest.slice("v1/".length);
+  }
+  return `${base}/${rest}`;
+}
+
+/**
  * The message of an error body: DeepSeek's `{ error: { message } }`, or the
  * proxy's `{ error: true, message | msg }`
  */

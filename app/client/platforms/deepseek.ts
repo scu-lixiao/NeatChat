@@ -45,6 +45,7 @@ import {
   getDeepSeekErrorMessage,
   getFetchableUrl,
   getSearchQuestion,
+  joinDeepSeekUrl,
   type DeepSeekBalance,
   type DeepSeekFetchResult,
   type DeepSeekSearchResult,
@@ -99,7 +100,7 @@ export class DeepSeekApi implements LLMApi {
 
     console.log("[Proxy Endpoint] ", baseUrl, path);
 
-    return [baseUrl, path].join("/");
+    return joinDeepSeekUrl(baseUrl, path);
   }
 
   extractMessage(res: any) {
