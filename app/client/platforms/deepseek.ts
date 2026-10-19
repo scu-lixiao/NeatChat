@@ -34,13 +34,19 @@ import {
 } from "@/app/utils";
 import {
   addSearchCitations,
+  citeSource,
   clampSearchQuery,
+  DEEPSEEK_WEB_FETCH_TOOL,
+  DEEPSEEK_WEB_FETCH_TOOL_NAME,
   DEEPSEEK_WEB_SEARCH_TOOL,
   DEEPSEEK_WEB_SEARCH_TOOL_NAME,
+  formatFetchedPage,
   formatSearchResults,
   getDeepSeekErrorMessage,
+  getFetchableUrl,
   getSearchQuestion,
   type DeepSeekBalance,
+  type DeepSeekFetchResult,
   type DeepSeekSearchResult,
 } from "@/app/utils/deepseek";
 import {
@@ -338,7 +344,8 @@ export class DeepSeekApi implements LLMApi {
     }
   }
 
-  // Mask plugins, plus web search through DeepSeek's Search API
+  // Mask plugins, plus web search and page reading through DeepSeek's Search
+  // and Fetch APIs
   private getTools(
     options: ChatOptions,
     enableWebSearch: boolean,
@@ -354,7 +361,7 @@ export class DeepSeekApi implements LLMApi {
       return [tools, funcs];
     }
 
-    // Every search of this reply adds to the same numbered sources
+    // Every search and fetch of this reply adds to the same numbered sources
     const citations: Citation[] = [];
     const lastUserMessage = [...options.messages]
       .reverse()
@@ -363,39 +370,62 @@ export class DeepSeekApi implements LLMApi {
       ? getSearchQuestion(getMessageTextContent(lastUserMessage))
       : undefined;
 
-    tools.push(DEEPSEEK_WEB_SEARCH_TOOL);
-    // Resolves like a plugin call: status >= 300 marks the tool as failed
+    // The tool functions resolve like a plugin call: status >= 300 marks the
+    // tool as failed and hands the message to the model
+    const post = async <T>(path: string, body: object) => {
+      const res = await fetch(this.path(path), {
+        method: "POST",
+        headers: getHeaders(false, ServiceProvider.DeepSeek),
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      return res.ok
+        ? { json: JSON.parse(text) as T }
+        : {
+            error: {
+              status: res.status,
+              data: getDeepSeekErrorMessage(text) || res.statusText,
+            },
+          };
+    };
+
+    tools.push(DEEPSEEK_WEB_SEARCH_TOOL, DEEPSEEK_WEB_FETCH_TOOL);
+
     funcs[DEEPSEEK_WEB_SEARCH_TOOL_NAME] = async (args: { query?: string }) => {
       const query = clampSearchQuery(String(args?.query ?? ""));
       if (!query) {
         return { status: 400, data: "query must not be empty" };
       }
 
-      const res = await fetch(this.path(DeepSeek.SearchPath), {
-        method: "POST",
-        headers: getHeaders(false, ServiceProvider.DeepSeek),
-        body: JSON.stringify({
-          query,
-          ...(question ? { ori_question: question } : {}),
-        }),
-        signal: controller.signal,
-      });
-      const body = await res.text();
-      if (!res.ok) {
-        return {
-          status: res.status,
-          data: getDeepSeekErrorMessage(body) || res.statusText,
-        };
-      }
+      const res = await post<{ results?: DeepSeekSearchResult[] }>(
+        DeepSeek.SearchPath,
+        { query, ...(question ? { ori_question: question } : {}) },
+      );
+      if (res.error) return res.error;
 
-      const { results = [] } = JSON.parse(body) as {
-        results?: DeepSeekSearchResult[];
-      };
-      const numbered = addSearchCitations(citations, results);
+      const numbered = addSearchCitations(citations, res.json.results ?? []);
       if (numbered.length > 0) {
         options.onCitations?.([...citations]);
       }
       return { status: 200, data: formatSearchResults(query, numbered) };
+    };
+
+    funcs[DEEPSEEK_WEB_FETCH_TOOL_NAME] = async (args: { url?: string }) => {
+      const url = getFetchableUrl(String(args?.url ?? ""));
+      if (!url) {
+        return {
+          status: 400,
+          data: "url must be an http or https URL without credentials",
+        };
+      }
+
+      const res = await post<DeepSeekFetchResult>(DeepSeek.FetchPath, { url });
+      if (res.error) return res.error;
+
+      const number = citeSource(citations, url, res.json.title);
+      options.onCitations?.([...citations]);
+      return { status: 200, data: formatFetchedPage(number, url, res.json) };
     };
 
     return [tools, funcs];

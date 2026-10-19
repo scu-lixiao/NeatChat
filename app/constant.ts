@@ -249,6 +249,7 @@ export const DeepSeek = {
   ExampleEndpoint: DEEPSEEK_BASE_URL,
   ChatPath: "chat/completions",
   SearchPath: "v1/tools/search",
+  FetchPath: "v1/tools/fetch",
   BalancePath: "user/balance",
 };
 

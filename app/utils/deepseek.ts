@@ -21,6 +21,14 @@ export interface DeepSeekSearchResult {
   authority: number;
 }
 
+// POST /v1/tools/fetch, https://api-docs.deepseek.com/api/fetch
+export interface DeepSeekFetchResult {
+  // empty when the page has none
+  title: string;
+  // the page as Markdown
+  content: string;
+}
+
 // GET /user/balance, https://api-docs.deepseek.com/api/get-user-balance
 export interface DeepSeekBalance {
   // whether the balance covers API calls
@@ -35,12 +43,18 @@ export interface DeepSeekBalance {
 }
 
 export const DEEPSEEK_WEB_SEARCH_TOOL_NAME = "web_search";
+export const DEEPSEEK_WEB_FETCH_TOOL_NAME = "web_fetch";
 
 // The Search API takes query and ori_question of 1 to 128 Unicode characters
 const SEARCH_TEXT_MAX_CHARS = 128;
+// The Fetch API takes URLs of up to 8192 characters
+const FETCH_URL_MAX_CHARS = 8192;
+// How much of a fetched page the model reads, so one long page doesn't
+// crowd out the rest of the context
+export const FETCH_CONTENT_MAX_CHARS = 20000;
 
-// A function tool the client runs against the Search API. Results are
-// numbered for the reply's [n] citation markers (see addSearchCitations).
+// Function tools the client runs against the Search and Fetch APIs. Results
+// are numbered for the reply's [n] citation markers (see citeSource).
 export const DEEPSEEK_WEB_SEARCH_TOOL = {
   type: "function",
   function: {
@@ -48,7 +62,7 @@ export const DEEPSEEK_WEB_SEARCH_TOOL = {
     description:
       "Search the web for current information: recent events, facts that may have changed, or anything you are unsure about. " +
       'The query supports site:example.com, -site:, "exact phrase", -term, lang:en, after:2026-01-01 and before: operators. ' +
-      "Results are numbered. " +
+      `Results are numbered and summarized; read one in full with ${DEEPSEEK_WEB_FETCH_TOOL_NAME}. ` +
       CITATION_SYSTEM_PROMPT,
     parameters: {
       type: "object",
@@ -59,6 +73,26 @@ export const DEEPSEEK_WEB_SEARCH_TOOL = {
         },
       },
       required: ["query"],
+    },
+  },
+};
+
+export const DEEPSEEK_WEB_FETCH_TOOL = {
+  type: "function",
+  function: {
+    name: DEEPSEEK_WEB_FETCH_TOOL_NAME,
+    description:
+      "Read a web page and get its title and content as Markdown: a search result in full, or a page the user links to. " +
+      "Some sites refuse to be read. The page is numbered like search results; cite it inline by its number.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: {
+          type: "string",
+          description: "The http or https URL of the page",
+        },
+      },
+      required: ["url"],
     },
   },
 };
@@ -83,10 +117,20 @@ export function getSearchQuestion(text: string) {
 }
 
 /**
- * Number search results for citing. A URL already in `citations` (from an
- * earlier search in the same reply) keeps its number, a new one is appended,
- * so result [n] is citations[n - 1], which is what [n] in the reply links to.
+ * The number of a source for citing. A URL already in `citations` (from an
+ * earlier search or fetch in the same reply) keeps its number, a new one is
+ * appended, so source [n] is citations[n - 1], which is what [n] in the reply
+ * links to.
  */
+export function citeSource(citations: Citation[], url: string, title: string) {
+  let index = citations.findIndex((c) => c.url === url);
+  if (index === -1) {
+    index = citations.push({ title: title || url, url }) - 1;
+  }
+  return index + 1;
+}
+
+/** Number search results for citing, see citeSource */
 export function addSearchCitations(
   citations: Citation[],
   results: DeepSeekSearchResult[],
@@ -96,17 +140,13 @@ export function addSearchCitations(
   for (const result of results) {
     if (!result.url) continue;
 
-    let index = citations.findIndex((c) => c.url === result.url);
-    if (index === -1) {
-      index =
-        citations.push({
-          title: result.title || result.site_name || result.url,
-          url: result.url,
-        }) - 1;
-    }
-
-    if (!numbered.some((item) => item.number === index + 1)) {
-      numbered.push({ number: index + 1, result });
+    const number = citeSource(
+      citations,
+      result.url,
+      result.title || result.site_name || "",
+    );
+    if (!numbered.some((item) => item.number === number)) {
+      numbered.push({ number, result });
     }
   }
 
@@ -136,6 +176,51 @@ export function formatSearchResults(
         .join("\n"),
     )
     .join("\n\n");
+}
+
+/**
+ * A URL the Fetch API accepts (http or https, with a host, no credentials),
+ * or undefined
+ */
+export function getFetchableUrl(url: string) {
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.length > FETCH_URL_MAX_CHARS) return undefined;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return undefined;
+  }
+
+  const fetchable =
+    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+    !!parsed.hostname &&
+    !parsed.username &&
+    !parsed.password;
+  return fetchable ? trimmed : undefined;
+}
+
+/** The tool result the model reads, cut to FETCH_CONTENT_MAX_CHARS */
+export function formatFetchedPage(
+  number: number,
+  url: string,
+  page: DeepSeekFetchResult,
+) {
+  const content = (page.content ?? "").trim();
+  const truncated = content.length > FETCH_CONTENT_MAX_CHARS;
+
+  return [
+    `[${number}] ${page.title || url}`,
+    `URL: ${url}`,
+    "",
+    truncated ? content.slice(0, FETCH_CONTENT_MAX_CHARS) : content,
+    truncated
+      ? `\n[Truncated: the first ${FETCH_CONTENT_MAX_CHARS} of ${content.length} characters]`
+      : "",
+  ]
+    .join("\n")
+    .trim();
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {

@@ -2,11 +2,16 @@ import { jest } from "@jest/globals";
 import type { Citation } from "../../store/chat";
 import {
   addSearchCitations,
+  citeSource,
   clampSearchQuery,
+  DEEPSEEK_WEB_FETCH_TOOL,
   DEEPSEEK_WEB_SEARCH_TOOL,
+  FETCH_CONTENT_MAX_CHARS,
   formatBalanceAmount,
+  formatFetchedPage,
   formatSearchResults,
   getDeepSeekErrorMessage,
+  getFetchableUrl,
   getSearchQuestion,
   type DeepSeekSearchResult,
 } from "../deepseek";
@@ -106,6 +111,66 @@ describe("DeepSeek search helpers", () => {
   });
 });
 
+describe("DeepSeek fetch helpers", () => {
+  test("numbers a fetched page like a search result", () => {
+    const citations: Citation[] = [];
+    addSearchCitations(citations, [result("https://a.example")]);
+
+    expect(citeSource(citations, "https://a.example", "Page A")).toBe(1);
+    expect(citeSource(citations, "https://b.example", "")).toBe(2);
+    // A known source keeps the title it was cited with
+    expect(citations).toEqual([
+      { title: "Title of https://a.example", url: "https://a.example" },
+      { title: "https://b.example", url: "https://b.example" },
+    ]);
+  });
+
+  test("accepts only http(s) URLs with a host and no credentials", () => {
+    expect(getFetchableUrl(" https://a.example/x?y=1 ")).toBe(
+      "https://a.example/x?y=1",
+    );
+    expect(getFetchableUrl("http://a.example")).toBe("http://a.example");
+    expect(getFetchableUrl("file:///etc/passwd")).toBeUndefined();
+    expect(getFetchableUrl("ftp://a.example")).toBeUndefined();
+    expect(getFetchableUrl("https://user:pass@a.example")).toBeUndefined();
+    expect(getFetchableUrl("a.example")).toBeUndefined();
+    expect(getFetchableUrl("")).toBeUndefined();
+    expect(
+      getFetchableUrl(`https://a.example/${"x".repeat(8192)}`),
+    ).toBeUndefined();
+  });
+
+  test("formats a page and cuts long content", () => {
+    expect(
+      formatFetchedPage(2, "https://a.example", {
+        title: "Page A",
+        content: "# Page A\n\nBody.",
+      }),
+    ).toBe("[2] Page A\nURL: https://a.example\n\n# Page A\n\nBody.");
+
+    const long = "x".repeat(FETCH_CONTENT_MAX_CHARS + 10);
+    const formatted = formatFetchedPage(1, "https://a.example", {
+      title: "",
+      content: long,
+    });
+    expect(formatted.startsWith("[1] https://a.example\n")).toBe(true);
+    expect(formatted).toContain("x".repeat(FETCH_CONTENT_MAX_CHARS) + "\n\n");
+    expect(formatted).not.toContain("x".repeat(FETCH_CONTENT_MAX_CHARS + 1));
+    expect(formatted).toMatch(
+      `[Truncated: the first ${FETCH_CONTENT_MAX_CHARS} of ${long.length} characters]`,
+    );
+  });
+
+  test("points the model from search results to the fetch tool", () => {
+    expect(DEEPSEEK_WEB_SEARCH_TOOL.function.description).toContain(
+      DEEPSEEK_WEB_FETCH_TOOL.function.name,
+    );
+    expect(DEEPSEEK_WEB_FETCH_TOOL.function.parameters.required).toEqual([
+      "url",
+    ]);
+  });
+});
+
 describe("DeepSeek balance helpers", () => {
   test("formats amounts with the currency symbol", () => {
     expect(formatBalanceAmount("CNY", "110.00")).toBe("¥110.00");
@@ -128,8 +193,8 @@ describe("DeepSeek balance helpers", () => {
   });
 });
 
-// The streamed chat goes through a mocked fetchEventSource; the Search and
-// balance requests through the global fetch mock (jest.setup.ts).
+// The streamed chat goes through a mocked fetchEventSource; the Search, Fetch
+// and balance requests through the global fetch mock (jest.setup.ts).
 const fetchEventSourceMock = jest.fn<(url: string, init: any) => any>();
 
 let DeepSeekApi: any;
@@ -175,6 +240,27 @@ const searchRound = [
   delta({}, "tool_calls"),
 ];
 
+// One tool call in one chunk
+const toolRound = (
+  id: string,
+  name: string,
+  args: object,
+  reasoning: string,
+) => [
+  delta({ reasoning_content: reasoning }),
+  delta({
+    tool_calls: [
+      {
+        index: 0,
+        id,
+        type: "function",
+        function: { name, arguments: JSON.stringify(args) },
+      },
+    ],
+  }),
+  delta({}, "tool_calls"),
+];
+
 const answerRound = [
   delta({ reasoning_content: "Found it." }),
   delta({ content: "V4.1 shipped [1]." }),
@@ -185,8 +271,9 @@ const fetchMock = global.fetch as jest.Mock<any>;
 const defaultFetch = fetchMock.getMockImplementation();
 
 // Answers requests to `path` (other requests, like the access store's
-// /api/config, get the default mock)
+// /api/config, go to the mock set before)
 function respondTo(path: string, status: number, body: unknown) {
+  const previous = fetchMock.getMockImplementation();
   fetchMock.mockImplementation((url: string, init: RequestInit) =>
     String(url).endsWith(path)
       ? Promise.resolve({
@@ -195,7 +282,7 @@ function respondTo(path: string, status: number, body: unknown) {
           statusText: "",
           text: () => Promise.resolve(JSON.stringify(body)),
         } as Response)
-      : defaultFetch?.(url, init),
+      : previous?.(url, init),
   );
 }
 
@@ -313,6 +400,7 @@ describe("DeepSeek web search tool loop", () => {
 
     expect(first.tools.map((t: any) => t.function.name)).toEqual([
       "web_search",
+      "web_fetch",
     ]);
     // Every assistant message carries reasoning, a placeholder if it has none
     expect(
@@ -374,6 +462,112 @@ describe("DeepSeek web search tool loop", () => {
     expect(options.onCitations).not.toHaveBeenCalled();
   });
 
+  test("reads a search result in full under the same number", async () => {
+    fetchEventSourceMock
+      .mockImplementationOnce(replyWith(searchRound))
+      .mockImplementationOnce(
+        replyWith(
+          toolRound(
+            "call_2",
+            "web_fetch",
+            { url: "https://news.example/v41" },
+            "Read it in full.",
+          ),
+        ),
+      )
+      .mockImplementationOnce(replyWith(answerRound));
+    respondTo("v1/tools/search", 200, {
+      results: [result("https://news.example/v41", { title: "V4.1 released" })],
+    });
+    respondTo("v1/tools/fetch", 200, {
+      title: "DeepSeek V4.1 Released",
+      content: "# DeepSeek V4.1\n\nFull article.",
+    });
+
+    const { options, requests } = await chat({
+      enableWebSearch: true,
+      reasoningEffort: "high",
+    });
+
+    expect(options.onError).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(3);
+    expect(JSON.parse(fetchCall("v1/tools/fetch").init.body as string)).toEqual(
+      { url: "https://news.example/v41" },
+    );
+
+    const third = requests[2];
+    expect(third.messages[7]).toMatchObject({
+      role: "assistant",
+      reasoning_content: "Read it in full.",
+    });
+    expect(third.messages[8]).toMatchObject({
+      role: "tool",
+      tool_call_id: "call_2",
+      content:
+        "[1] DeepSeek V4.1 Released\nURL: https://news.example/v41\n\n# DeepSeek V4.1\n\nFull article.",
+    });
+    expect(options.onCitations).toHaveBeenLastCalledWith([
+      { title: "V4.1 released", url: "https://news.example/v41" },
+    ]);
+  });
+
+  test("refuses URLs the Fetch API can't read without calling it", async () => {
+    fetchEventSourceMock
+      .mockImplementationOnce(
+        replyWith(
+          toolRound(
+            "call_1",
+            "web_fetch",
+            { url: "file:///etc/passwd" },
+            "Read it.",
+          ),
+        ),
+      )
+      .mockImplementationOnce(replyWith(answerRound));
+
+    const { options, requests } = await chat({
+      enableWebSearch: true,
+      reasoningEffort: "high",
+    });
+
+    expect(requests[1].messages[6].content).toBe(
+      "url must be an http or https URL without credentials",
+    );
+    expect(() => fetchCall("v1/tools/fetch")).toThrow();
+    expect(options.onCitations).not.toHaveBeenCalled();
+  });
+
+  test("hands a refused fetch to the model as a tool error", async () => {
+    fetchEventSourceMock
+      .mockImplementationOnce(
+        replyWith(
+          toolRound(
+            "call_1",
+            "web_fetch",
+            { url: "https://blocked.example" },
+            "Read it.",
+          ),
+        ),
+      )
+      .mockImplementationOnce(replyWith(answerRound));
+    respondTo("v1/tools/fetch", 403, {
+      error: { message: "Fetch request rejected by security policy" },
+    });
+
+    const { options, requests } = await chat({
+      enableWebSearch: true,
+      reasoningEffort: "high",
+    });
+
+    expect(requests[1].messages[6].content).toBe(
+      "Fetch request rejected by security policy",
+    );
+    expect(options.onAfterTool).toHaveBeenCalledWith(
+      expect.objectContaining({ isError: true }),
+    );
+    expect(options.onCitations).not.toHaveBeenCalled();
+  });
+
   test("sends no tools and no reasoning with web search off", async () => {
     fetchEventSourceMock.mockImplementationOnce(replyWith(answerRound));
 
@@ -393,7 +587,7 @@ describe("DeepSeek web search tool loop", () => {
       reasoningEffort: "none",
     });
 
-    expect(requests[0].tools).toHaveLength(1);
+    expect(requests[0].tools).toHaveLength(2);
     expect(
       requests[0].messages.some((m: any) => "reasoning_content" in m),
     ).toBe(false);

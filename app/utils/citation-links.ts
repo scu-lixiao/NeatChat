@@ -14,9 +14,10 @@
  * - Gemini (google.ts): the web groundingChunks in chunk order, deduped by
  *   URL. That order is the index groundingSupports refer to, but the text
  *   carries no markers by default.
- * - DeepSeek (deepseek.ts, the client-side web_search tool): every result of
- *   every search in the reply, deduped by URL. The tool result numbers each
- *   one as its position in that list, so DeepSeek's [n] markers match it.
+ * - DeepSeek (deepseek.ts, the client-side web_search and web_fetch tools):
+ *   every result of every search and every page read in the reply, deduped
+ *   by URL. The tool results number each one as its position in that list,
+ *   so DeepSeek's [n] markers match it.
  * So no provider but DeepSeek puts bare [n] markers in the text itself. The
  * system prompt (CITATION_SYSTEM_PROMPT) asks for them, and mapping [n] to
  * citations[n - 1] is best effort, since the model numbers the sources it has
