@@ -1,6 +1,5 @@
 import { getServerSideConfig } from "@/app/config/server";
 import {
-  ACCESS_CODE_PREFIX,
   DEEPSEEK_BASE_URL,
   ApiPath,
   DeepSeek,
@@ -9,7 +8,8 @@ import {
 } from "@/app/constant";
 import { prettyObject } from "@/app/utils/format";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/api/auth";
+import { auth, parseApiKey } from "@/app/api/auth";
+import { joinDeepSeekUrl } from "@/app/utils/deepseek";
 import { isModelNotavailableInServer } from "@/app/utils/model";
 import { shouldRequestStreamUsage } from "@/app/utils/token-usage";
 
@@ -55,11 +55,10 @@ export async function handle(
   }
 }
 
+// Parsed as auth() parses it, so a header auth() takes for an access code
+// (and answers with the server key) never counts as the user's own key here
 function hasUserApiKey(req: NextRequest) {
-  const token = (req.headers.get("Authorization") ?? "")
-    .replace("Bearer ", "")
-    .trim();
-  return !!token && !token.startsWith(ACCESS_CODE_PREFIX);
+  return !!parseApiKey(req.headers.get("Authorization") ?? "").apiKey;
 }
 
 async function request(req: NextRequest) {
@@ -88,7 +87,7 @@ async function request(req: NextRequest) {
     10 * 60 * 1000,
   );
 
-  const fetchUrl = `${baseUrl}${path}`;
+  const fetchUrl = joinDeepSeekUrl(baseUrl, path);
   const fetchOptions: RequestInit = {
     headers: {
       "Content-Type": "application/json",

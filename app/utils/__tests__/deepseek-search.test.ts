@@ -13,6 +13,7 @@ import {
   getDeepSeekErrorMessage,
   getFetchableUrl,
   getSearchQuestion,
+  joinDeepSeekUrl,
   type DeepSeekSearchResult,
 } from "../deepseek";
 
@@ -108,6 +109,43 @@ describe("DeepSeek search helpers", () => {
     expect(DEEPSEEK_WEB_SEARCH_TOOL.function.parameters.required).toEqual([
       "query",
     ]);
+  });
+});
+
+describe("DeepSeek URLs", () => {
+  test("adds the v1/ of Search and Fetch only once", () => {
+    for (const base of [
+      "https://api.deepseek.com",
+      "https://api.deepseek.com/",
+      "https://api.deepseek.com/v1",
+      "https://api.deepseek.com/v1/",
+    ]) {
+      expect(joinDeepSeekUrl(base, "v1/tools/search")).toBe(
+        "https://api.deepseek.com/v1/tools/search",
+      );
+      expect(joinDeepSeekUrl(base, "v1/tools/fetch")).toBe(
+        "https://api.deepseek.com/v1/tools/fetch",
+      );
+    }
+  });
+
+  test("leaves other paths under the base URL as given", () => {
+    expect(
+      joinDeepSeekUrl("https://api.deepseek.com/v1", "chat/completions"),
+    ).toBe("https://api.deepseek.com/v1/chat/completions");
+    expect(joinDeepSeekUrl("https://api.deepseek.com", "user/balance")).toBe(
+      "https://api.deepseek.com/user/balance",
+    );
+    // The proxy passes its subpath with a leading slash
+    expect(
+      joinDeepSeekUrl("https://api.deepseek.com/v1", "/v1/tools/search"),
+    ).toBe("https://api.deepseek.com/v1/tools/search");
+    expect(joinDeepSeekUrl("/api/deepseek", "v1/tools/search")).toBe(
+      "/api/deepseek/v1/tools/search",
+    );
+    expect(
+      joinDeepSeekUrl("https://relay.example/v10", "v1/tools/search"),
+    ).toBe("https://relay.example/v10/v1/tools/search");
   });
 });
 
