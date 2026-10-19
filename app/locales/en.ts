@@ -367,6 +367,16 @@ const en: LocaleType = {
       Check: "Check",
       NoAccess: "Enter API Key to check balance",
     },
+    DeepSeekBalance: {
+      Title: "DeepSeek Balance",
+      SubTitle(total: string, granted: string, toppedUp: string) {
+        return `${total} available (${granted} granted, ${toppedUp} topped up)`;
+      },
+      Unavailable: "Insufficient balance for API calls",
+      Failed: (message: string) => `Failed to check: ${message}`,
+      IsChecking: "Checking...",
+      Check: "Check",
+    },
     Access: {
       SaasStart: {
         Title: "Use NextChat AI",

@@ -305,7 +305,11 @@ export function validString(x: string): boolean {
   return x?.length > 0;
 }
 
-export function getHeaders(ignoreHeaders: boolean = false) {
+// providerName: whose key to send, the current session's provider by default
+export function getHeaders(
+  ignoreHeaders: boolean = false,
+  providerName?: ServiceProvider,
+) {
   const accessStore = useAccessStore.getState();
   const chatStore = useChatStore.getState();
   let headers: Record<string, string> = {};
@@ -319,20 +323,20 @@ export function getHeaders(ignoreHeaders: boolean = false) {
   const clientConfig = getClientConfig();
 
   function getConfig() {
-    const modelConfig = chatStore.currentSession().mask.modelConfig;
-    const isGoogle = modelConfig.providerName === ServiceProvider.Google;
-    const isAzure = modelConfig.providerName === ServiceProvider.Azure;
-    const isAnthropic = modelConfig.providerName === ServiceProvider.Anthropic;
-    const isBaidu = modelConfig.providerName == ServiceProvider.Baidu;
-    const isByteDance = modelConfig.providerName === ServiceProvider.ByteDance;
-    const isAlibaba = modelConfig.providerName === ServiceProvider.Alibaba;
-    const isMoonshot = modelConfig.providerName === ServiceProvider.Moonshot;
-    const isIflytek = modelConfig.providerName === ServiceProvider.Iflytek;
-    const isDeepSeek = modelConfig.providerName === ServiceProvider.DeepSeek;
-    const isXAI = modelConfig.providerName === ServiceProvider.XAI;
-    const isChatGLM = modelConfig.providerName === ServiceProvider.ChatGLM;
-    const isSiliconFlow =
-      modelConfig.providerName === ServiceProvider.SiliconFlow;
+    const provider =
+      providerName ?? chatStore.currentSession().mask.modelConfig.providerName;
+    const isGoogle = provider === ServiceProvider.Google;
+    const isAzure = provider === ServiceProvider.Azure;
+    const isAnthropic = provider === ServiceProvider.Anthropic;
+    const isBaidu = provider == ServiceProvider.Baidu;
+    const isByteDance = provider === ServiceProvider.ByteDance;
+    const isAlibaba = provider === ServiceProvider.Alibaba;
+    const isMoonshot = provider === ServiceProvider.Moonshot;
+    const isIflytek = provider === ServiceProvider.Iflytek;
+    const isDeepSeek = provider === ServiceProvider.DeepSeek;
+    const isXAI = provider === ServiceProvider.XAI;
+    const isChatGLM = provider === ServiceProvider.ChatGLM;
+    const isSiliconFlow = provider === ServiceProvider.SiliconFlow;
     const isEnabledAccessControl = accessStore.enabledAccessControl();
     const apiKey = isGoogle
       ? accessStore.googleApiKey

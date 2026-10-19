@@ -90,6 +90,8 @@ import { TTSConfigList } from "./tts-config";
 import { RealtimeConfigList } from "./realtime-chat/realtime-config";
 import { CustomModelManager } from "./custom-model-manager";
 import { formatProviderName } from "../utils/provider";
+import { DeepSeekApi } from "../client/platforms/deepseek";
+import { formatBalanceAmount, type DeepSeekBalance } from "../utils/deepseek";
 
 function EditPromptModal(props: { id: string; onClose: () => void }) {
   const promptStore = usePromptStore();
@@ -582,6 +584,69 @@ function SyncItems() {
   );
 }
 
+function describeDeepSeekBalance(balance: DeepSeekBalance) {
+  const amounts = balance.balance_infos
+    .map((info) =>
+      Locale.Settings.DeepSeekBalance.SubTitle(
+        formatBalanceAmount(info.currency, info.total_balance),
+        formatBalanceAmount(info.currency, info.granted_balance),
+        formatBalanceAmount(info.currency, info.topped_up_balance),
+      ),
+    )
+    .join("; ");
+  return balance.is_available
+    ? amounts
+    : [Locale.Settings.DeepSeekBalance.Unavailable, amounts]
+        .filter(Boolean)
+        .join(" · ");
+}
+
+function DeepSeekBalanceItem() {
+  const [balance, setBalance] = useState<DeepSeekBalance>();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  function checkBalance() {
+    setLoading(true);
+    new DeepSeekApi()
+      .balance()
+      .then((balance) => {
+        setBalance(balance);
+        setError("");
+      })
+      .catch((e) => setError((e as Error).message))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    checkBalance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <ListItem
+      title={Locale.Settings.DeepSeekBalance.Title}
+      subTitle={
+        loading
+          ? Locale.Settings.DeepSeekBalance.IsChecking
+          : error
+          ? Locale.Settings.DeepSeekBalance.Failed(error)
+          : balance && describeDeepSeekBalance(balance)
+      }
+    >
+      {loading ? (
+        <div />
+      ) : (
+        <IconButton
+          icon={<ResetIcon></ResetIcon>}
+          text={Locale.Settings.DeepSeekBalance.Check}
+          onClick={checkBalance}
+        />
+      )}
+    </ListItem>
+  );
+}
+
 export function Settings() {
   const navigate = useNavigate();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -708,6 +773,10 @@ export function Settings() {
 
   const clientConfig = useMemo(() => getClientConfig(), []);
   const showAccessCode = enabledAccessControl && !clientConfig?.isApp;
+  // With the user's own key, or the server's when ENABLE_BALANCE_QUERY is set
+  const showDeepSeekBalance =
+    !!accessStore.deepseekApiKey ||
+    (!clientConfig?.isApp && !accessStore.hideBalanceQuery && showUsage);
 
   const accessCodeComponent = showAccessCode && (
     <ListItem
@@ -1902,6 +1971,8 @@ export function Settings() {
               )}
             </ListItem>
           ) : null}
+
+          {showDeepSeekBalance && <DeepSeekBalanceItem />}
 
           <ListItem
             title={Locale.Settings.Access.CustomModel.Title}
