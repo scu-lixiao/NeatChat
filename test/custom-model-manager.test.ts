@@ -79,22 +79,29 @@ describe("CustomModel Management", () => {
 
   describe("Provider Grouping", () => {
     test("should group models by provider", () => {
-      expect(mockCustomModelsByProvider[ServiceProvider.OpenAI]).toHaveLength(1);
-      expect(mockCustomModelsByProvider[ServiceProvider.Anthropic]).toHaveLength(0);
+      expect(mockCustomModelsByProvider[ServiceProvider.OpenAI]).toHaveLength(
+        1,
+      );
+      expect(
+        mockCustomModelsByProvider[ServiceProvider.Anthropic],
+      ).toHaveLength(0);
     });
 
     test("should handle empty provider groups", () => {
-      expect(mockCustomModelsByProvider[ServiceProvider.Google]).toBeUndefined();
+      expect(
+        mockCustomModelsByProvider[ServiceProvider.Google],
+      ).toBeUndefined();
     });
   });
 
   describe("String Format Conversion", () => {
     test("should convert to string format correctly", () => {
       const model = mockCustomModel;
-      const expectedString = model.displayName && model.displayName !== model.name
-        ? `+${model.name}=${model.displayName}@openai`
-        : `+${model.name}@openai`;
-      
+      const expectedString =
+        model.displayName && model.displayName !== model.name
+          ? `+${model.name}=${model.displayName}@openai`
+          : `+${model.name}@openai`;
+
       // 这里我们测试预期的字符串格式
       expect(expectedString).toMatch(/^\+.+@openai$/);
     });
@@ -102,7 +109,7 @@ describe("CustomModel Management", () => {
     test("should handle disabled models", () => {
       const disabledModel = { ...mockCustomModel, enabled: false };
       const expectedString = `-${disabledModel.name}@openai`;
-      
+
       expect(expectedString).toMatch(/^-.+@openai$/);
     });
   });
@@ -191,7 +198,7 @@ describe("Integration with Existing System", () => {
     // 测试与现有字符串格式的兼容性
     const stringFormat = "gpt-4-custom=GPT-4 Custom,claude-3-sonnet";
     const parts = stringFormat.split(",");
-    
+
     expect(parts).toHaveLength(2);
     expect(parts[0]).toContain("=");
     expect(parts[1]).not.toContain("=");

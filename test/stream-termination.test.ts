@@ -31,9 +31,14 @@ describe("stream termination handling", () => {
       chatModule.detectResponsesStreamTermination;
 
     global.requestAnimationFrame = ((callback: FrameRequestCallback) =>
-      setTimeout(() => callback(performance.now()), 0) as unknown as number) as typeof requestAnimationFrame;
+      setTimeout(
+        () => callback(performance.now()),
+        0,
+      ) as unknown as number) as typeof requestAnimationFrame;
     global.cancelAnimationFrame = ((id: number) =>
-      clearTimeout(id as unknown as ReturnType<typeof setTimeout>)) as typeof cancelAnimationFrame;
+      clearTimeout(
+        id as unknown as ReturnType<typeof setTimeout>,
+      )) as typeof cancelAnimationFrame;
   });
 
   afterAll(() => {

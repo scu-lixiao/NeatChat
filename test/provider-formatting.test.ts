@@ -8,7 +8,11 @@
 // Documentation_Note (DW): 提供商名称格式化功能的完整测试套件
 // }}
 
-import { formatProviderName, getProviderDisplayName, isValidProvider } from "../app/utils/provider";
+import {
+  formatProviderName,
+  getProviderDisplayName,
+  isValidProvider,
+} from "../app/utils/provider";
 import { ServiceProvider } from "../app/constant";
 
 describe("Provider Name Formatting", () => {
@@ -49,7 +53,7 @@ describe("Provider Name Formatting", () => {
     });
 
     test("should work with all ServiceProvider enum values", () => {
-      Object.values(ServiceProvider).forEach(provider => {
+      Object.values(ServiceProvider).forEach((provider) => {
         const result = formatProviderName(provider);
         expect(result).toBe(provider); // Should return the same value for correct enum values
       });
@@ -67,7 +71,7 @@ describe("Provider Name Formatting", () => {
 
   describe("isValidProvider", () => {
     test("should validate correct ServiceProvider enum values", () => {
-      Object.values(ServiceProvider).forEach(provider => {
+      Object.values(ServiceProvider).forEach((provider) => {
         expect(isValidProvider(provider)).toBe(true);
       });
     });
