@@ -92,11 +92,13 @@ export async function downloadAs(text: string, filename: string) {
       showToast(Locale.Download.Failed);
     }
   } else {
-    const element = document.createElement("a");
-    element.setAttribute(
-      "href",
-      "data:text/plain;charset=utf-8," + encodeURIComponent(text),
+    // a data: URL fails to download once it gets large (e.g. a backup with
+    // images), a blob URL has no such limit
+    const url = URL.createObjectURL(
+      new Blob([text], { type: "text/plain;charset=utf-8" }),
     );
+    const element = document.createElement("a");
+    element.setAttribute("href", url);
     element.setAttribute("download", filename);
 
     element.style.display = "none";
@@ -105,6 +107,8 @@ export async function downloadAs(text: string, filename: string) {
     element.click();
 
     document.body.removeChild(element);
+    // revoking right away can cancel the download in some browsers
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 }
 
@@ -112,10 +116,15 @@ export function readFromFile() {
   return new Promise<string>((res, rej) => {
     const fileInput = document.createElement("input");
     fileInput.type = "file";
-    fileInput.accept = "application/json";
+    // some systems don't map .json files to the MIME type
+    fileInput.accept = "application/json,.json";
 
     fileInput.onchange = (event: any) => {
-      const file = event.target.files[0];
+      const file = event.target.files?.[0];
+      if (!file) {
+        rej(new Error("no file selected"));
+        return;
+      }
       const fileReader = new FileReader();
       fileReader.onload = (e: any) => {
         res(e.target.result);

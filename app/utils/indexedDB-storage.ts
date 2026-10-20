@@ -189,6 +189,14 @@ export function pausePersist(name: string): () => void {
 }
 
 /**
+ * Writes every pending store now, including paused ones. Await it before
+ * reloading the page: writes started while the page unloads can be lost.
+ */
+export function flushPersist(): Promise<void> {
+  return flushPendingWrites(true);
+}
+
+/**
  * zustand `PersistStorage` backed by IndexedDB. Serialization is deferred to
  * flush time, so it always writes the latest state and runs at most once per
  * `PERSIST_THROTTLE_MS` per key.
