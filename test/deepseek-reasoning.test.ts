@@ -17,8 +17,12 @@ describe("DeepSeek reasoning effort", () => {
   });
 
   test("does not send reasoning effort for unsupported or automatic models", () => {
-    expect(resolveDeepSeekReasoningEffort("deepseek-reasoner", "high")).toBeUndefined();
-    expect(resolveDeepSeekReasoningEffort("deepseek-flash", "auto")).toBeUndefined();
+    expect(
+      resolveDeepSeekReasoningEffort("deepseek-reasoner", "high"),
+    ).toBeUndefined();
+    expect(
+      resolveDeepSeekReasoningEffort("deepseek-flash", "auto"),
+    ).toBeUndefined();
     expect(supportsDeepSeekReasoningEffort("deepseek-chat")).toBe(false);
   });
 });

@@ -3,8 +3,8 @@
  */
 
 // Simple test to verify the ThinkingWindow interface changes
-describe('ThinkingWindow Interface', () => {
-  it('should support onContentUpdate prop in interface', () => {
+describe("ThinkingWindow Interface", () => {
+  it("should support onContentUpdate prop in interface", () => {
     // Test the interface definition
     interface ThinkingWindowProps {
       content: string;
@@ -17,14 +17,14 @@ describe('ThinkingWindow Interface', () => {
     const props: ThinkingWindowProps = {
       content: "Test content",
       isStreaming: true,
-      onContentUpdate: () => console.log('Content updated')
+      onContentUpdate: () => console.log("Content updated"),
     };
 
     expect(props.onContentUpdate).toBeDefined();
-    expect(typeof props.onContentUpdate).toBe('function');
+    expect(typeof props.onContentUpdate).toBe("function");
   });
 
-  it('should handle callback execution', () => {
+  it("should handle callback execution", () => {
     let callbackExecuted = false;
 
     const mockCallback = () => {
