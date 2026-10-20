@@ -1,4 +1,3 @@
-import { getClientConfig } from "../config/client";
 import { ApiPath, STORAGE_KEY, StoreKey } from "../constant";
 import { createPersistStore } from "../utils/store";
 import {
@@ -6,9 +5,13 @@ import {
   getLocalAppState,
   GetStoreState,
   mergeAppState,
+  parseAppState,
+  serializeAppState,
   setLocalAppState,
 } from "../utils/sync";
 import { downloadAs, readFromFile } from "../utils";
+import { deepClone } from "../utils/clone";
+import { flushPersist } from "../utils/indexedDB-storage";
 import { showToast } from "../components/ui-lib";
 import Locale from "../locales";
 import { createSyncClient, ProviderType } from "../utils/cloud";
@@ -19,7 +22,6 @@ export interface WebDavConfig {
   password: string;
 }
 
-const isApp = !!getClientConfig()?.isApp;
 export type SyncStore = GetStoreState<typeof useSyncStore>;
 
 const DEFAULT_SYNC_STATE = {
@@ -57,24 +59,25 @@ export const useSyncStore = createPersistStore(
 
     export() {
       const state = getLocalAppState();
-      const datePart = isApp
-        ? `${new Date().toLocaleDateString().replace(/\//g, "_")} ${new Date()
-            .toLocaleTimeString()
-            .replace(/:/g, "_")}`
-        : new Date().toLocaleString();
+      // "/" and ":" from the locale date aren't allowed in file names
+      const datePart =
+        `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`.replace(
+          /[\\/:*?"<>|,]/g,
+          "_",
+        );
 
       const fileName = `Backup-${datePart}.json`;
-      downloadAs(JSON.stringify(state), fileName);
+      downloadAs(serializeAppState(state), fileName);
     },
 
     async import() {
-      const rawContent = await readFromFile();
-
       try {
-        const remoteState = JSON.parse(rawContent) as AppState;
-        const localState = getLocalAppState();
-        mergeAppState(localState, remoteState);
-        setLocalAppState(localState);
+        const remoteState = await parseAppState(await readFromFile());
+        // merge into a copy, so a bad file can't leave the stores half merged
+        const localState = deepClone(getLocalAppState()) as AppState;
+        setLocalAppState(mergeAppState(localState, remoteState, true));
+        // writes are coalesced, they must land before the page goes away
+        await flushPersist();
         location.reload();
       } catch (e) {
         console.error("[Import]", e);
@@ -89,7 +92,7 @@ export const useSyncStore = createPersistStore(
     },
 
     async sync() {
-      const localState = getLocalAppState();
+      const localState = deepClone(getLocalAppState()) as AppState;
       const provider = get().provider;
       const config = get()[provider];
       const client = this.getClient();
@@ -97,15 +100,13 @@ export const useSyncStore = createPersistStore(
       try {
         const remoteState = await client.get(config.username);
         if (!remoteState || remoteState === "") {
-          await client.set(config.username, JSON.stringify(localState));
+          await client.set(config.username, serializeAppState(localState));
           console.log(
             "[Sync] Remote state is empty, using local state instead.",
           );
           return;
         } else {
-          const parsedRemoteState = JSON.parse(
-            await client.get(config.username),
-          ) as AppState;
+          const parsedRemoteState = await parseAppState(remoteState);
           mergeAppState(localState, parsedRemoteState);
           setLocalAppState(localState);
         }
@@ -114,7 +115,7 @@ export const useSyncStore = createPersistStore(
         throw e;
       }
 
-      await client.set(config.username, JSON.stringify(localState));
+      await client.set(config.username, serializeAppState(localState));
 
       this.markSyncTime();
     },
