@@ -104,6 +104,7 @@ export const useSyncStore = createPersistStore(
           console.log(
             "[Sync] Remote state is empty, using local state instead.",
           );
+          this.markSyncTime();
           return;
         } else {
           const parsedRemoteState = await parseAppState(remoteState);
