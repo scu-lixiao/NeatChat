@@ -122,6 +122,28 @@ export function getSearchQuestion(text: string) {
   return length > 0 && length <= SEARCH_TEXT_MAX_CHARS ? question : undefined;
 }
 
+const IPV4_OCTET = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
+const IPV4 = new RegExp(`^${IPV4_OCTET}(\\.${IPV4_OCTET}){3}$`);
+
+/**
+ * The setting as the Search API's localization, an IPv4 or IPv6 address whose
+ * region the results are localized to. Left out when it isn't an address,
+ * since the API would fail every search for it.
+ */
+export function getSearchLocalization(value?: string) {
+  const ip = (value ?? "").trim();
+  if (IPV4.test(ip)) return ip;
+  // The URL parser checks IPv6 syntax; anything but hex digits, colons and
+  // dots (a bracket, a port, a zone ID) isn't a bare address
+  if (ip.includes(":") && /^[\da-f:.]+$/i.test(ip)) {
+    try {
+      new URL(`http://[${ip}]/`);
+      return ip;
+    } catch {}
+  }
+  return undefined;
+}
+
 /**
  * The number of a source for citing. A URL already in `citations` (from an
  * earlier search or fetch in the same reply) keeps its number, a new one is

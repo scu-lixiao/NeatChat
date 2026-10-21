@@ -186,6 +186,9 @@ export const DEFAULT_CONFIG = {
     // "medium": 平衡模式（默认）
     // "high": 更多上下文，更详细的信息
     webSearchContextSize: "medium" as "low" | "medium" | "high",
+    // deepseekSearchLocalization: DeepSeek 搜索 API 的 localization，一个 IP 地址，
+    // 搜索结果按其所在地区本地化；留空则不指定
+    deepseekSearchLocalization: "" as string,
     // enableCodeInterpreter: 启用代码解释器工具，允许模型执行 Python 代码
     enableCodeInterpreter: true,
     // enableFileSearch: 启用文件搜索工具，允许模型在向量存储中搜索文档

@@ -44,6 +44,7 @@ import {
   formatSearchResults,
   getDeepSeekErrorMessage,
   getFetchableUrl,
+  getSearchLocalization,
   getSearchQuestion,
   isUrlInSources,
   joinDeepSeekUrl,
@@ -141,7 +142,12 @@ export class DeepSeekApi implements LLMApi {
 
     // Tools only run in the streaming tool loop (streamWithThink)
     const [tools, funcs]: [any[], Record<string, Function>] = shouldStream
-      ? this.getTools(options, !!modelConfig.enableWebSearch, controller)
+      ? this.getTools(
+          options,
+          !!modelConfig.enableWebSearch,
+          getSearchLocalization(modelConfig.deepseekSearchLocalization),
+          controller,
+        )
       : [[], {}];
 
     // In thinking mode, a request with tools must send the reasoning of every
@@ -363,6 +369,7 @@ export class DeepSeekApi implements LLMApi {
   private getTools(
     options: ChatOptions,
     enableWebSearch: boolean,
+    localization: string | undefined,
     controller: AbortController,
   ): [any[], Record<string, Function>] {
     const [pluginTools, pluginFuncs] = usePluginStore
@@ -479,7 +486,11 @@ export class DeepSeekApi implements LLMApi {
 
       const res = await post<{ results?: DeepSeekSearchResult[] }>(
         DeepSeek.SearchPath,
-        { query, ...(question ? { ori_question: question } : {}) },
+        {
+          query,
+          ...(question ? { ori_question: question } : {}),
+          ...(localization ? { localization } : {}),
+        },
         (json) =>
           isObject(json) &&
           (json.results === undefined || Array.isArray(json.results)),
