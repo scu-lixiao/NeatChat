@@ -665,6 +665,13 @@ const cn = {
         High: "详细",
       },
     },
+    DeepSeekSearchLocalization: {
+      Title: "搜索地区 (localization)",
+      SubTitle:
+        "填写一个 IP 地址，DeepSeek 网络搜索的结果按该 IP 所在地区本地化；留空则不指定",
+      Placeholder: "IP 地址，如 203.0.113.10",
+      Invalid: "不是有效的 IPv4 或 IPv6 地址，搜索时将忽略此项",
+    },
     GPT5Tools: {
       Title: "GPT-5.4/5.5 内置工具",
       SubTitle: "启用 GPT-5.4/5.5 系列模型的内置工具功能",

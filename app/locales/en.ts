@@ -673,6 +673,13 @@ const en: LocaleType = {
         High: "High",
       },
     },
+    DeepSeekSearchLocalization: {
+      Title: "Search Region (localization)",
+      SubTitle:
+        "An IP address: DeepSeek web search localizes its results to the region of this IP. Leave empty to not set one",
+      Placeholder: "IP address, e.g. 203.0.113.10",
+      Invalid: "Not a valid IPv4 or IPv6 address, searches ignore it",
+    },
     GPT5Tools: {
       Title: "GPT-5.4/5.5 Built-in Tools",
       SubTitle: "Enable built-in tool features for GPT-5.4/5.5 series models",

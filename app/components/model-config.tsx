@@ -25,6 +25,7 @@ import { ListItem, Select } from "./ui-lib";
 import { useAllModels } from "../utils/hooks";
 import { formatProviderName } from "../utils/provider";
 import { resolveHistoryStrategy } from "../utils/history-strategy";
+import { getSearchLocalization } from "../utils/deepseek";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import {
@@ -261,6 +262,8 @@ export function ModelConfigList(props: {
   const historyStrategy = resolveHistoryStrategy(
     props.modelConfig.historyStrategy,
   );
+  const deepseekSearchLocalization =
+    props.modelConfig.deepseekSearchLocalization?.trim() ?? "";
   // 网络搜索工具: built in for GPT-5 and Grok, the Search API for DeepSeek
   const webSearchToggle = (
     <ListItem
@@ -761,7 +764,40 @@ export function ModelConfigList(props: {
         </>
       )}
 
-      {isDeepSeekProvider && webSearchToggle}
+      {isDeepSeekProvider && (
+        <>
+          {webSearchToggle}
+
+          {/* DeepSeek 搜索地区：Search API 的 localization（IP 地址） */}
+          {props.modelConfig.enableWebSearch && (
+            <ListItem
+              title={Locale.Settings.DeepSeekSearchLocalization.Title}
+              subTitle={
+                deepseekSearchLocalization &&
+                !getSearchLocalization(deepseekSearchLocalization)
+                  ? Locale.Settings.DeepSeekSearchLocalization.Invalid
+                  : Locale.Settings.DeepSeekSearchLocalization.SubTitle
+              }
+            >
+              <input
+                aria-label={Locale.Settings.DeepSeekSearchLocalization.Title}
+                type="text"
+                placeholder={
+                  Locale.Settings.DeepSeekSearchLocalization.Placeholder
+                }
+                value={deepseekSearchLocalization}
+                onChange={(e) =>
+                  props.updateConfig(
+                    (config) =>
+                      (config.deepseekSearchLocalization =
+                        e.currentTarget.value),
+                  )
+                }
+              ></input>
+            </ListItem>
+          )}
+        </>
+      )}
 
       {/* Responses API 内置工具配置 */}
       {(isGpt5ReasoningModel || supportsXaiToolControls) && (

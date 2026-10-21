@@ -12,6 +12,7 @@ import {
   formatSearchResults,
   getDeepSeekErrorMessage,
   getFetchableUrl,
+  getSearchLocalization,
   getSearchQuestion,
   isUrlInSources,
   joinDeepSeekUrl,
@@ -52,6 +53,24 @@ describe("DeepSeek search helpers", () => {
     expect(getSearchQuestion("问".repeat(128))).toBe("问".repeat(128));
     expect(getSearchQuestion("问".repeat(129))).toBeUndefined();
     expect(getSearchQuestion("  ")).toBeUndefined();
+  });
+
+  test("passes the localization only when it is an IP address", () => {
+    expect(getSearchLocalization(" 203.0.113.10 ")).toBe("203.0.113.10");
+    expect(getSearchLocalization("0.0.0.0")).toBe("0.0.0.0");
+    expect(getSearchLocalization("2001:db8::1")).toBe("2001:db8::1");
+    expect(getSearchLocalization("::ffff:203.0.113.10")).toBe(
+      "::ffff:203.0.113.10",
+    );
+    expect(getSearchLocalization("")).toBeUndefined();
+    expect(getSearchLocalization(undefined)).toBeUndefined();
+    expect(getSearchLocalization("CN")).toBeUndefined();
+    expect(getSearchLocalization("256.1.1.1")).toBeUndefined();
+    expect(getSearchLocalization("1.2.3")).toBeUndefined();
+    expect(getSearchLocalization("01.2.3.4")).toBeUndefined();
+    expect(getSearchLocalization("2001:db8:::1")).toBeUndefined();
+    expect(getSearchLocalization("::1]:80/[")).toBeUndefined();
+    expect(getSearchLocalization("fe80::1%eth0")).toBeUndefined();
   });
 
   test("numbers results by their place in the reply's citations", () => {
@@ -568,6 +587,45 @@ describe("DeepSeek web search tool loop", () => {
       { title: "V4.1 released", url: "https://news.example/v41" },
     ]);
     expect(options.onFinish.mock.calls[0][0]).toBe("V4.1 shipped [1].");
+  });
+
+  test("localizes the search to the configured IP address", async () => {
+    fetchEventSourceMock
+      .mockImplementationOnce(replyWith(searchRound))
+      .mockImplementationOnce(replyWith(answerRound));
+    respondTo("v1/tools/search", 200, { results: [] });
+
+    const { options } = await chat({
+      enableWebSearch: true,
+      reasoningEffort: "high",
+      deepseekSearchLocalization: " 203.0.113.10 ",
+    });
+
+    expect(options.onError).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(fetchCall("v1/tools/search").init.body as string),
+    ).toEqual({
+      query: "V4.1",
+      ori_question: "最新的 DeepSeek 模型是什么？",
+      localization: "203.0.113.10",
+    });
+  });
+
+  test("leaves out a localization that isn't an IP address", async () => {
+    fetchEventSourceMock
+      .mockImplementationOnce(replyWith(searchRound))
+      .mockImplementationOnce(replyWith(answerRound));
+    respondTo("v1/tools/search", 200, { results: [] });
+
+    await chat({
+      enableWebSearch: true,
+      reasoningEffort: "high",
+      deepseekSearchLocalization: "China",
+    });
+
+    expect(
+      JSON.parse(fetchCall("v1/tools/search").init.body as string),
+    ).not.toHaveProperty("localization");
   });
 
   test("hands a failed search to the model as a tool error", async () => {
