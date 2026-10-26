@@ -638,6 +638,7 @@ const cn = {
       Options: {
         Auto: "自动 (默认)",
         None: "无 (快速)",
+        Minimal: "极低",
         Low: "低",
         Medium: "中",
         High: "高",
