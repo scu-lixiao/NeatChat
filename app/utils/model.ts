@@ -83,6 +83,28 @@ export function resolveDeepSeekReasoningEffort(
   }
 }
 
+export type GeminiThinkingLevel = "minimal" | "low" | "medium" | "high";
+
+// thinking_level values each model accepts, per
+// https://ai.google.dev/gemini-api/docs/thinking. gemini-3.5-pro is not in
+// the official table, so it gets the same levels as gemini-3.1-pro-preview.
+const GEMINI_THINKING_LEVELS = new Map<string, readonly GeminiThinkingLevel[]>([
+  ["gemini-4-argon", ["low", "medium", "high"]],
+  ["gemini-3.8-flash", ["low", "medium", "high"]],
+  ["gemini-3.7-flash", ["low", "medium", "high"]],
+  ["gemini-3.6-flash", ["minimal", "low", "medium", "high"]],
+  ["gemini-3.5-pro", ["low", "medium", "high"]],
+  ["gemini-3.1-pro-preview", ["low", "medium", "high"]],
+  ["gemini-3-flash-preview", ["minimal", "low", "medium", "high"]],
+  ["gemini-3-pro-preview", ["low", "high"]],
+]);
+
+export function getGeminiThinkingLevels(
+  model: string,
+): readonly GeminiThinkingLevel[] {
+  return GEMINI_THINKING_LEVELS.get(model) ?? [];
+}
+
 export function collectModelTable(
   models: readonly LLMModel[],
   customModels: string,

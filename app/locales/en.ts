@@ -645,6 +645,7 @@ const en: LocaleType = {
       Options: {
         Auto: "Auto (default)",
         None: "None (fast)",
+        Minimal: "Minimal",
         Low: "Low",
         Medium: "Medium",
         High: "High",

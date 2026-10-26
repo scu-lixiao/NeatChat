@@ -37,6 +37,10 @@ import {
   isVisionModel,
 } from "@/app/utils";
 import { preProcessImageContent } from "@/app/utils/chat";
+import {
+  getGeminiThinkingLevels,
+  type GeminiThinkingLevel,
+} from "@/app/utils/model";
 import { nanoid } from "nanoid";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
@@ -44,25 +48,24 @@ import { fetch } from "@/app/utils/stream";
 const GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
 const GEMINI_4_ARGON_MAX_OUTPUT_TOKENS = 65536;
 
-// gemini-4-argon takes thinking_level low/medium/high (API default: medium);
-// the other Gemini 3.x thinking-level models always use "high".
+// Sends the chosen effort when the model supports that level. Otherwise
+// gemini-4-argon leaves it to the API default (medium), and the Gemini 3.x
+// models keep the "high" they always sent before effort was configurable.
 export function resolveGeminiThinkingLevel(
   model: string,
   reasoningEffort?: string,
-): "low" | "medium" | "high" | undefined {
-  if (model !== "gemini-4-argon") {
-    return "high";
+): GeminiThinkingLevel | undefined {
+  const levels = getGeminiThinkingLevels(model);
+  if (levels.length === 0) {
+    return undefined;
   }
 
-  if (
-    reasoningEffort === "low" ||
-    reasoningEffort === "medium" ||
-    reasoningEffort === "high"
-  ) {
-    return reasoningEffort;
+  const level = levels.find((l) => l === reasoningEffort);
+  if (level) {
+    return level;
   }
 
-  return undefined;
+  return model === "gemini-4-argon" ? undefined : "high";
 }
 
 // modelConfig.max_tokens has no "unset" state, so gemini-4-argon treats the
@@ -615,16 +618,7 @@ export class GeminiProApi implements LLMApi {
         includeThoughts: true,
         thinkingBudget: 32768,
       };
-    } else if (
-      modelConfig.model === "gemini-3-pro-preview" ||
-      modelConfig.model === "gemini-3-flash-preview" ||
-      modelConfig.model === "gemini-3.1-pro-preview" ||
-      modelConfig.model === "gemini-3.5-pro" ||
-      modelConfig.model === "gemini-3.7-flash" ||
-      modelConfig.model === "gemini-3.8-flash" ||
-      modelConfig.model === "gemini-3.6-flash" ||
-      modelConfig.model === "gemini-4-argon"
-    ) {
+    } else if (getGeminiThinkingLevels(modelConfig.model).length > 0) {
       const thinkingLevel = resolveGeminiThinkingLevel(
         modelConfig.model,
         modelConfig.reasoningEffort,

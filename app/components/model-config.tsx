@@ -29,7 +29,9 @@ import { getSearchLocalization } from "../utils/deepseek";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import {
+  getGeminiThinkingLevels,
   getModelProvider,
+  type GeminiThinkingLevel,
   resolveDeepSeekReasoningEffort,
   supportsDeepSeekReasoningEffort,
 } from "../utils/model";
@@ -51,9 +53,11 @@ export function ModelConfigList(props: {
     props.modelConfig.providerName === ServiceProvider.DeepSeek;
   const isDeepSeekConfigurableReasoningModel =
     isDeepSeekProvider && supportsDeepSeekReasoningEffort(currentModel);
-  const isGeminiConfigurableThinkingModel =
-    props.modelConfig.providerName === ServiceProvider.Google &&
-    currentModel === "gemini-4-argon";
+  const geminiThinkingLevels: readonly GeminiThinkingLevel[] =
+    props.modelConfig.providerName === ServiceProvider.Google
+      ? getGeminiThinkingLevels(currentModel)
+      : [];
+  const isGeminiConfigurableThinkingModel = geminiThinkingLevels.length > 0;
   const isXAIImageModelSelected =
     isXAIProvider && isXAIImageModel(currentModel);
   const isXaiMultiAgentModel =
@@ -252,11 +256,8 @@ export function ModelConfigList(props: {
       ? currentReasoningEffort
       : "auto";
   const normalizedGeminiReasoningEffort =
-    currentReasoningEffort === "low" ||
-    currentReasoningEffort === "medium" ||
-    currentReasoningEffort === "high"
-      ? currentReasoningEffort
-      : "auto";
+    geminiThinkingLevels.find((level) => level === currentReasoningEffort) ??
+    "auto";
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
   const compressModelValue = `${props.modelConfig.compressModel}@${props.modelConfig?.compressProviderName}`;
   const historyStrategy = resolveHistoryStrategy(
@@ -581,12 +582,17 @@ export function ModelConfigList(props: {
             : isGpt5ReasoningModel
             ? !isGPT5Pro && !isGpt6Astra
             : !isAnthropicAlwaysOnThinkingModel;
+          const supportsMinimal = geminiThinkingLevels.includes("minimal");
           const supportsLow = isDeepSeekConfigurableReasoningModel
             ? true
             : isXaiConfigurableReasoningModel
             ? true
+            : isGeminiConfigurableThinkingModel
+            ? geminiThinkingLevels.includes("low")
             : !isGpt5ReasoningModel || !isGPT5Pro;
-          const supportsMedium = !isDeepSeekConfigurableReasoningModel;
+          const supportsMedium = isGeminiConfigurableThinkingModel
+            ? geminiThinkingLevels.includes("medium")
+            : !isDeepSeekConfigurableReasoningModel;
           const supportsXHigh = isXaiMultiAgentModel
             ? true
             : isXaiGrok46Or47Model ||
@@ -640,6 +646,11 @@ export function ModelConfigList(props: {
                 {supportsNone && (
                   <option value="none">
                     {Locale.Settings.ReasoningEffort.Options.None}
+                  </option>
+                )}
+                {supportsMinimal && (
+                  <option value="minimal">
+                    {Locale.Settings.ReasoningEffort.Options.Minimal}
                   </option>
                 )}
                 {supportsLow && (
