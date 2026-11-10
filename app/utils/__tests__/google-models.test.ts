@@ -26,6 +26,9 @@ const GEMINI_3_THINKING_LEVEL_MODELS = Object.keys(
   GEMINI_3_SUPPORTED_THINKING_LEVELS,
 );
 
+// gemini-4-carbon copies gemini-4-argon's settings.
+const GEMINI_4_MODELS = ["gemini-4-argon", "gemini-4-carbon"];
+
 async function captureGeminiPayload(
   model: string,
   modelConfig: Partial<ModelConfig> = {},
@@ -79,31 +82,48 @@ describe("Google model registry", () => {
     );
   });
 
-  test("leaves the gemini-4-argon knowledge cutoff to the default", () => {
-    expect(KnowledgeCutOffDate["gemini-4-argon"]).toBeUndefined();
+  test("registers gemini-4-carbon right after gemini-4-argon", () => {
+    const googleModels = DEFAULT_MODELS.filter(
+      (m) => m.provider.providerType === "google",
+    );
+    expect(googleModels[1]).toEqual(
+      expect.objectContaining({
+        name: "gemini-4-carbon",
+        available: true,
+        provider: expect.objectContaining({ providerName: "Google" }),
+      }),
+    );
   });
 
-  test("treats gemini-4-argon as a vision-capable model", () => {
-    expect(isVisionModel("gemini-4-argon")).toBe(true);
+  test.each(GEMINI_4_MODELS)(
+    "leaves the %s knowledge cutoff to the default",
+    (model) => {
+      expect(KnowledgeCutOffDate[model]).toBeUndefined();
+    },
+  );
+
+  test.each(GEMINI_4_MODELS)("treats %s as a vision-capable model", (model) => {
+    expect(isVisionModel(model)).toBe(true);
   });
 });
 
 describe("Gemini thinking level", () => {
-  test.each(["low", "medium", "high"] as const)(
-    "passes %s through for gemini-4-argon",
-    (effort) => {
-      expect(resolveGeminiThinkingLevel("gemini-4-argon", effort)).toBe(effort);
+  test.each(GEMINI_4_MODELS)("supports low/medium/high for %s", (model) => {
+    expect(getGeminiThinkingLevels(model)).toEqual(["low", "medium", "high"]);
+    for (const effort of ["low", "medium", "high"]) {
+      expect(resolveGeminiThinkingLevel(model, effort)).toBe(effort);
+    }
+  });
+
+  test.each(GEMINI_4_MODELS)(
+    "leaves unsupported efforts on %s to the API default",
+    (model) => {
+      for (const effort of ["auto", "none", "minimal", "xhigh", "max"]) {
+        expect(resolveGeminiThinkingLevel(model, effort)).toBeUndefined();
+      }
+      expect(resolveGeminiThinkingLevel(model)).toBeUndefined();
     },
   );
-
-  test("leaves unsupported efforts on gemini-4-argon to the API default", () => {
-    for (const effort of ["auto", "none", "minimal", "xhigh", "max"]) {
-      expect(
-        resolveGeminiThinkingLevel("gemini-4-argon", effort),
-      ).toBeUndefined();
-    }
-    expect(resolveGeminiThinkingLevel("gemini-4-argon")).toBeUndefined();
-  });
 
   test.each(Object.entries(GEMINI_3_SUPPORTED_THINKING_LEVELS))(
     "passes supported levels through for %s",
@@ -146,30 +166,30 @@ describe("Gemini thinking level", () => {
 });
 
 describe("Gemini max output tokens", () => {
-  test("clamps gemini-4-argon to 65536 output tokens", () => {
-    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 128000)).toBe(65536);
-    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 65536)).toBe(65536);
-    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 32768)).toBe(32768);
+  test.each(GEMINI_4_MODELS)("clamps %s to 65536 output tokens", (model) => {
+    expect(resolveGeminiMaxOutputTokens(model, 128000)).toBe(65536);
+    expect(resolveGeminiMaxOutputTokens(model, 65536)).toBe(65536);
+    expect(resolveGeminiMaxOutputTokens(model, 32768)).toBe(32768);
   });
 
   test("does not clamp other Gemini models", () => {
     expect(resolveGeminiMaxOutputTokens("gemini-3.5-pro", 128000)).toBe(128000);
   });
 
-  test("uses 32768 for gemini-4-argon when max_tokens is the global default", () => {
-    expect(
-      resolveGeminiMaxOutputTokens("gemini-4-argon", GLOBAL_DEFAULT_MAX_TOKENS),
-    ).toBe(32768);
-  });
+  test.each(GEMINI_4_MODELS)(
+    "uses 32768 for %s when max_tokens is the global default",
+    (model) => {
+      expect(
+        resolveGeminiMaxOutputTokens(model, GLOBAL_DEFAULT_MAX_TOKENS),
+      ).toBe(32768);
+    },
+  );
 
-  test("respects user-set max_tokens for gemini-4-argon", () => {
-    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 1024)).toBe(1024);
-    expect(resolveGeminiMaxOutputTokens("gemini-4-argon", 8192)).toBe(8192);
+  test.each(GEMINI_4_MODELS)("respects user-set max_tokens for %s", (model) => {
+    expect(resolveGeminiMaxOutputTokens(model, 1024)).toBe(1024);
+    expect(resolveGeminiMaxOutputTokens(model, 8192)).toBe(8192);
     expect(
-      resolveGeminiMaxOutputTokens(
-        "gemini-4-argon",
-        GLOBAL_DEFAULT_MAX_TOKENS + 1,
-      ),
+      resolveGeminiMaxOutputTokens(model, GLOBAL_DEFAULT_MAX_TOKENS + 1),
     ).toBe(GLOBAL_DEFAULT_MAX_TOKENS + 1);
   });
 
@@ -184,47 +204,62 @@ describe("Gemini max output tokens", () => {
 });
 
 describe("Gemini request payload", () => {
-  test("shapes gemini-4-argon tools and media resolution like gemini-3.5-pro", async () => {
-    const argon = await captureGeminiPayload("gemini-4-argon");
-    const reference = await captureGeminiPayload("gemini-3.5-pro");
+  test.each(GEMINI_4_MODELS)(
+    "shapes %s tools and media resolution like gemini-3.5-pro",
+    async (model) => {
+      const gemini4 = await captureGeminiPayload(model);
+      const reference = await captureGeminiPayload("gemini-3.5-pro");
 
-    expect(argon.tools).toEqual(reference.tools);
-    expect(argon.generationConfig.media_resolution).toBe(
-      reference.generationConfig.media_resolution,
-    );
-    expect(argon.generationConfig.media_resolution).toBe(
-      "MEDIA_RESOLUTION_HIGH",
-    );
+      expect(gemini4.tools).toEqual(reference.tools);
+      expect(gemini4.generationConfig.media_resolution).toBe(
+        reference.generationConfig.media_resolution,
+      );
+      expect(gemini4.generationConfig.media_resolution).toBe(
+        "MEDIA_RESOLUTION_HIGH",
+      );
+    },
+  );
+
+  test("builds the same gemini-4-carbon payload as gemini-4-argon", async () => {
+    const config = { reasoningEffort: "medium", max_tokens: 128000 } as const;
+    const argon = await captureGeminiPayload("gemini-4-argon", config);
+    const carbon = await captureGeminiPayload("gemini-4-carbon", config);
+
+    expect(carbon).toEqual(argon);
   });
 
-  test.each(["low", "medium", "high"] as const)(
-    "sends thinking_level %s for gemini-4-argon",
-    async (effort) => {
-      const { generationConfig } = await captureGeminiPayload(
-        "gemini-4-argon",
-        { reasoningEffort: effort },
-      );
+  test.each(
+    GEMINI_4_MODELS.flatMap((model) =>
+      (["low", "medium", "high"] as const).map(
+        (effort) => [model, effort] as const,
+      ),
+    ),
+  )("sends thinking_level for %s when effort is %s", async (model, effort) => {
+    const { generationConfig } = await captureGeminiPayload(model, {
+      reasoningEffort: effort,
+    });
 
-      expect(generationConfig.thinkingConfig).toEqual({
-        includeThoughts: true,
-        thinking_level: effort,
-      });
-    },
-  );
+    expect(generationConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+      thinking_level: effort,
+    });
+  });
 
-  test.each(["auto", "xhigh", "none"] as const)(
-    "omits thinking_level for gemini-4-argon when effort is %s",
-    async (effort) => {
-      const { generationConfig } = await captureGeminiPayload(
-        "gemini-4-argon",
-        { reasoningEffort: effort },
-      );
+  test.each(
+    GEMINI_4_MODELS.flatMap((model) =>
+      (["auto", "xhigh", "none"] as const).map(
+        (effort) => [model, effort] as const,
+      ),
+    ),
+  )("omits thinking_level for %s when effort is %s", async (model, effort) => {
+    const { generationConfig } = await captureGeminiPayload(model, {
+      reasoningEffort: effort,
+    });
 
-      expect(generationConfig.thinkingConfig).toEqual({
-        includeThoughts: true,
-      });
-    },
-  );
+    expect(generationConfig.thinkingConfig).toEqual({
+      includeThoughts: true,
+    });
+  });
 
   test.each(GEMINI_3_THINKING_LEVEL_MODELS)(
     "sends the chosen thinking_level for %s",
@@ -272,42 +307,51 @@ describe("Gemini request payload", () => {
     expect(generationConfig.thinkingConfig.thinking_level).toBe("high");
   });
 
-  test("clamps maxOutputTokens for gemini-4-argon only", async () => {
-    const argon = await captureGeminiPayload("gemini-4-argon", {
-      max_tokens: 128000,
-    });
-    const reference = await captureGeminiPayload("gemini-3.5-pro", {
-      max_tokens: 128000,
-    });
+  test.each(GEMINI_4_MODELS)(
+    "clamps maxOutputTokens for %s but not gemini-3.5-pro",
+    async (model) => {
+      const gemini4 = await captureGeminiPayload(model, {
+        max_tokens: 128000,
+      });
+      const reference = await captureGeminiPayload("gemini-3.5-pro", {
+        max_tokens: 128000,
+      });
 
-    expect(argon.generationConfig.maxOutputTokens).toBe(65536);
-    expect(reference.generationConfig.maxOutputTokens).toBe(128000);
-  });
+      expect(gemini4.generationConfig.maxOutputTokens).toBe(65536);
+      expect(reference.generationConfig.maxOutputTokens).toBe(128000);
+    },
+  );
 
-  test("defaults maxOutputTokens to 32768 for gemini-4-argon only", async () => {
-    const argon = await captureGeminiPayload("gemini-4-argon", {
-      max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
-    });
-    const reference = await captureGeminiPayload("gemini-3.5-pro", {
-      max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
-    });
+  test.each(GEMINI_4_MODELS)(
+    "defaults maxOutputTokens to 32768 for %s but not gemini-3.5-pro",
+    async (model) => {
+      const gemini4 = await captureGeminiPayload(model, {
+        max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
+      });
+      const reference = await captureGeminiPayload("gemini-3.5-pro", {
+        max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
+      });
 
-    expect(argon.generationConfig.maxOutputTokens).toBe(32768);
-    expect(reference.generationConfig.maxOutputTokens).toBe(
-      GLOBAL_DEFAULT_MAX_TOKENS,
-    );
-  });
+      expect(gemini4.generationConfig.maxOutputTokens).toBe(32768);
+      expect(reference.generationConfig.maxOutputTokens).toBe(
+        GLOBAL_DEFAULT_MAX_TOKENS,
+      );
+    },
+  );
 
-  test("sends user-set maxOutputTokens for gemini-4-argon", async () => {
-    const { generationConfig } = await captureGeminiPayload("gemini-4-argon", {
-      max_tokens: 16384,
-    });
+  test.each(GEMINI_4_MODELS)(
+    "sends user-set maxOutputTokens for %s",
+    async (model) => {
+      const { generationConfig } = await captureGeminiPayload(model, {
+        max_tokens: 16384,
+      });
 
-    expect(generationConfig.maxOutputTokens).toBe(16384);
-  });
+      expect(generationConfig.maxOutputTokens).toBe(16384);
+    },
+  );
 
-  test("omits sampling params for gemini-4-argon", async () => {
-    const { generationConfig } = await captureGeminiPayload("gemini-4-argon", {
+  test.each(GEMINI_4_MODELS)("omits sampling params for %s", async (model) => {
+    const { generationConfig } = await captureGeminiPayload(model, {
       temperature: 0.2,
       top_p: 0.8,
     });

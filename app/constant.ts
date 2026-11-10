@@ -442,6 +442,7 @@ const azureModels = OPENAI_REASONING_MODELS;
 
 const googleModels = [
   "gemini-4-argon",
+  "gemini-4-carbon",
   "gemini-3.5-pro",
   "gemini-3.8-flash",
   "gemini-3.7-flash",
