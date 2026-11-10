@@ -45,11 +45,18 @@ import { nanoid } from "nanoid";
 import { RequestPayload } from "./openai";
 import { fetch } from "@/app/utils/stream";
 
-const GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
-const GEMINI_4_ARGON_MAX_OUTPUT_TOKENS = 65536;
+// gemini-4-carbon is not in the official Gemini API docs yet, so it shares
+// gemini-4-argon's settings.
+const GEMINI_4_MODELS: ReadonlySet<string> = new Set([
+  "gemini-4-argon",
+  "gemini-4-carbon",
+]);
+
+const GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
+const GEMINI_4_MAX_OUTPUT_TOKENS = 65536;
 
 // Sends the chosen effort when the model supports that level. Otherwise
-// gemini-4-argon leaves it to the API default (medium), and the Gemini 3.x
+// Gemini 4 models leave it to the API default (medium), and the Gemini 3.x
 // models keep the "high" they always sent before effort was configurable.
 export function resolveGeminiThinkingLevel(
   model: string,
@@ -65,21 +72,21 @@ export function resolveGeminiThinkingLevel(
     return level;
   }
 
-  return model === "gemini-4-argon" ? undefined : "high";
+  return GEMINI_4_MODELS.has(model) ? undefined : "high";
 }
 
-// modelConfig.max_tokens has no "unset" state, so gemini-4-argon treats the
-// global default as unset and uses its own larger default instead.
+// modelConfig.max_tokens has no "unset" state, so Gemini 4 models treat the
+// global default as unset and use their own larger default instead.
 export function resolveGeminiMaxOutputTokens(model: string, maxTokens: number) {
-  if (model !== "gemini-4-argon") {
+  if (!GEMINI_4_MODELS.has(model)) {
     return maxTokens;
   }
 
   if (maxTokens === DEFAULT_CONFIG.modelConfig.max_tokens) {
-    return GEMINI_4_ARGON_DEFAULT_MAX_OUTPUT_TOKENS;
+    return GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS;
   }
 
-  return Math.min(maxTokens, GEMINI_4_ARGON_MAX_OUTPUT_TOKENS);
+  return Math.min(maxTokens, GEMINI_4_MAX_OUTPUT_TOKENS);
 }
 
 export class GeminiProApi implements LLMApi {
@@ -579,7 +586,7 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.7-flash" ||
       modelConfig.model === "gemini-3.8-flash" ||
       modelConfig.model === "gemini-3.6-flash" ||
-      modelConfig.model === "gemini-4-argon"
+      GEMINI_4_MODELS.has(modelConfig.model)
     ) {
       // {{CHENGQI:
       // Action: Fixed - 修复 code_execution 不触发的问题
@@ -649,7 +656,7 @@ export class GeminiProApi implements LLMApi {
       modelConfig.model === "gemini-3.7-flash" ||
       modelConfig.model === "gemini-3.8-flash" ||
       modelConfig.model === "gemini-3.6-flash" ||
-      modelConfig.model === "gemini-4-argon"
+      GEMINI_4_MODELS.has(modelConfig.model)
     ) {
       (requestPayload as any).generationConfig = {
         ...(requestPayload as any).generationConfig, // 保留现有配置

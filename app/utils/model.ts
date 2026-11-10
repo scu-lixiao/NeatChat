@@ -88,8 +88,11 @@ export type GeminiThinkingLevel = "minimal" | "low" | "medium" | "high";
 // thinking_level values each model accepts, per
 // https://ai.google.dev/gemini-api/docs/thinking. gemini-3.5-pro is not in
 // the official table, so it gets the same levels as gemini-3.1-pro-preview.
+// gemini-4-carbon is not in the official docs either, so it copies
+// gemini-4-argon.
 const GEMINI_THINKING_LEVELS = new Map<string, readonly GeminiThinkingLevel[]>([
   ["gemini-4-argon", ["low", "medium", "high"]],
+  ["gemini-4-carbon", ["low", "medium", "high"]],
   ["gemini-3.8-flash", ["low", "medium", "high"]],
   ["gemini-3.7-flash", ["low", "medium", "high"]],
   ["gemini-3.6-flash", ["minimal", "low", "medium", "high"]],
