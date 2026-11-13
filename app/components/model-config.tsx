@@ -595,6 +595,8 @@ export function ModelConfigList(props: {
             : !isDeepSeekConfigurableReasoningModel;
           const supportsXHigh = isXaiMultiAgentModel
             ? true
+            : isGeminiConfigurableThinkingModel
+            ? geminiThinkingLevels.includes("xhigh")
             : isXaiGrok46Or47Model ||
               isGpt5ReasoningModel ||
               isAnthropicFableModel ||
