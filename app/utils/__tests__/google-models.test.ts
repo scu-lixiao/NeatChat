@@ -8,7 +8,7 @@ import {
 } from "../../client/platforms/google";
 import { useChatStore } from "../../store/chat";
 import { DEFAULT_CONFIG, type ModelConfig } from "../../store/config";
-import { getGeminiThinkingLevels } from "../model";
+import { getGeminiThinkingLevels, type GeminiThinkingLevel } from "../model";
 
 const GLOBAL_DEFAULT_MAX_TOKENS = DEFAULT_CONFIG.modelConfig.max_tokens;
 
@@ -26,8 +26,34 @@ const GEMINI_3_THINKING_LEVEL_MODELS = Object.keys(
   GEMINI_3_SUPPORTED_THINKING_LEVELS,
 );
 
-// gemini-4-carbon copies gemini-4-argon's settings.
-const GEMINI_4_MODELS = ["gemini-4-argon", "gemini-4-carbon"];
+type ReasoningEffort = NonNullable<ModelConfig["reasoningEffort"]>;
+
+const GEMINI_4_SUPPORTED_THINKING_LEVELS: Record<
+  string,
+  GeminiThinkingLevel[]
+> = {
+  "gemini-4-argon": ["low", "medium", "high"],
+  "gemini-4-carbon": ["low", "medium", "high"],
+  "gemini-4-hydrogen": ["low", "medium", "high", "xhigh"],
+};
+
+const GEMINI_4_MODELS = Object.keys(GEMINI_4_SUPPORTED_THINKING_LEVELS);
+
+// Argon and Carbon cap non-streaming REST requests at 32768 output tokens;
+// Hydrogen allows 65536.
+const GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS: Record<string, number> = {
+  "gemini-4-argon": 32768,
+  "gemini-4-carbon": 32768,
+  "gemini-4-hydrogen": 65536,
+};
+
+const GEMINI_4_UNSUPPORTED_EFFORTS = Object.entries(
+  GEMINI_4_SUPPORTED_THINKING_LEVELS,
+).flatMap(([model, levels]) =>
+  (["auto", "none", "minimal", "xhigh", "max"] as ReasoningEffort[])
+    .filter((effort) => !(levels as ReasoningEffort[]).includes(effort))
+    .map((effort) => [model, effort] as const),
+);
 
 async function captureGeminiPayload(
   model: string,
@@ -95,6 +121,19 @@ describe("Google model registry", () => {
     );
   });
 
+  test("registers gemini-4-hydrogen right after gemini-4-carbon", () => {
+    const googleModels = DEFAULT_MODELS.filter(
+      (m) => m.provider.providerType === "google",
+    );
+    expect(googleModels[2]).toEqual(
+      expect.objectContaining({
+        name: "gemini-4-hydrogen",
+        available: true,
+        provider: expect.objectContaining({ providerName: "Google" }),
+      }),
+    );
+  });
+
   test.each(GEMINI_4_MODELS)(
     "leaves the %s knowledge cutoff to the default",
     (model) => {
@@ -108,22 +147,40 @@ describe("Google model registry", () => {
 });
 
 describe("Gemini thinking level", () => {
-  test.each(GEMINI_4_MODELS)("supports low/medium/high for %s", (model) => {
-    expect(getGeminiThinkingLevels(model)).toEqual(["low", "medium", "high"]);
-    for (const effort of ["low", "medium", "high"]) {
-      expect(resolveGeminiThinkingLevel(model, effort)).toBe(effort);
-    }
-  });
+  test.each(Object.entries(GEMINI_4_SUPPORTED_THINKING_LEVELS))(
+    "passes supported levels through for %s",
+    (model, levels) => {
+      expect(getGeminiThinkingLevels(model)).toEqual(levels);
+      for (const level of levels) {
+        expect(resolveGeminiThinkingLevel(model, level)).toBe(level);
+      }
+    },
+  );
+
+  test.each(GEMINI_4_UNSUPPORTED_EFFORTS)(
+    "leaves %s to the API default when effort is %s",
+    (model, effort) => {
+      expect(resolveGeminiThinkingLevel(model, effort)).toBeUndefined();
+    },
+  );
 
   test.each(GEMINI_4_MODELS)(
-    "leaves unsupported efforts on %s to the API default",
+    "leaves %s to the API default when effort is unset",
     (model) => {
-      for (const effort of ["auto", "none", "minimal", "xhigh", "max"]) {
-        expect(resolveGeminiThinkingLevel(model, effort)).toBeUndefined();
-      }
       expect(resolveGeminiThinkingLevel(model)).toBeUndefined();
     },
   );
+
+  test("supports xhigh only on gemini-4-hydrogen", () => {
+    expect(getGeminiThinkingLevels("gemini-4-hydrogen")).toContain("xhigh");
+    for (const model of [
+      ...GEMINI_3_THINKING_LEVEL_MODELS,
+      "gemini-4-argon",
+      "gemini-4-carbon",
+    ]) {
+      expect(getGeminiThinkingLevels(model)).not.toContain("xhigh");
+    }
+  });
 
   test.each(Object.entries(GEMINI_3_SUPPORTED_THINKING_LEVELS))(
     "passes supported levels through for %s",
@@ -176,12 +233,12 @@ describe("Gemini max output tokens", () => {
     expect(resolveGeminiMaxOutputTokens("gemini-3.5-pro", 128000)).toBe(128000);
   });
 
-  test.each(GEMINI_4_MODELS)(
-    "uses 32768 for %s when max_tokens is the global default",
-    (model) => {
+  test.each(Object.entries(GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS))(
+    "uses the %s default (%i) when max_tokens is the global default",
+    (model, defaultMaxOutputTokens) => {
       expect(
         resolveGeminiMaxOutputTokens(model, GLOBAL_DEFAULT_MAX_TOKENS),
-      ).toBe(32768);
+      ).toBe(defaultMaxOutputTokens);
     },
   );
 
@@ -220,19 +277,20 @@ describe("Gemini request payload", () => {
     },
   );
 
-  test("builds the same gemini-4-carbon payload as gemini-4-argon", async () => {
-    const config = { reasoningEffort: "medium", max_tokens: 128000 } as const;
-    const argon = await captureGeminiPayload("gemini-4-argon", config);
-    const carbon = await captureGeminiPayload("gemini-4-carbon", config);
+  test.each(["gemini-4-carbon", "gemini-4-hydrogen"])(
+    "builds the same %s payload as gemini-4-argon for explicit settings",
+    async (model) => {
+      const config = { reasoningEffort: "medium", max_tokens: 128000 } as const;
+      const argon = await captureGeminiPayload("gemini-4-argon", config);
+      const other = await captureGeminiPayload(model, config);
 
-    expect(carbon).toEqual(argon);
-  });
+      expect(other).toEqual(argon);
+    },
+  );
 
   test.each(
-    GEMINI_4_MODELS.flatMap((model) =>
-      (["low", "medium", "high"] as const).map(
-        (effort) => [model, effort] as const,
-      ),
+    Object.entries(GEMINI_4_SUPPORTED_THINKING_LEVELS).flatMap(
+      ([model, levels]) => levels.map((effort) => [model, effort] as const),
     ),
   )("sends thinking_level for %s when effort is %s", async (model, effort) => {
     const { generationConfig } = await captureGeminiPayload(model, {
@@ -246,10 +304,8 @@ describe("Gemini request payload", () => {
   });
 
   test.each(
-    GEMINI_4_MODELS.flatMap((model) =>
-      (["auto", "xhigh", "none"] as const).map(
-        (effort) => [model, effort] as const,
-      ),
+    GEMINI_4_UNSUPPORTED_EFFORTS.filter(([, effort]) =>
+      ["auto", "xhigh", "none"].includes(effort),
     ),
   )("omits thinking_level for %s when effort is %s", async (model, effort) => {
     const { generationConfig } = await captureGeminiPayload(model, {
@@ -322,9 +378,9 @@ describe("Gemini request payload", () => {
     },
   );
 
-  test.each(GEMINI_4_MODELS)(
-    "defaults maxOutputTokens to 32768 for %s but not gemini-3.5-pro",
-    async (model) => {
+  test.each(Object.entries(GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS))(
+    "defaults maxOutputTokens for %s to %i but not gemini-3.5-pro",
+    async (model, defaultMaxOutputTokens) => {
       const gemini4 = await captureGeminiPayload(model, {
         max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
       });
@@ -332,7 +388,9 @@ describe("Gemini request payload", () => {
         max_tokens: GLOBAL_DEFAULT_MAX_TOKENS,
       });
 
-      expect(gemini4.generationConfig.maxOutputTokens).toBe(32768);
+      expect(gemini4.generationConfig.maxOutputTokens).toBe(
+        defaultMaxOutputTokens,
+      );
       expect(reference.generationConfig.maxOutputTokens).toBe(
         GLOBAL_DEFAULT_MAX_TOKENS,
       );
