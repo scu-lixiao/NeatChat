@@ -25,7 +25,7 @@ node --no-warnings --experimental-vm-modules $(yarn bin jest) --ci app/utils/__t
 
 Tests live in two places: `test/` and `app/utils/__tests__/`. Jest runs under jsdom via `next/jest`, `@/` maps to the repo root, and `jest.setup.ts` stubs `global.fetch` globally. The per-provider model tests in `app/utils/__tests__/*-models.test.ts` are the usual place to add coverage when models change.
 
-The Husky pre-commit hook runs lint-staged (`eslint --fix` + `prettier --write` on `app/**`). Commit messages follow conventional-commit style, e.g. `feat(anthropic): ...` or `fix(xai): ...`.
+The Husky pre-commit hook runs lint-staged (`eslint --fix` + `prettier --write` on `app/**` and `test/**`). Commit messages follow conventional-commit style, e.g. `feat(anthropic): ...` or `fix(xai): ...`.
 
 ## Request flow (spans client → store → server)
 
@@ -42,7 +42,7 @@ Recent commits (`git log --stat`) show the pattern, and a change usually touches
 
 - `app/constant.ts`: the provider's model array (feeds `DEFAULT_MODELS`), `KnowledgeCutOffDate`, `VISION_MODEL_REGEXES`, and the special lists `OPENAI_REASONING_MODELS` / `OPENAI_IMAGE_MODELS` / `XAI_IMAGE_MODELS`. `DEFAULT_OPENAI_MODEL` and `SUMMARIZE_MODEL` are indexes into `OPENAI_REASONING_MODELS`, so reordering that array changes the defaults.
 - `app/client/platforms/<provider>.ts`: per-model capability tables and payload shaping. Anthropic, for example, has module-level sets such as `ANTHROPIC_ADAPTIVE_THINKING_MODELS`, `ANTHROPIC_ALWAYS_ON_THINKING_MODELS` and `ANTHROPIC_DEFAULT_SAMPLING_MODELS`, a `ANTHROPIC_MAX_OUTPUT_TOKENS` map, and effort resolvers.
-- `app/components/model-config.tsx`: the settings UI **re-derives** capabilities from model-name checks (`isGpt5ReasoningModel`, `isAnthropicAdaptiveThinkingModel`, `supportsXHigh`, `supportsMax`, `maxTokensLimit`, ...). It doesn't read the platform tables, so the two must be kept in sync by hand.
+- `app/components/model-config.tsx`: the settings UI **re-derives** most capabilities from model-name checks (`isGpt5ReasoningModel`, `isAnthropicAdaptiveThinkingModel`, `supportsXHigh`, `supportsMax`, `maxTokensLimit`, ...). It doesn't read the tables in `app/client/platforms/`, so those must be kept in sync by hand. The exception is a capability with a shared helper in `app/utils/model.ts` (Gemini thinking levels via `getGeminiThinkingLevels`, DeepSeek reasoning effort): the UI and the platform both read it, so change the helper's table instead.
 - `app/utils.ts` / `app/utils/model.ts`: capability helpers such as `isGPT5ImageGenModel` and the DeepSeek reasoning-effort resolver, plus custom-model parsing (`collectModelTable`, which handles `CUSTOM_MODELS` syntax like `+name@Provider=Display,-all`).
 - `app/store/config.ts`: new `modelConfig` fields go into `DEFAULT_CONFIG`.
 
@@ -58,5 +58,5 @@ Recent commits (`git log --stat`) show the pattern, and a change usually touches
 - i18n: `app/locales/cn.ts` defines `LocaleType`, and the other locales are `PartialLocaleType`. Add new strings to `cn.ts` and `en.ts` at minimum.
 - Many files contain `// {{CHENGQI: Action/Timestamp/Reason/...}}` comment blocks from earlier AI-assisted work. Recent commits don't add new ones.
 - `app/components/holo/` (the "Holographic Design System") and the `app/test-*.html` pages are experiments that the app does not import. `.github/copilot-instructions.md` presents them as mandatory; they aren't. Match the styling of the existing `*.module.scss` for whatever component you're editing.
-- `docs/*.md` in upper-case (e.g. `PLATFORM_STREAM_FIX_GUIDE.md`, `OPENAI_MODEL_CLASSIFICATION_SYSTEM.md`) are fork-specific design notes on streaming and iPad fixes. The lower-case docs are upstream NextChat deployment guides.
+- `docs/*.md` in upper-case (e.g. `PLATFORM_STREAM_FIX_GUIDE.md`, `OPENAI_MODEL_CLASSIFICATION_SYSTEM.md`) are fork-specific design notes on streaming and iPad fixes. `IPADOS_26_*.md` and `IPAD_THINKING_MODE_FIX.md` describe iPadOS modules that are no longer in the codebase (`app/hooks/useIPadOS*`, `app/utils/ipados-*`, `memory-manager`, `effect-grading`), so check the code before relying on them. The lower-case docs are upstream NextChat deployment guides.
 - The share message text in `ClientApi.share()` is upstream-mandated. Don't change it.
