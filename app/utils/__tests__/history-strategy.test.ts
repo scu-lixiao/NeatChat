@@ -91,6 +91,7 @@ describe("getModelContextWindow", () => {
     expect(getModelContextWindow("gemini-4-argon")).toBe(1_048_576);
     expect(getModelContextWindow("gemini-4-carbon")).toBe(1_048_576);
     expect(getModelContextWindow("gemini-4-hydrogen")).toBe(1_048_576);
+    expect(getModelContextWindow("gemini-4-neon")).toBe(1_048_576);
     expect(getModelContextWindow("gemini-2.5-pro")).toBe(1_048_576);
     expect(getModelContextWindow("grok-4.7")).toBe(256_000);
     expect(getModelContextWindow("deepseek-chat")).toBe(128_000);

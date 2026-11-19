@@ -49,18 +49,23 @@ const GEMINI_4_MODELS: ReadonlySet<string> = new Set([
   "gemini-4-argon",
   "gemini-4-carbon",
   "gemini-4-hydrogen",
+  "gemini-4-neon",
 ]);
 
 const GEMINI_4_MAX_OUTPUT_TOKENS = 65536;
 // Argon and Carbon cap non-streaming REST requests at 32768 output tokens, so
-// they default to that. Hydrogen allows the full 65536 on every request.
+// they default to that. Hydrogen and Neon allow the full 65536 on every
+// request.
 const GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS = 32768;
-const GEMINI_4_HYDROGEN_DEFAULT_MAX_OUTPUT_TOKENS = GEMINI_4_MAX_OUTPUT_TOKENS;
+const GEMINI_4_FULL_OUTPUT_MODELS: ReadonlySet<string> = new Set([
+  "gemini-4-hydrogen",
+  "gemini-4-neon",
+]);
 
 // Sends the chosen effort when the model supports that level. Otherwise
 // Gemini 4 models leave it to the API default (medium on Argon and Carbon,
-// high on Hydrogen), and the Gemini 3.x models keep the "high" they always
-// sent before effort was configurable.
+// high on Hydrogen and Neon), and the Gemini 3.x models keep the "high" they
+// always sent before effort was configurable.
 export function resolveGeminiThinkingLevel(
   model: string,
   reasoningEffort?: string,
@@ -86,8 +91,8 @@ export function resolveGeminiMaxOutputTokens(model: string, maxTokens: number) {
   }
 
   if (maxTokens === DEFAULT_CONFIG.modelConfig.max_tokens) {
-    return model === "gemini-4-hydrogen"
-      ? GEMINI_4_HYDROGEN_DEFAULT_MAX_OUTPUT_TOKENS
+    return GEMINI_4_FULL_OUTPUT_MODELS.has(model)
+      ? GEMINI_4_MAX_OUTPUT_TOKENS
       : GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS;
   }
 
