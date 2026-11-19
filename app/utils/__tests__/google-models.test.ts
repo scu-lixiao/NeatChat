@@ -35,16 +35,18 @@ const GEMINI_4_SUPPORTED_THINKING_LEVELS: Record<
   "gemini-4-argon": ["low", "medium", "high"],
   "gemini-4-carbon": ["low", "medium", "high"],
   "gemini-4-hydrogen": ["low", "medium", "high", "xhigh"],
+  "gemini-4-neon": ["low", "medium", "high", "xhigh"],
 };
 
 const GEMINI_4_MODELS = Object.keys(GEMINI_4_SUPPORTED_THINKING_LEVELS);
 
 // Argon and Carbon cap non-streaming REST requests at 32768 output tokens;
-// Hydrogen allows 65536.
+// Hydrogen and Neon allow 65536.
 const GEMINI_4_DEFAULT_MAX_OUTPUT_TOKENS: Record<string, number> = {
   "gemini-4-argon": 32768,
   "gemini-4-carbon": 32768,
   "gemini-4-hydrogen": 65536,
+  "gemini-4-neon": 65536,
 };
 
 const GEMINI_4_UNSUPPORTED_EFFORTS = Object.entries(
@@ -134,6 +136,19 @@ describe("Google model registry", () => {
     );
   });
 
+  test("registers gemini-4-neon right after gemini-4-hydrogen", () => {
+    const googleModels = DEFAULT_MODELS.filter(
+      (m) => m.provider.providerType === "google",
+    );
+    expect(googleModels[3]).toEqual(
+      expect.objectContaining({
+        name: "gemini-4-neon",
+        available: true,
+        provider: expect.objectContaining({ providerName: "Google" }),
+      }),
+    );
+  });
+
   test.each(GEMINI_4_MODELS)(
     "leaves the %s knowledge cutoff to the default",
     (model) => {
@@ -171,8 +186,9 @@ describe("Gemini thinking level", () => {
     },
   );
 
-  test("supports xhigh only on gemini-4-hydrogen", () => {
+  test("supports xhigh only on gemini-4-hydrogen and gemini-4-neon", () => {
     expect(getGeminiThinkingLevels("gemini-4-hydrogen")).toContain("xhigh");
+    expect(getGeminiThinkingLevels("gemini-4-neon")).toContain("xhigh");
     for (const model of [
       ...GEMINI_3_THINKING_LEVEL_MODELS,
       "gemini-4-argon",
@@ -277,7 +293,7 @@ describe("Gemini request payload", () => {
     },
   );
 
-  test.each(["gemini-4-carbon", "gemini-4-hydrogen"])(
+  test.each(["gemini-4-carbon", "gemini-4-hydrogen", "gemini-4-neon"])(
     "builds the same %s payload as gemini-4-argon for explicit settings",
     async (model) => {
       const config = { reasoningEffort: "medium", max_tokens: 128000 } as const;
